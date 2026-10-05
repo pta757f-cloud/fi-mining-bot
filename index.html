@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>FI Mining Bot v4 — Emerald Edition</title>
+<title>FI Mining Bot v6 — Ultimate Edition</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-400-normal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-700-normal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-800-normal.css">
@@ -25,12 +25,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .num{font-variant-numeric:tabular-nums}
 
 #phone{position:relative;width:100%;max-width:430px;height:100dvh;max-height:920px;background:var(--tg-bg);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.07),0 40px 100px rgba(0,0,0,.7),0 0 120px rgba(23,221,98,.06)}
-@media(min-width:500px) and (min-height:700px){
-  #phone{border-radius:38px;height:min(920px,96dvh)}
-  #phone::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#000;border-radius:14px;z-index:60}
-}
+@media(min-width:500px) and (min-height:700px){#phone{border-radius:38px;height:min(920px,96dvh)}#phone::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#000;border-radius:14px;z-index:60}}
 
-/* TG HEADER */
 #tgHeader{flex:0 0 auto;background:linear-gradient(180deg,#1c2a3a,#17212b);border-bottom:1px solid var(--tg-border);padding:14px 14px 10px;z-index:40;position:relative}
 @media(min-width:500px) and (min-height:700px){#tgHeader{padding-top:34px}}
 .tgRow{display:flex;align-items:center;gap:10px}
@@ -62,7 +58,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .menuItem.staff{color:var(--dv-green)}
 .menuItem.staff:hover{background:rgba(61,255,139,.12)}
 
-/* BALANCE STRIP */
 #balanceStrip{flex:0 0 auto;background:linear-gradient(135deg,#1b2836 0%,#1d3328 60%,#153a24 100%);border-bottom:1px solid var(--tg-border);padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:30}
 .balCell{flex:1;min-width:0}
 .balLabel{font-size:10px;color:var(--tg-sub);text-transform:uppercase;letter-spacing:.8px;font-weight:700}
@@ -74,17 +69,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .priceChip .chg{font-size:10.5px;font-weight:700}
 .chg.up{color:var(--fi-green)}.chg.dn{color:var(--fi-red)}
 
-/* SCREEN / TABS */
 #screen{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 20px;scrollbar-width:none}
 #screen::-webkit-scrollbar{display:none}
-#tabBar{flex:0 0 auto;display:flex;background:#131c26;border-top:1px solid var(--tg-border);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40}
-.tabBtn{flex:1;background:none;border:none;color:var(--tg-sub);font-family:inherit;font-size:10.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 4px;cursor:pointer;border-radius:10px;transition:.15s}
-.tabBtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#tabBar{flex:0 0 auto;display:flex;background:#131c26;border-top:1px solid var(--tg-border);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40;gap:2px}
+.tabBtn{flex:1;background:none;border:none;color:var(--tg-sub);font-family:inherit;font-size:9.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 1px 3px;cursor:pointer;border-radius:8px;transition:.15s}
+.tabBtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabBtn.active{color:var(--em)}
 .tabBtn.active svg{filter:drop-shadow(0 0 6px rgba(23,221,98,.6))}
 .tabBtn:active{transform:scale(.92)}
 
-/* COMPONENTS */
 .sectionTitle{font-size:12px;font-weight:800;color:var(--tg-sub);text-transform:uppercase;letter-spacing:1.2px;margin:18px 2px 10px;display:flex;align-items:center;gap:8px}
 .sectionTitle::after{content:'';flex:1;height:1px;background:var(--tg-border)}
 .sectionTitle:first-child{margin-top:2px}
@@ -97,6 +90,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .btn-em{background:linear-gradient(135deg,#3cf07e,#0ea24a);color:#03230f;box-shadow:0 4px 14px rgba(23,221,98,.35)}
 .btn-ghost{background:rgba(255,255,255,.05);color:var(--tg-text);border:1px solid var(--tg-border)}
 .btn-red{background:rgba(255,92,92,.15);color:var(--fi-red);border:1px solid rgba(255,92,92,.3)}
+.btn-purple{background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 4px 14px rgba(168,85,247,.35)}
+.btn-pink{background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;box-shadow:0 4px 14px rgba(236,72,153,.35)}
 .btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none!important}
 .btn-sm{padding:8px 14px;font-size:12.5px}
 .btn-lg{padding:13px 18px;font-size:14.5px;width:100%}
@@ -107,7 +102,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .bar{height:7px;background:rgba(0,0,0,.35);border-radius:5px;overflow:hidden}
 .bar>i{display:block;height:100%;border-radius:5px;transition:width .6s ease,background .4s}
 
-/* quests */
 .questCard{display:flex;gap:11px;align-items:center;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:13px;padding:10px 12px;margin-bottom:7px}
 .questCard.done{border-color:rgba(23,221,98,.5);background:linear-gradient(135deg,rgba(23,221,98,.07),var(--tg-panel))}
 .qIco{width:34px;height:34px;border-radius:10px;background:var(--tg-panel2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
@@ -118,7 +112,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .qProg{font-size:9.5px;color:var(--tg-sub);margin-top:3px}
 .qBtn{flex-shrink:0}
 
-/* miner card */
 .minerCard{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:12px;margin-bottom:10px;display:flex;gap:12px;position:relative;overflow:hidden}
 .minerCard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mc,#3390ec);opacity:.85}
 .rigArt{width:92px;height:92px;flex-shrink:0;position:relative}
@@ -140,7 +133,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .st-broken{background:rgba(255,92,92,.16);color:var(--fi-red)}
 .st-off{background:rgba(125,139,153,.15);color:var(--tg-sub)}
 
-/* shop / lab */
 .shopCard,.labCard{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:13px;margin-bottom:10px;position:relative;overflow:hidden}
 .labCard{display:flex;gap:12px;align-items:center}
 .shopTop{display:flex;gap:12px}
@@ -173,7 +165,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .switch.on{background:var(--fi-green)}
 .switch.on::after{left:23px}
 
-/* market */
 .bigPrice{font-size:34px;font-weight:800;color:var(--em);letter-spacing:-1px}
 #chartWrap{position:relative;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:10px;margin-bottom:12px}
 #chart{width:100%;height:170px;display:block}
@@ -184,8 +175,50 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .lotteryBox{background:linear-gradient(135deg,rgba(247,179,43,.09),rgba(255,122,26,.05));border:1px solid rgba(247,179,43,.3);border-radius:14px;padding:13px;margin-bottom:10px}
 .lotIn{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--tg-border);color:var(--tg-text);font-family:inherit;font-weight:800;font-size:15px;border-radius:10px;padding:10px 12px;outline:none;margin-bottom:8px}
 .lotIn:focus{border-color:var(--fi-gold)}
+.inp{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--tg-border);color:var(--tg-text);font-family:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:10px 12px;outline:none;margin-bottom:8px}
+.inp:focus{border-color:var(--em)}
 
-/* toast / modal */
+.upgraderBox{background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(124,58,237,.08));border:1px solid rgba(168,85,247,.4);border-radius:16px;padding:16px;margin-bottom:12px;text-align:center}
+.upgraderTitle{font-size:18px;font-weight:800;margin-bottom:12px;color:#c084fc}
+.upgraderCards{display:flex;gap:12px;align-items:center;justify-content:center;margin:16px 0}
+.upgCard{background:var(--tg-panel2);border:2px solid var(--tg-border);border-radius:14px;padding:14px;min-width:120px;text-align:center;cursor:pointer;transition:.2s}
+.upgCard:hover{border-color:rgba(168,85,247,.5);transform:translateY(-2px)}
+.upgCard.selected{border-color:#c084fc;box-shadow:0 0 20px rgba(168,85,247,.4)}
+.upgCardIcon{font-size:32px;margin-bottom:6px}
+.upgCardName{font-size:12px;font-weight:700;margin-bottom:4px}
+.upgCardPrice{font-size:10px;color:var(--tg-sub)}
+.upgArrow{font-size:28px;color:#c084fc;font-weight:800}
+.upgChance{font-size:24px;font-weight:800;margin:12px 0;color:#c084fc}
+.upgBtn{width:100%;padding:14px;font-size:14px;font-weight:800;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 4px 16px rgba(168,85,247,.4);transition:.2s}
+.upgBtn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(168,85,247,.5)}
+.upgBtn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.upgResult{font-size:16px;font-weight:800;margin-top:12px;padding:12px;border-radius:10px;animation:resultPulse .5s ease-out}
+.upgResult.success{background:rgba(47,212,106,.15);color:var(--fi-green);border:1px solid rgba(47,212,106,.4)}
+.upgResult.fail{background:rgba(255,92,92,.15);color:var(--fi-red);border:1px solid rgba(255,92,92,.4)}
+@keyframes resultPulse{0%{transform:scale(0.8);opacity:0}100%{transform:scale(1);opacity:1}}
+.upgHistory{margin-top:16px;text-align:left}
+.upgHistoryItem{background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:10px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:11px}
+
+.transferBox{background:linear-gradient(135deg,rgba(51,144,236,.08),rgba(51,144,236,.03));border:1px solid rgba(51,144,236,.3);border-radius:14px;padding:14px;margin-bottom:10px}
+.duelBox{background:linear-gradient(135deg,rgba(255,122,26,.12),rgba(255,92,92,.06));border:1px solid rgba(255,122,26,.4);border-radius:14px;padding:14px;margin-bottom:10px}
+.rouletteBox{background:linear-gradient(135deg,rgba(236,72,153,.12),rgba(190,24,93,.06));border:1px solid rgba(236,72,153,.4);border-radius:14px;padding:14px;margin-bottom:10px}
+.dailyBox{background:linear-gradient(135deg,rgba(247,179,43,.15),rgba(255,122,26,.08));border:1px solid rgba(247,179,43,.5);border-radius:16px;padding:16px;margin-bottom:14px;text-align:center;position:relative;overflow:hidden}
+.dailyBox::before{content:'';position:absolute;top:-50%;right:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(247,179,43,.2) 0%,transparent 60%);animation:shimmer 3s infinite}
+@keyframes shimmer{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.dailyTitle{font-size:16px;font-weight:800;color:var(--fi-gold);margin-bottom:8px;position:relative}
+.dailyDays{display:flex;justify-content:center;gap:6px;margin:12px 0}
+.dailyDot{width:28px;height:28px;border-radius:50%;background:var(--tg-panel2);border:2px solid var(--tg-border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--tg-sub)}
+.dailyDot.claimed{background:linear-gradient(135deg,#ffc94d,#f2921d);color:#3a2600;border-color:var(--fi-gold)}
+.dailyDot.today{border-color:var(--fi-gold);box-shadow:0 0 10px rgba(247,179,43,.5)}
+.leaderboardItem{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:12px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.leaderboardItem .rank{width:28px;height:28px;border-radius:50%;background:var(--tg-panel2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.leaderboardItem.top1 .rank{background:linear-gradient(135deg,#ffd76e,#c07808);color:#3a2600}
+.leaderboardItem.top2 .rank{background:linear-gradient(135deg,#c8d0dc,#7d8b99);color:#1a2531}
+.leaderboardItem.top3 .rank{background:linear-gradient(135deg,#d98b5a,#8a4a28);color:#2a1406}
+.leaderboardItem.me{background:linear-gradient(135deg,rgba(23,221,98,.12),rgba(10,156,62,.05));border-color:rgba(23,221,98,.4)}
+.leaderboardItem .uname{flex:1;font-weight:700;font-size:13px}
+.leaderboardItem .cap{font-weight:800;color:var(--fi-gold);font-size:12px}
+
 #toasts{position:absolute;left:10px;right:10px;bottom:76px;z-index:80;display:flex;flex-direction:column;gap:7px;pointer-events:none}
 .toast{background:rgba(23,33,43,.96);border:1px solid var(--tg-border);border-left:4px solid var(--tg-blue);border-radius:12px;padding:10px 13px;font-size:12.5px;font-weight:600;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.55);animation:toastIn .3s cubic-bezier(.2,1.4,.4,1);backdrop-filter:blur(8px);display:flex;gap:9px;align-items:flex-start}
 .toast .ico{font-size:15px;line-height:1.2}
@@ -194,6 +227,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .toast.red{border-left-color:var(--fi-red)}
 .toast.orange{border-left-color:var(--fi-orange)}
 .toast.em{border-left-color:var(--em)}
+.toast.purple{border-left-color:#a855f7}
+.toast.pink{border-left-color:#ec4899}
 .toast.dev{border-left-color:var(--dv-green);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dv-green)}
 .toast.out{animation:toastOut .3s forwards}
 @keyframes toastIn{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:none}}
@@ -208,7 +243,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .modal .mRow .btn{flex:1;padding:11px}
 .modalBig{font-size:26px;font-weight:800;color:var(--em);margin:6px 0 2px}
 
-/* intro / banned */
 #intro{position:absolute;inset:0;z-index:100;background:linear-gradient(160deg,#0e1621,#10241c 55%,#0a1a10);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;transition:opacity .5s}
 #intro.hide{opacity:0;pointer-events:none}
 .introCoin{width:120px;height:120px;animation:coinFloat 3s ease-in-out infinite;filter:drop-shadow(0 12px 34px rgba(23,221,98,.45))}
@@ -232,9 +266,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .emptyState p{font-size:13px;line-height:1.5;margin-bottom:16px}
 .hintBox{background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.25);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#a8cef5;line-height:1.5;margin-bottom:12px}
 .hintBox.em{background:rgba(23,221,98,.07);border-color:rgba(23,221,98,.28);color:#9df0bc}
+.hintBox.gold{background:rgba(247,179,43,.08);border-color:rgba(247,179,43,.3);color:#ffd98a}
 .warnBox{background:rgba(255,122,26,.08);border:1px solid rgba(255,122,26,.3);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#ffc38f;line-height:1.5;margin-bottom:12px}
 .rankBadge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(23,221,98,.18),rgba(10,156,62,.12));border:1px solid rgba(23,221,98,.4);color:var(--em);font-weight:800;font-size:12px;border-radius:10px;padding:5px 12px}
 .crystalBadge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(168,85,247,.08));border:1px solid rgba(168,85,247,.45);color:#c084fc;font-weight:800;font-size:12px;border-radius:10px;padding:5px 12px}
+.refBadge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(236,72,153,.18),rgba(190,24,93,.08));border:1px solid rgba(236,72,153,.4);color:#ec4899;font-weight:800;font-size:11px;border-radius:10px;padding:4px 10px}
 .achv{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(36,52,71,.5)}
 .achv:last-child{border:none}
 .achvIco{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--tg-panel2)}
@@ -245,7 +281,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .blackoutFx{animation:boFlicker 1s infinite}
 @keyframes boFlicker{0%,100%{opacity:1}50%{opacity:.35}}
 
-/* ============ DEV CONSOLE ============ */
 #devPanel{position:absolute;inset:0;z-index:96;background:var(--dv-bg);display:none;flex-direction:column;font-family:'JetBrains Mono',monospace;animation:devIn .2s ease-out}
 #devPanel.open{display:flex}
 @keyframes devIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -329,7 +364,7 @@ select.din{appearance:none;cursor:pointer}
         </div>
         <div class="tgStatus"><span class="dotOnline"></span><span id="statusText">бот · онлайн</span></div>
       </div>
-      <div class="devBtn" id="devToggle" title="Консоль персонала (только для стаффа)">STAFF</div>
+      <div class="devBtn" id="devToggle" title="Консоль персонала">STAFF</div>
       <div class="tgMenu" id="menuBtn">•••</div>
     </div>
     <div id="menuDrop">
@@ -354,21 +389,22 @@ select.din{appearance:none;cursor:pointer}
 
   <div id="tabBar">
     <button class="tabBtn active" data-tab="farm"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="12" rx="2"/><circle cx="8" cy="13" r="2.6"/><circle cx="16" cy="13" r="2.6"/><path d="M5 7V5h14v2"/></svg>Ферма</button>
-    <button class="tabBtn" data-tab="market"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Рынок</button>
+    <button class="tabBtn" data-tab="market"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Биржа</button>
     <button class="tabBtn" data-tab="shop"><svg viewBox="0 0 24 24"><path d="M6 7h12l1.5 13h-15z"/><path d="M9 10V6a3 3 0 016 0v4"/></svg>Магазин</button>
-    <button class="tabBtn" data-tab="lab"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6.2L4.6 18a2.4 2.4 0 002.1 3.5h10.6a2.4 2.4 0 002.1-3.5L14 9.2V3"/><path d="M7.5 14.5h9"/></svg>Лаборатория</button>
+    <button class="tabBtn" data-tab="lab"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6.2L4.6 18a2.4 2.4 0 002.1 3.5h10.6a2.4 2.4 0 002.1-3.5L14 9.2V3"/><path d="M7.5 14.5h9"/></svg>Лаба</button>
+    <button class="tabBtn" data-tab="upgrader"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Апгрейд</button>
+    <button class="tabBtn" data-tab="social"><svg viewBox="0 0 24 24"><path d="M7 11l5-5 5 5M7 17l5-5 5 5"/></svg>Соц</button>
     <button class="tabBtn" data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Профиль</button>
   </div>
 
   <div id="modalWrap"><div class="modal" id="modalBox"></div></div>
 
-  <!-- ============ STAFF CONSOLE ============ -->
   <div id="devPanel">
     <div class="dvHead">
       <div class="t">🛠 STAFF CONSOLE<small>панель персонала · доступ по ролям</small></div>
       <span class="dvRoleTag" id="dvRoleTag" style="display:none"></span>
       <button class="dvClose" id="devLogout" style="display:none">ВЫЙТИ</button>
-      <button class="dvClose" id="devClose">✕ ESC</button>
+      <button class="dvClose" id="devClose">✕</button>
     </div>
     <div class="dvTabs" id="devTabs" style="display:none"></div>
     <div id="devContent" style="display:flex"></div>
@@ -376,23 +412,21 @@ select.din{appearance:none;cursor:pointer}
       <span>tick: <b id="dvTick">—</b></span>
       <span>speed: <b id="dvSpdLbl">1×</b></span>
       <span>price: <b id="dvFootPrice">—</b></span>
-      <span style="margin-left:auto">Ctrl+Shift+D / 5 тапов по лого</span>
+      <span style="margin-left:auto">Ctrl+Shift+D</span>
     </div>
   </div>
 
-  <!-- BANNED SCREEN -->
   <div id="banned">
     <div style="font-size:64px">🚫</div>
     <h1>ВЫ ЗАБАНЕНЫ</h1>
-    <p id="banReason">Администрация ограничила ваш доступ к FI Mining Bot за нарушение правил.</p>
-    <p style="margin-top:14px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#5a4a4e">Решение обжалуйте у владельца проекта</p>
+    <p id="banReason">Администрация ограничила ваш доступ к FI Mining Bot.</p>
+    <p style="margin-top:14px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#5a4a4e">Обжалуйте у @Timofey_U</p>
   </div>
 
-  <!-- INTRO -->
   <div id="intro">
     <div class="introCoin" id="introCoin"></div>
     <h1>FI Mining Bot</h1>
-    <div class="sub">Реалистичный симулятор промышленного майнинга <b style="color:var(--em)">FI coin</b> — изумрудной криптовалюты сети FI</div>
+    <div class="sub">Изумрудная криптовалюта <b style="color:var(--em)">FI coin</b> — майнинг, апгрейдер видеокарт, PvP-дуэли и P2P переводы!</div>
     <div id="introChat"></div>
     <button class="btn btn-em" id="startBtn">▶ НАЧАТЬ МАЙНИНГ</button>
   </div>
@@ -400,37 +434,27 @@ select.din{appearance:none;cursor:pointer}
 
 <script>
 'use strict';
-/* ═══════════════════════════════════════════════════════════════
-   ⚙️ НАСТРОЙКА ПЕРСОНАЛА — ОТРЕДАКТИРУЙ ЭТОТ БЛОК ПОД СЕБЯ!
-   ═══════════════════════════════════════════════════════════════
-   1. Вставь свой Telegram @юзернейм в OWNER_USERNAME (без @) —
-      при открытии игры через бота ты автоматически получишь роль OWNER.
-   2. Смени все три ключа на свои секретные (ими входят админы/модеры
-      с других устройств или если юзернейм не определился).
-   ═══════════════════════════════════════════════════════════════ */
 const STAFF_CONFIG = {
-  OWNER_USERNAME: 'вставь_свой_юзернейм',   // ← ТВОЙ @юзернейм в Telegram
-  OWNER_ID: '',                              // ← (не обязательно) твой числовой id
-  OWNER_KEY:     'OWNER-FI-2025',            // ← ключ входа владельца (смени!)
-  ADMIN_KEY:     'ADMIN-FI-2025',            // ← ключ входа админа (смени!)
-  MODERATOR_KEY: 'MOD-FI-2025',              // ← ключ входа модератора (смени!)
+  OWNER_USERNAME: 'timofey_u',
+  OWNER_ID: '',
+  OWNER_KEY:     'OWNER-FI-2025',
+  ADMIN_KEY:     'ADMIN-FI-2025',
+  MODERATOR_KEY: 'MOD-FI-2025',
 };
 
-// Права ролей: какие разделы консоли доступны
 const PERMS = {
-  owner:     ['balance','market','farm','upgrades','sim','events','staff','bans','json'],
-  admin:     ['balance','market','farm','upgrades','sim','events','bans'],
-  moderator: ['bans','monitor'],
+  owner:     ['balance','market','farm','upgrades','sim','events','staff','bans','players','json'],
+  admin:     ['balance','market','farm','upgrades','sim','events','bans','players'],
+  moderator: ['bans','monitor','players'],
 };
 const TAB_META = {
   balance:{t:'💰 Балансы'},market:{t:'📈 Рынок'},farm:{t:'⛏️ Ферма'},
   upgrades:{t:'🔧 Апгрейды'},sim:{t:'⚙️ Симуляция'},events:{t:'🎲 События'},
-  staff:{t:'👑 Персонал'},bans:{t:'🚫 Баны'},json:{t:'🧬 JSON'},monitor:{t:'👁 Монитор'},
+  staff:{t:'👑 Персонал'},bans:{t:'🚫 Баны'},players:{t:'👥 Игроки'},
+  json:{t:'🧬 JSON'},monitor:{t:'👁 Монитор'},
 };
 const ROLE_LABEL={owner:'OWNER',admin:'ADMIN',moderator:'MODERATOR'};
 
-// ═══════════ ART ═══════════
-// Изумруд в стиле Minecraft с надписью FI
 function coinSVG(){
   return `<svg viewBox="0 0 64 64">
     <path d="M32 2 L54 15 L54 49 L32 62 L10 49 L10 15 Z" fill="url(#emG)" stroke="#065c26" stroke-width="2.6" stroke-linejoin="round"/>
@@ -463,78 +487,93 @@ const ICON={
   wrench:`<svg viewBox="0 0 24 24"><path d="M14.5 6a3.5 3.5 0 004.6 4.6L21 12.5 12.5 21 3 11.5 11.5 3z"/></svg>`
 };
 
-// ═══════════ GAME DATA ═══════════
 const MINERS=[
- {id:'usb',  name:'FI Mini USB',   tier:0, th:0.5,   w:30,    price:120,   desc:'Карманный майнер для старта. Тихий и холодный.'},
- {id:'s9',   name:'FI Rig S9',     tier:1, th:14,    w:1300,  price:850,   desc:'Классический ASIC начального уровня. Проверен временем.'},
- {id:'m50',  name:'FI Miner M50',  tier:2, th:114,   w:3300,  price:4200,  desc:'Энергоэффективный рабочий конь.'},
- {id:'avx',  name:'FI Avalon X',   tier:3, th:250,   w:5500,  price:11500, desc:'Промышленный класс. Требует мощного охлаждения.'},
- {id:'hyd',  name:'FI Hydro H1',   tier:4, th:600,   w:9000,  price:29000, desc:'Гидроохлаждаемый модуль. Стабилен под нагрузкой.'},
- {id:'imm',  name:'FI Immersion DC',tier:5,th:1500,  w:18000, price:75000, desc:'Иммерсионный дата-центр. Вершина индустрии.'},
+ {id:'usb',name:'FI Mini USB',tier:0,th:0.5,w:30,price:120,desc:'Карманный майнер для старта.'},
+ {id:'s9',name:'FI Rig S9',tier:1,th:14,w:1300,price:850,desc:'Классический ASIC начального уровня.'},
+ {id:'m50',name:'FI Miner M50',tier:2,th:114,w:3300,price:4200,desc:'Энергоэффективный рабочий конь.'},
+ {id:'avx',name:'FI Avalon X',tier:3,th:250,w:5500,price:11500,desc:'Промышленный класс.'},
+ {id:'hyd',name:'FI Hydro H1',tier:4,th:600,w:9000,price:29000,desc:'Гидроохлаждаемый модуль.'},
+ {id:'imm',name:'FI Immersion DC',tier:5,th:1500,w:18000,price:75000,desc:'Иммерсионный дата-центр.'},
 ];
+
+const GPUS=[
+  {id:'gtx1050',name:'GTX 1050',tier:0,price:50,icon:'🎮',desc:'Базовая видеокарта для старта'},
+  {id:'gtx1060',name:'GTX 1060',tier:1,price:150,icon:'🎮',desc:'Средний сегмент'},
+  {id:'gtx1070',name:'GTX 1070',tier:2,price:400,icon:'🎮',desc:'Высокий сегмент'},
+  {id:'rtx2060',name:'RTX 2060',tier:3,price:800,icon:'🎮',desc:'RTX серия'},
+  {id:'rtx3060',name:'RTX 3060',tier:4,price:1500,icon:'🎮',desc:'Современная карта'},
+  {id:'rtx3080',name:'RTX 3080',tier:5,price:3500,icon:'🎮',desc:'Флагман'},
+  {id:'rtx4090',name:'RTX 4090',tier:6,price:8000,icon:'🎮',desc:'Вершина технологии'},
+];
+
 const UPG={
-  cool:{name:'Система охлаждения',max:8,baseCost:400, mult:2.1,icon:ICON.snow,bg:'linear-gradient(135deg,#0ea5e9,#2563eb)',desc:l=>l?`Мощность охлаждения ×${(Math.pow(1.9,l)).toFixed(1)}.`:'Базовый обдув. Ферма быстро греется.'},
-  power:{name:'Тариф электроэнергии',max:6,baseCost:600,mult:2.4,icon:ICON.bolt,bg:'linear-gradient(135deg,#f59e0b,#ef4444)',desc:l=>`Ставка $${tariffAt(l).toFixed(3)}/кВт·ч${l<6?` → $${tariffAt(l+1).toFixed(3)}/кВт·ч`:' (минимум)'}`},
+  cool:{name:'Система охлаждения',max:8,baseCost:400,mult:2.1,icon:ICON.snow,bg:'linear-gradient(135deg,#0ea5e9,#2563eb)',desc:l=>l?`Мощность ×${(Math.pow(1.9,l)).toFixed(1)}.`:'Базовый обдув.'},
+  power:{name:'Тариф электроэнергии',max:6,baseCost:600,mult:2.4,icon:ICON.bolt,bg:'linear-gradient(135deg,#f59e0b,#ef4444)',desc:l=>`Ставка $${tariffAt(l).toFixed(3)}/кВт·ч`},
   oc:{name:'Оверклокинг чипов',max:5,baseCost:1500,mult:2.6,icon:ICON.chip,bg:'linear-gradient(135deg,#a855f7,#ec4899)',desc:l=>`Хешрейт +${l*12}%, энергия +${l*18}%.`},
-  auto:{name:'Автоспродажа FI',max:1,baseCost:5000,mult:1,icon:ICON.robot,bg:'linear-gradient(135deg,#22c55e,#0ea5e9)',desc:()=>'Добытые FI мгновенно продаются (комиссия брокера).'},
+  auto:{name:'Автоспродажа FI',max:1,baseCost:5000,mult:1,icon:ICON.robot,bg:'linear-gradient(135deg,#22c55e,#0ea5e9)',desc:()=>'Добытые FI продаются автоматически.'},
 };
-// НОВОЕ: энергоисточники
 const ENERGY={
-  solar:{name:'Солнечные панели',ico:'☀️',red:0.08,price:1500, desc:'−8% к счетам за свет за каждую штуку'},
-  wind:{name:'Ветрогенератор',ico:'🌀',red:0.15,price:6000, desc:'−15% к счетам за свет за каждую штуку'},
-  gas:{name:'Газовая станция',ico:'🔥',red:0.25,price:20000, desc:'−25% к счетам за свет за каждую штуку'},
-  reactor:{name:'Реактор «Изумруд»',ico:'☢️',red:0.40,price:80000, desc:'−40% к счетам. Вершина энергетики'},
+  solar:{name:'Солнечные панели',ico:'☀️',red:0.08,price:1500,desc:'−8% к счетам'},
+  wind:{name:'Ветрогенератор',ico:'🌀',red:0.15,price:6000,desc:'−15% к счетам'},
+  gas:{name:'Газовая станция',ico:'🔥',red:0.25,price:20000,desc:'−25% к счетам'},
+  reactor:{name:'Реактор «Изумруд»',ico:'☢️',red:0.40,price:80000,desc:'−40% к счетам'},
 };
-// НОВОЕ: исследования
 const RESEARCH={
-  chips1:{name:'Эффективность чипов I',ico:'🔬',cost:500, desc:'+10% к хешрейту всей фермы'},
-  cryo:{name:'Крио-паста',ico:'❄️',cost:800, desc:'Целевая температура фермы −10%'},
-  broker:{name:'Биржевой брокер',ico:'📉',cost:1200, desc:'Комиссия продажи 1% → 0.5%'},
-  night:{name:'Ночная смена',ico:'🌙',cost:1500, desc:'Оффлайн-майнинг: 2ч → 4ч'},
-  chips2:{name:'Эффективность чипов II',ico:'🧪',cost:3000, desc:'Ещё +15% к хешрейту'},
-  shield:{name:'Термальный щит',ico:'🛡️',cost:4000, desc:'Поломки от перегрева в 2 раза реже'},
-  algo:{name:'Алгоритм FI-XX',ico:'📐',cost:8000, desc:'+20% к доле в сети (больше блоков)'},
+  chips1:{name:'Эффективность чипов I',ico:'🔬',cost:500,desc:'+10% хешрейт'},
+  cryo:{name:'Крио-паста',ico:'❄️',cost:800,desc:'Целевая temp −10%'},
+  broker:{name:'Биржевой брокер',ico:'📉',cost:1200,desc:'Комиссия 1%→0.5%'},
+  night:{name:'Ночная смена',ico:'🌙',cost:1500,desc:'Оффлайн 2ч→4ч'},
+  chips2:{name:'Эффективность чипов II',ico:'🧪',cost:3000,desc:'+15% хешрейт'},
+  shield:{name:'Термальный щит',ico:'🛡️',cost:4000,desc:'Поломки реже'},
+  algo:{name:'Алгоритм FI-XX',ico:'📐',cost:8000,desc:'+20% доли'},
+  transfer:{name:'P2P протокол',ico:'📤',cost:2500,desc:'Разблокирует переводы FI'},
 };
 const RANKS=[[0,'Новичок','🌱'],[1e3,'Энтузиаст','⛏️'],[1e4,'Фермер','🚜'],[1e5,'Промышленник','🏭'],[1e6,'Кит FI','🐋'],[1e7,'Легенда майнинга','👑']];
 const ACHVS=[
- {id:'first', ico:'⛏️',t:'Первый майнер',d:'Купите первое устройство',c:()=>totalUnits(S)>0},
- {id:'sale',  ico:'💱',t:'Трейдер',d:'Продайте FI на бирже',c:()=>S.flags.sold},
- {id:'k1',    ico:'💵',t:'Первая тысяча',d:'Капитал $1 000',c:()=>capital(S)>=1e3},
- {id:'ten',   ico:'🔟',t:'Десяток',d:'10 майнеров',c:()=>totalUnits(S)>=10},
- {id:'halv',  ico:'🌗',t:'Пережил халвинг',d:'Добудьте блок после халвинга',c:()=>S.halvings>=1&&S.totalFI>0},
- {id:'energy',ico:'☀️',t:'Зелёная энергия',d:'Постройте первый энергоисточник',c:()=>Object.values(S.energy).some(v=>v>0)},
- {id:'sci',   ico:'🔬',t:'Учёный',d:'Купите 3 исследования',c:()=>Object.values(S.research).filter(v=>v).length>=3},
- {id:'quest', ico:'📋',t:'Исполнитель',d:'Выполните 5 ежедневных заданий',c:()=>S.questsDone>=5},
- {id:'luck',  ico:'🎰',t:'Везунчик',d:'Выиграйте джекпот в лотерее',c:()=>S.flags.jackpot},
- {id:'k100',  ico:'🏦',t:'Сто тысяч',d:'Капитал $100 000',c:()=>capital(S)>=1e5},
- {id:'pres',  ico:'💎',t:'Перерождение',d:'Совершите первый престиж',c:()=>S.prestigeCount>=1},
- {id:'m1m',   ico:'🚀',t:'Миллионер',d:'Капитал $1 000 000',c:()=>capital(S)>=1e6},
+ {id:'first',ico:'⛏️',t:'Первый майнер',d:'Купите первое устройство',c:()=>totalUnits(S)>0},
+ {id:'sale',ico:'💱',t:'Трейдер',d:'Продайте FI',c:()=>S.flags.sold},
+ {id:'k1',ico:'💵',t:'Первая тысяча',d:'Капитал $1K',c:()=>capital(S)>=1e3},
+ {id:'ten',ico:'🔟',t:'Десяток',d:'10 майнеров',c:()=>totalUnits(S)>=10},
+ {id:'halv',ico:'🌗',t:'Пережил халвинг',d:'Блок после халвинга',c:()=>S.halvings>=1&&S.totalFI>0},
+ {id:'energy',ico:'☀️',t:'Зелёная энергия',d:'Первый энергоисточник',c:()=>Object.values(S.energy).some(v=>v>0)},
+ {id:'sci',ico:'🔬',t:'Учёный',d:'3 исследования',c:()=>Object.values(S.research).filter(v=>v).length>=3},
+ {id:'quest',ico:'📋',t:'Исполнитель',d:'5 заданий',c:()=>S.questsDone>=5},
+ {id:'luck',ico:'🎰',t:'Везунчик',d:'Джекпот лотереи',c:()=>S.flags.jackpot},
+ {id:'upg',ico:'⚡',t:'Апгрейдер',d:'Успешный апгрейд',c:()=>S.flags.upgradeSuccess},
+ {id:'pvp',ico:'⚔️',t:'Гладиатор',d:'Победите в дуэли',c:()=>S.flags.duelWin},
+ {id:'send',ico:'📤',t:'Щедрый',d:'Отправьте FI другу',c:()=>S.transfersSent>0},
+ {id:'k100',ico:'🏦',t:'Сто тысяч',d:'Капитал $100K',c:()=>capital(S)>=1e5},
+ {id:'pres',ico:'💎',t:'Перерождение',d:'Первый престиж',c:()=>S.prestigeCount>=1},
+ {id:'m1m',ico:'🚀',t:'Миллионер',d:'Капитал $1M',c:()=>capital(S)>=1e6},
  {id:'farm50',ico:'🏭',t:'Империя',d:'50 устройств',c:()=>totalUnits(S)>=50},
 ];
 
-// ═══════════ STATE ═══════════
 function defaultState(){
   return{
-    v:4,started:false,usd:500,fi:0,
+    v:6,started:false,usd:500,fi:0,
     price:2.40,trend:2.40,priceHist:[],sessionOpen:2.40,
     miners:Object.fromEntries(MINERS.map(m=>[m.id,{n:0,broken:0}])),
+    gpus:Object.fromEntries(GPUS.map(g=>[g.id,{n:0}])),
     netHash:8000,blockReward:50,halvIn:300,halvings:0,
     temp:26,ambientBoost:0,boostUntil:0,blackoutUntil:0,
     cool:0,powerLvl:0,oc:0,autoSell:false,autoBought:false,
     energy:{solar:0,wind:0,gas:0,reactor:0},
-    research:{chips1:0,cryo:0,broker:0,night:0,chips2:0,shield:0,algo:0},
+    research:{chips1:0,cryo:0,broker:0,night:0,chips2:0,shield:0,algo:0,transfer:0},
     crystals:0,prestigeCount:0,fiValue:0,questsDone:0,
     quests:{date:'',list:[]},day:{date:'',fiMined:0,fiSold:0,usdEarned:0,bought:0},
     totalFI:0,totalPowerUSD:0,totalEarnedUSD:0,totalSpentUSD:0,
     blocks:0,playTime:0,lastTick:Date.now(),lastSave:Date.now(),
     achv:[],flags:{},tab:'farm',sound:true,nextEvent:Date.now()+40000,repairDone:0,
+    upgHistory:[],transfersSent:0,transfersReceived:0,
+    referralCode:'',referredBy:'',referralBonus:0,
+    daily:{streak:0,lastClaim:'',claimedToday:false},
+    firstLogin:Date.now(),
     _speed:1,_paused:false,_god:false,_frozen:false,_shareCap:true,_lotAt:0
   };
 }
 let S=defaultState();
-try{const raw=localStorage.getItem('fiMinerSave4');if(raw){const p=JSON.parse(raw);if(p&&p.v===4){S=Object.assign(defaultState(),p);S._paused=false;}}}catch(e){}
+try{const raw=localStorage.getItem('fiMinerSave6');if(raw){const p=JSON.parse(raw);if(p&&p.v===6){S=Object.assign(defaultState(),p);S._paused=false;}}}catch(e){}
 
-// ═══════════ HELPERS ═══════════
 const $=id=>document.getElementById(id);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -561,6 +600,7 @@ function wMult(){return 1+S.oc*0.18;}
 function prestigeMult(){return 1+S.crystals*0.02;}
 function coolingPower(){return 1200*Math.pow(1.9,S.cool);}
 function minerCost(m){return S._god?0:Math.ceil(m.price*Math.pow(1.18,S.miners[m.id].n));}
+function gpuCost(g){return S._god?0:Math.ceil(g.price*Math.pow(1.15,S.gpus[g.id].n));}
 function energyCost(k){return S._god?0:Math.ceil(ENERGY[k].price*Math.pow(1.6,S.energy[k]||0));}
 function upgCost(k){const u=UPG[k];const l=k==='cool'?S.cool:k==='power'?S.powerLvl:k==='oc'?S.oc:0;if(S._god)return 0;return Math.ceil(u.baseCost*Math.pow(u.mult,l));}
 function totalUnits(st){return MINERS.reduce((a,m)=>a+st.miners[m.id].n,0);}
@@ -581,8 +621,37 @@ function income(){
 }
 function repairCost(id){const m=MINERS.find(x=>x.id===id);return S._god?0:Math.ceil(m.price*0.08*S.miners[id].broken);}
 function crystalsAvail(){return Math.floor(Math.sqrt(Math.max(0,S.fiValue)/50000));}
+function genRefCode(){return Math.random().toString(36).substring(2,8).toUpperCase();}
+if(!S.referralCode)S.referralCode=genRefCode();
 
-// ═══════════ SOUND ═══════════
+function calcUpgradeChance(fromGPU,toGPU){
+  const ratio=toGPU.price/fromGPU.price;
+  if(ratio<=1)return 100;
+  if(ratio>10)return 1;
+  return Math.max(1,Math.round(100/Math.pow(ratio,1.5)));
+}
+
+function performUpgrade(fromId,toId){
+  const fromGPU=GPUS.find(g=>g.id===fromId);
+  const toGPU=GPUS.find(g=>g.id===toId);
+  if(!fromGPU||!toGPU||S.gpus[fromId].n<1)return;
+  const chance=calcUpgradeChance(fromGPU,toGPU);
+  const roll=Math.random()*100;
+  const success=roll<chance;
+  S.gpus[fromId].n--;
+  if(success){
+    S.gpus[toId].n++;
+    S.flags.upgradeSuccess=true;
+    toast(`⚡ УСПЕХ! ${fromGPU.name} → ${toGPU.name}`,'🎉','purple');
+    S.upgHistory.unshift({from:fromGPU.name,to:toGPU.name,success:true,time:Date.now()});
+  }else{
+    toast(`💥 ПРОВАЛ! ${fromGPU.name} потеряна.`,'❌','red');
+    S.upgHistory.unshift({from:fromGPU.name,to:toGPU.name,success:false,time:Date.now()});
+  }
+  if(S.upgHistory.length>20)S.upgHistory=S.upgHistory.slice(0,20);
+  save();
+}
+
 let AC=null;
 function snd(type){
   if(!S.sound)return;
@@ -598,7 +667,6 @@ function snd(type){
   }catch(e){}
 }
 
-// ═══════════ TOASTS / MODAL ═══════════
 function toast(msg,ico='ℹ️',type=''){
   const el=document.createElement('div');el.className='toast '+type;
   el.innerHTML=`<span class="ico">${ico}</span><span>${msg}</span>`;
@@ -611,9 +679,6 @@ function modal(html){$('modalBox').innerHTML=html;$('modalWrap').classList.add('
 function closeModal(){$('modalWrap').classList.remove('open');}
 $('modalWrap').addEventListener('click',e=>{if(e.target===$('modalWrap'))closeModal();});
 
-// ═══════════════════════════════════════
-//  👑 STAFF SYSTEM — роли, вход, баны
-// ═══════════════════════════════════════
 function lsGet(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v;}catch(e){return d;}}
 function lsSet(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function getExtraAdmins(){return lsGet('fiExtraAdmins',[]);}
@@ -647,7 +712,7 @@ function autoRole(){
   if(getExtraMods().some(a=>a.u.toLowerCase()===u))return'moderator';
   return null;
 }
-let devRole=null; // 'owner'|'admin'|'moderator'|null
+let devRole=null;
 function hasPerm(p){return devRole&&PERMS[devRole]&&PERMS[devRole].includes(p);}
 function loadRole(){
   const auto=autoRole();
@@ -669,7 +734,6 @@ function isBanned(){
   return getBanList().some(b=>b.u===TG_USER.username||b.u===TG_USER.id);
 }
 
-// ═══════════ PRICE SIM ═══════════
 function pushPrice(){S.priceHist.push({t:Date.now(),p:S.price});if(S.priceHist.length>100)S.priceHist.shift();}
 function priceTick(){
   if(!S._frozen){
@@ -683,15 +747,14 @@ function priceTick(){
   updateDevLive();
 }
 
-// ═══════════ EVENTS ═══════════
 const EVENTS={
-  rally:{label:'📈 Ралли FI (+12–25%)',f(){S.price*=rnd(1.12,1.25);S.trend=S.price;pushPrice();toast('Ралли FI coin! Цена взлетела.','📈','green');snd('ev');}},
-  crash:{label:'📉 Крах цены (−12–22%)',f(){S.price*=rnd(0.78,0.88);S.trend=S.price;pushPrice();toast('Коррекция рынка FI.','📉','red');snd('ev');}},
-  heat:{label:'🌡️ Аномальная жара (+12°C, 35с)',f(){S.ambientBoost=12;S.boostUntil=Date.now()+35000;toast('Аномальная жара! +12°C на 35 секунд.','🌡️','orange');snd('ev');}},
-  diff:{label:'⚙️ Скачок сложности (+6%)',f(){S.netHash*=1.06;toast('Сложность майнинга выросла (+6%).','⚙️','orange');snd('ev');}},
-  lucky:{label:'🍀 Удачный блок (бонус FI)',f(){const inc=income();if(inc.hash<=0){toast('Ферме нечего майнить!','🍀','gold');return;}const bonus=inc.share*S.blockReward;S.fi+=bonus;S.totalFI+=bonus;bumpDay('fiMined',bonus);toast(`Удачный блок! Бонус ${fmtFI(bonus)} FI.`,'🍀','gold');snd('sell');}},
-  blackout:{label:'⚡ Блэкаут (10 сек)',f(){if(totalWattsAll()<=0)return;S.blackoutUntil=Date.now()+10000;toast('Авария на подстанции! Свет отключён на 10с.','⚡','red');snd('ev');}},
-  whale:{label:'🏦 Киты скупают FI',f(){S.trend*=rnd(1.05,1.12);toast('Институционалы скупают FI.','🏦','green');}},
+  rally:{label:'📈 Ралли FI (+12–25%)',f(){S.price*=rnd(1.12,1.25);S.trend=S.price;pushPrice();toast('Ралли FI coin!','📈','green');snd('ev');}},
+  crash:{label:'📉 Крах (−12–22%)',f(){S.price*=rnd(0.78,0.88);S.trend=S.price;pushPrice();toast('Коррекция FI.','📉','red');snd('ev');}},
+  heat:{label:'🌡️ Жара (+12°C)',f(){S.ambientBoost=12;S.boostUntil=Date.now()+35000;toast('Аномальная жара! +12°C.','🌡️','orange');snd('ev');}},
+  diff:{label:'⚙️ Скачок сложности',f(){S.netHash*=1.06;toast('Сложность выросла +6%.','⚙️','orange');snd('ev');}},
+  lucky:{label:'🍀 Удачный блок',f(){const inc=income();if(inc.hash<=0){toast('Нет майнеров!','🍀','gold');return;}const bonus=inc.share*S.blockReward;S.fi+=bonus;S.totalFI+=bonus;toast(`Бонус ${fmtFI(bonus)} FI.`,'🍀','gold');snd('sell');}},
+  blackout:{label:'⚡ Блэкаут (10с)',f(){if(totalWattsAll()<=0)return;S.blackoutUntil=Date.now()+10000;toast('Свет отключён на 10с.','⚡','red');snd('ev');}},
+  whale:{label:'🏦 Киты скупают',f(){S.trend*=rnd(1.05,1.12);toast('Киты покупают FI.','🏦','green');}},
 };
 function fireEvent(){
   const keys=Object.keys(EVENTS);
@@ -699,7 +762,6 @@ function fireEvent(){
   S.nextEvent=Date.now()+rnd(45000,95000);
 }
 
-// ═══════════ DAILY QUESTS ═══════════
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function bumpDay(k,v){
   if(S.day.date!==todayStr()){S.day={date:todayStr(),fiMined:0,fiSold:0,usdEarned:0,bought:0};}
@@ -709,10 +771,9 @@ function genQuests(){
   const base=Math.max(50,Math.round(S.totalFI*0.04+100));
   const pool=[
     {k:'fiMined',ico:'⛏️',d:t=>`Добудь ${fmtFI(t)} FI`,target:base,reward:{fi:Math.round(base*0.15+20)}},
-    {k:'fiSold',ico:'💱',d:t=>`Продай ${fmtFI(t)} FI на бирже`,target:Math.round(base*0.6),reward:{usd:Math.round(base*0.4+30)}},
+    {k:'fiSold',ico:'💱',d:t=>`Продай ${fmtFI(t)} FI`,target:Math.round(base*0.6),reward:{usd:Math.round(base*0.4+30)}},
     {k:'bought',ico:'📦',d:t=>`Купи ${t} майнер(а)`,target:1+Math.floor(rnd(0,2)),reward:{fi:150}},
-    {k:'usdEarned',ico:'💰',d:t=>`Заработай ${fmtUSD(t)} на продажах`,target:Math.round(rnd(200,600)),reward:{fi:200}},
-    {k:'power',ico:'🔌',d:t=>`Достигни ${t.toFixed(1)} кВт мощности`,target:Math.max(1.5,runningWatts()/1000*1.4),reward:{fi:120}},
+    {k:'usdEarned',ico:'💰',d:t=>`Заработай ${fmtUSD(t)}`,target:Math.round(rnd(200,600)),reward:{fi:200}},
   ];
   const picked=[];const idx=[...pool.keys()];
   while(picked.length<3&&idx.length){
@@ -725,12 +786,31 @@ function ensureQuests(){
   const t=todayStr();
   if(S.quests.date!==t){S.quests={date:t,list:genQuests()};}
 }
-function questProgress(q){
-  if(q.k==='power')return Math.min(q.target,runningWatts()/1000);
-  return Math.min(q.target,S.day[q.k]||0);
+function questProgress(q){return Math.min(q.target,S.day[q.k]||0);}
+
+// DAILY BONUS
+const DAILY_REWARDS=[50,100,200,500,1000,2500,10000];
+function canClaimDaily(){
+  if(S.daily.claimedToday)return false;
+  const today=todayStr();
+  return S.daily.lastClaim!==today;
+}
+function claimDaily(){
+  if(!canClaimDaily())return;
+  const today=todayStr();
+  const yest=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if(S.daily.lastClaim===yest){S.daily.streak=(S.daily.streak+1)%7;}
+  else{S.daily.streak=0;}
+  const dayIdx=S.daily.streak;
+  const reward=DAILY_REWARDS[dayIdx];
+  S.fi+=reward;S.totalFI+=reward;
+  S.daily.lastClaim=today;
+  S.daily.claimedToday=true;
+  // Reset claimedToday at midnight logic: handled via date check
+  toast(`🎁 Ежедневный бонус! День ${dayIdx+1}/7: +${fmtFI(reward)} FI`,'🎁','gold');
+  snd('win');save();
 }
 
-// ═══════════ MAIN TICK ═══════════
 let tickCount=0;
 function tick(){
   if(!S.started){updateDevLive();return;}
@@ -740,7 +820,6 @@ function tick(){
   const now=Date.now();
   S.playTime+=spd;
   ensureQuests();
-  // температура
   if(now>S.boostUntil)S.ambientBoost=0;
   const heat=runningWatts()*(S.ambientBoost?1.2:1);
   const cool=coolingPower();
@@ -748,25 +827,21 @@ function tick(){
   S.temp+=(target-S.temp)*Math.min(1,0.07*spd);
   S.temp=clamp(S.temp,20,110);
   if(runningWatts()===0)S.temp+=(26-S.temp)*Math.min(1,0.05*spd);
-  // поломки
   if(S.temp>90){
     const shield=res('shield')?0.5:1;
     const p=(S.temp-90)*0.0016*spd*shield;
     MINERS.forEach(m=>{const o=S.miners[m.id];if(o.n-o.broken>0&&Math.random()<p*o.n){
-      o.broken++;toast(`${m.name} вышел из строя от перегрева!`,'🔥','red');snd('err');}});
+      o.broken++;toast(`${m.name} сломан!`,'🔥','red');snd('err');}});
   }
-  // сеть
   S.netHash*=Math.pow(1.00012,spd);
   const inc=income();
   if(S._shareCap&&inc.hash>0&&inc.hash/S.netHash>0.15)S.netHash=inc.hash/0.15;
-  // майнинг
   const gained=inc.fiPs*spd;
   if(gained>0){
     S.fi+=gained;S.totalFI+=gained;S.blocks+=spd/5;S.fiValue+=gained*S.price;
     bumpDay('fiMined',gained);
     if(S.autoSell&&S.autoBought){const v=gained*S.price*(1-marketFee());S.fi-=gained;S.usd+=v;S.totalEarnedUSD+=v;if(!S.flags.sold)S.flags.sold=true;}
   }
-  // электричество
   const cost=inc.costPs*spd;
   if(cost>0){
     S.usd-=cost;S.totalPowerUSD+=cost;
@@ -774,18 +849,19 @@ function tick(){
       const owed=-S.usd;let soldVal=0;
       if(S.fi>0){const can=Math.min(S.fi,owed/(S.price*0.9));S.fi-=can;soldVal=can*S.price*0.9;}
       S.usd+=soldVal;
-      if(S.usd<0){S.blackoutUntil=Date.now()+15000;S.usd=0;toast('Неоплаченные счета! Ферма отключена на 15с.','🔌','red');snd('err');}
-      else toast('FI проданы для оплаты счетов.','⚠️','orange');
+      if(S.usd<0){S.blackoutUntil=Date.now()+15000;S.usd=0;toast('Счета не оплачены!','🔌','red');snd('err');}
+      else toast('FI проданы для оплаты.','⚠️','orange');
     }
     if(S.usd<0&&S._god)S.usd=0;
   }
-  // халвинг
   S.halvIn-=spd;
   if(S.halvIn<=0){S.blockReward/=2;S.halvIn=300;S.halvings++;
     toast(`⛓ ХАЛВИНГ! Награда: ${S.blockReward.toFixed(3)} FI.`,'🌗','gold');snd('ev');}
   if(now>S.nextEvent)fireEvent();
-  // достижения
   ACHVS.forEach(a=>{if(!S.achv.includes(a.id)&&a.c()){S.achv.push(a.id);toast(`Достижение: «${a.t}»`,'🏆','gold');snd('sell');}});
+  // Reset daily claim at midnight
+  const today=todayStr();
+  if(S.daily.lastClaim!==today&&S.daily.claimedToday){S.daily.claimedToday=false;}
   updateHUD();
   if(S.tab==='farm')updateFarmLive();
   if(S.tab==='market')updateMarketLive();
@@ -793,9 +869,8 @@ function tick(){
   if(now-S.lastSave>5000){S.lastTick=now;S.lastSave=now;save();}
   S.lastTick=now;
 }
-function save(){try{localStorage.setItem('fiMinerSave4',JSON.stringify(S));}catch(e){}}
+function save(){try{localStorage.setItem('fiMinerSave6',JSON.stringify(S));}catch(e){}}
 
-// ═══════════ OFFLINE ═══════════
 function processOffline(){
   const dt=Math.min((Date.now()-S.lastTick)/1000,offlineHours()*3600);
   if(dt<60||!S.started)return;
@@ -807,13 +882,12 @@ function processOffline(){
   S.playTime+=dt;
   const h=Math.floor(dt/3600),m=Math.floor(dt%3600/60);
   modal(`<div style="width:52px;height:52px;margin:0 auto 6px">${coinSVG()}</div><h3>С возвращением!</h3>
-    <p>Ферма работала ${h?h+'ч ':''}${m}м без вас (лимит ${offlineHours()}ч)</p>
+    <p>Ферма работала ${h?h+'ч ':''}${m}м</p>
     <div class="modalBig num">+${fmtFI(fi)} FI</div>
-    <p style="margin-top:4px">Добыто на ${fmtUSD(fi*S.price)} · расходы ${fmtUSD(cost)}<br><b style="color:${net>=0?'var(--fi-green)':'var(--fi-red)'}">Итого: ${net>=0?'+':''}${fmtUSD(net)}</b></p>
+    <p style="margin-top:4px">Итого: <b style="color:${net>=0?'var(--fi-green)':'var(--fi-red)'}">${net>=0?'+':''}${fmtUSD(net)}</b></p>
     <div class="mRow"><button class="btn btn-em" onclick="closeModal()">Забрать</button></div>`);
 }
 
-// ═══════════ HUD ═══════════
 function updateHUD(){
   $('hUsd').textContent=fmtUSD(S.usd);
   $('hFi').textContent=fmtFI(S.fi)+' FI';
@@ -822,12 +896,11 @@ function updateHUD(){
   const c=$('hChg');c.textContent=(chg>=0?'+':'')+chg.toFixed(2)+'%';
   c.className='chg num '+(chg>=0?'up':'dn');
   let st=blackedOut()?'бот · ⚡ блэкаут':(runningHash()>0?`бот · ${fmtHash(runningHash())}`:'бот · онлайн');
-  if(S._paused)st='бот · ⏸ ПАУЗА (staff)';
-  else if(S._speed!==1)st=`бот · ⏩ ${S._speed}× (staff)`;
+  if(S._paused)st='бот · ⏸ ПАУЗА';
+  else if(S._speed!==1)st=`бот · ⏩ ${S._speed}×`;
   $('statusText').textContent=st;
 }
 
-// ═══════════ RENDER: FARM ═══════════
 function renderFarm(){
   const inc=income();
   let questsHTML='';
@@ -851,8 +924,8 @@ function renderFarm(){
   const owned=MINERS.filter(m=>S.miners[m.id].n>0);
   if(!owned.length){
     cards=`<div class="emptyState"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="12" rx="2"/><circle cx="8" cy="13" r="2.6"/><circle cx="16" cy="13" r="2.6"/></svg>
-      <p>У вас пока нет оборудования.<br>Купите первый майнер в магазине!</p>
-      <button class="btn btn-em btn-sm" data-act="goto" data-tab="shop">🛒 Перейти в магазин</button></div>`;
+      <p>Нет оборудования. Купите первый майнер!</p>
+      <button class="btn btn-em btn-sm" data-act="goto" data-tab="shop">🛒 В магазин</button></div>`;
   }else{
     owned.forEach(m=>{
       const o=S.miners[m.id];
@@ -882,24 +955,23 @@ function renderFarm(){
     <div class="statGrid">
       <div class="statBox"><div class="l">Хешрейт</div><div class="v num" style="color:var(--fi-cyan)" id="fHash">${fmtHash(inc.hash)}</div></div>
       <div class="statBox"><div class="l">Доля сети</div><div class="v num" id="fShare">${(inc.share*100).toFixed(4)}%</div></div>
-      <div class="statBox"><div class="l">Добыча FI/мин</div><div class="v num" style="color:var(--em)" id="fFi">${fmtFI(inc.fiPs*60)}</div></div>
-      <div class="statBox"><div class="l">Чистая прибыль</div><div class="v num" id="fNet" style="color:${netMin>=0?'var(--fi-green)':'var(--fi-red)'}">${netMin>=0?'+':''}${fmtUSD(netMin)}/мин</div></div>
-      <div class="statBox"><div class="l">Расход энергии</div><div class="v num" id="fW">${(runningWatts()/1000).toFixed(2)} кВт</div></div>
+      <div class="statBox"><div class="l">FI/мин</div><div class="v num" style="color:var(--em)" id="fFi">${fmtFI(inc.fiPs*60)}</div></div>
+      <div class="statBox"><div class="l">Прибыль</div><div class="v num" id="fNet" style="color:${netMin>=0?'var(--fi-green)':'var(--fi-red)'}">${netMin>=0?'+':''}${fmtUSD(netMin)}/мин</div></div>
+      <div class="statBox"><div class="l">Расход</div><div class="v num" id="fW">${(runningWatts()/1000).toFixed(2)} кВт</div></div>
       <div class="statBox"><div class="l">Эффективность</div><div class="v num" id="fEff">${(eff*100).toFixed(0)}%</div></div>
     </div>
     <div style="margin-top:10px" class="card">
       <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px">
-        <span style="color:var(--tg-sub);font-weight:700">🌡 ТЕМПЕРАТУРА ФЕРМЫ</span>
+        <span style="color:var(--tg-sub);font-weight:700">🌡 ТЕМПЕРАТУРА</span>
         <b class="num" id="fTemp2">${S.temp.toFixed(1)}°C</b>
       </div>
       <div class="bar" style="height:10px"><i id="fTempBar2" style="width:${clamp((S.temp-20)/90*100,0,100)}%"></i></div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--tg-sub);margin-top:5px"><span>20° норма</span><span>75° троттлинг</span><span>90° поломки</span></div>
-      <div style="font-size:11px;color:var(--tg-sub);margin-top:8px;border-top:1px dashed var(--tg-border);padding-top:8px">
-        Охлаждение: <b style="color:var(--tg-text)">${(coolingPower()/1000).toFixed(1)} кВт</b> · Свет: <b style="color:var(--tg-text)">$${(tariff()*energyMult()).toFixed(3)}/кВт·ч</b>
-        ${S.crystals>0?` · 💎 буст ×${prestigeMult().toFixed(2)}`:''} · До халвинга: <b class="num" style="color:var(--em)" id="fHalv">${fmtMMSS(S.halvIn)}</b>
+      <div style="font-size:11px;color:var(--tg-sub);margin-top:8px">
+        Охлаждение: <b>${(coolingPower()/1000).toFixed(1)} кВт</b> · Тариф: <b>$${(tariff()*energyMult()).toFixed(3)}/кВт·ч</b>
+        ${S.crystals>0?` · 💎 ×${prestigeMult().toFixed(2)}`:''}
       </div>
     </div>
-    ${blackedOut()?'<div class="warnBox blackoutFx">⚡ Аварийное отключение электричества!</div>':''}
+    ${blackedOut()?'<div class="warnBox blackoutFx">⚡ Блэкаут!</div>':''}
     <div class="sectionTitle">🖥 Оборудование</div>
     ${cards}`;
   updateFarmLive();
@@ -914,7 +986,6 @@ function updateFarmLive(){
   if(fn){fn.textContent=(nm>=0?'+':'')+fmtUSD(nm)+'/мин';fn.style.color=nm>=0?'var(--fi-green)':'var(--fi-red)';}
   set('fW',(runningWatts()/1000).toFixed(2)+' кВт');
   const fe=$('fEff');if(fe){fe.textContent=(eff*100).toFixed(0)+'%';fe.style.color=eff>=0.95?'var(--fi-green)':eff>=0.7?'var(--fi-orange)':'var(--fi-red)';}
-  set('fHalv',fmtMMSS(S.halvIn));
   const t2=$('fTemp2');if(t2){t2.textContent=S.temp.toFixed(1)+'°C';t2.style.color=S.temp>85?'var(--fi-red)':S.temp>70?'var(--fi-orange)':'var(--fi-green)';}
   const tb=$('fTempBar2');if(tb){tb.style.width=clamp((S.temp-20)/90*100,0,100)+'%';
     tb.style.background=S.temp>85?'linear-gradient(90deg,#ff7a1a,#ff5c5c)':S.temp>70?'linear-gradient(90deg,#f7b32b,#ff7a1a)':'linear-gradient(90deg,#17dd62,#37c8ee)';}
@@ -948,7 +1019,6 @@ function updateFarmLive(){
   document.querySelectorAll('[data-f="tempbar"]').forEach(e=>{
     e.style.width=clamp((S.temp-20)/90*100,0,100)+'%';
     e.style.background=S.temp>85?'#ff5c5c':S.temp>70?'#ff7a1a':'#17dd62';});
-  // квесты: обновляем прогресс без перерендера
   ensureQuests();
   const qCards=document.querySelectorAll('.questCard');
   qCards.forEach((card,i)=>{
@@ -965,7 +1035,6 @@ function updateFarmLive(){
   });
 }
 
-// ═══════════ RENDER: MARKET ═══════════
 function renderMarket(){
   const chg=(S.price-S.sessionOpen)/S.sessionOpen*100;
   $('screen').innerHTML=`
@@ -975,16 +1044,12 @@ function renderMarket(){
         <span style="width:30px;height:30px;display:inline-block">${coinSVG()}</span>
         <span class="bigPrice num" id="mPrice">$${S.price.toFixed(S.price<10?3:2)}</span>
       </div>
-      <div class="num" id="mChg" style="font-size:13px;font-weight:800;color:${chg>=0?'var(--fi-green)':'var(--fi-red)'}">${chg>=0?'▲':'▼'} ${chg>=0?'+':''}${chg.toFixed(2)}% за сессию</div>
+      <div class="num" id="mChg" style="font-size:13px;font-weight:800;color:${chg>=0?'var(--fi-green)':'var(--fi-red)'}">${chg>=0?'▲':'▼'} ${chg>=0?'+':''}${chg.toFixed(2)}%</div>
     </div>
-    <div id="chartWrap"><canvas id="chart"></canvas>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--tg-sub);padding:2px 6px 0;font-weight:700">
-        <span>−3 мин</span><span id="chartNow" class="num">$${S.price.toFixed(3)}</span><span>сейчас</span>
-      </div>
-    </div>
+    <div id="chartWrap"><canvas id="chart"></canvas></div>
     <div class="tradeBox">
       <div class="tradeLabel">💰 Продать FI <span style="text-transform:none;color:var(--em)">(комиссия ${(marketFee()*100).toFixed(1)}%)</span></div>
-      <div style="font-size:12px;margin-bottom:8px;color:var(--tg-sub)">Доступно: <b class="num" style="color:var(--em)" id="mFi">${fmtFI(S.fi)} FI</b> ≈ <b class="num" id="mFiUsd">${fmtUSD(S.fi*S.price)}</b></div>
+      <div style="font-size:12px;margin-bottom:8px;color:var(--tg-sub)">Доступно: <b class="num" style="color:var(--em)" id="mFi">${fmtFI(S.fi)} FI</b></div>
       <div class="sellRow">
         <button class="btn btn-ghost btn-sm" data-act="sell" data-p="25">25%</button>
         <button class="btn btn-ghost btn-sm" data-act="sell" data-p="50">50%</button>
@@ -1001,29 +1066,17 @@ function renderMarket(){
       </div>
     </div>
     <div class="lotteryBox">
-      <div class="tradeLabel" style="color:#ffc94d">🎰 FI-ЛОТЕРЕЯ <span style="text-transform:none;color:var(--tg-sub)">шанс ×2: 45% · джекпот ×10: 5%</span></div>
+      <div class="tradeLabel" style="color:#ffc94d">🎰 FI-ЛОТЕРЕЯ <span style="text-transform:none;color:var(--tg-sub)">×2: 45% · ×10: 5%</span></div>
       <input class="lotIn num" type="number" id="lotBet" placeholder="Ставка в FI" min="1">
       <button class="btn btn-gold btn-lg" data-act="lottery">🎲 КРУТИТЬ</button>
-    </div>
-    <div class="sectionTitle">⛓ Параметры сети</div>
-    <div class="statGrid">
-      <div class="statBox"><div class="l">Хешрейт сети</div><div class="v num" id="mNet" style="color:var(--fi-cyan)">${fmtHash(S.netHash)}</div></div>
-      <div class="statBox"><div class="l">Награда за блок</div><div class="v num" id="mRew" style="color:var(--em)">${S.blockReward.toFixed(3)} FI</div></div>
-      <div class="statBox"><div class="l">До халвинга</div><div class="v num" id="mHalv" style="color:var(--fi-orange)">${fmtMMSS(S.halvIn)}</div></div>
-      <div class="statBox"><div class="l">Халвингов пройдено</div><div class="v num">${S.halvings}</div></div>
     </div>`;
   drawChart();
 }
 function updateMarketLive(){
   const chg=(S.price-S.sessionOpen)/S.sessionOpen*100;
   const mp=$('mPrice');if(mp)mp.textContent='$'+S.price.toFixed(S.price<10?3:2);
-  const mc=$('mChg');if(mc){mc.textContent=`${chg>=0?'▲':'▼'} ${chg>=0?'+':''}${chg.toFixed(2)}% за сессию`;mc.style.color=chg>=0?'var(--fi-green)':'var(--fi-red)';}
+  const mc=$('mChg');if(mc){mc.textContent=`${chg>=0?'▲':'▼'} ${chg>=0?'+':''}${chg.toFixed(2)}%`;mc.style.color=chg>=0?'var(--fi-green)':'var(--fi-red)';}
   const mf=$('mFi');if(mf)mf.textContent=fmtFI(S.fi)+' FI';
-  const mu=$('mFiUsd');if(mu)mu.textContent=fmtUSD(S.fi*S.price);
-  const cn=$('chartNow');if(cn)cn.textContent='$'+S.price.toFixed(3);
-  const mn=$('mNet');if(mn)mn.textContent=fmtHash(S.netHash);
-  const mh=$('mHalv');if(mh)mh.textContent=fmtMMSS(S.halvIn);
-  const mr=$('mRew');if(mr)mr.textContent=S.blockReward.toFixed(3)+' FI';
   drawChart();
 }
 function drawChart(){
@@ -1033,7 +1086,7 @@ function drawChart(){
   cv.width=w*dpr;cv.height=h*dpr;
   const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
   const hist=S.priceHist.slice(-90);
-  if(hist.length<2){ctx.fillStyle='#7d8b99';ctx.font='600 12px Manrope';ctx.textAlign='center';ctx.fillText('Сбор данных о цене…',w/2,h/2);return;}
+  if(hist.length<2){ctx.fillStyle='#7d8b99';ctx.font='600 12px Manrope';ctx.textAlign='center';ctx.fillText('Сбор данных…',w/2,h/2);return;}
   const ps=hist.map(x=>x.p);
   let mn=Math.min(...ps),mx=Math.max(...ps);
   if(mx-mn<0.01){mx+=0.005;mn-=0.005;}
@@ -1055,20 +1108,13 @@ function drawChart(){
   ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
   const lx=X(ps.length-1),ly=Y(ps[ps.length-1]);
   ctx.beginPath();ctx.arc(lx,ly,4,0,7);ctx.fillStyle=col;ctx.fill();
-  ctx.beginPath();ctx.arc(lx,ly,8,0,7);ctx.strokeStyle=col;ctx.globalAlpha=.35;ctx.stroke();ctx.globalAlpha=1;
-  ctx.fillStyle='#7d8b99';ctx.font='700 9.5px Manrope';
-  ctx.textAlign='left';ctx.fillText('$'+mx.toFixed(3),10,12);
-  ctx.fillText('$'+mn.toFixed(3),10,h-8);
 }
 
-// ═══════════ RENDER: SHOP ═══════════
 function renderShop(){
   let items='';
   MINERS.forEach((m,i)=>{
     const cost=minerCost(m);
     const can=S.usd>=cost;
-    const est=(m.th*thMult()*prestigeMult()/S.netHash*shareMult())*(S.blockReward/5)*S.price-(m.w*wMult()/1000)*tariff()*energyMult()/60;
-    const pay=est>0?cost/est:Infinity;
     items+=`<div class="shopCard">
       <div class="shopTop">
         <div class="shopArt">${rigSVG(m.tier)}</div>
@@ -1078,23 +1124,41 @@ function renderShop(){
           <div class="specPills">
             <span class="pill">⚡ <b>${m.th} TH/s</b></span>
             <span class="pill">🔌 <b>${m.w>=1000?(m.w/1000).toFixed(1)+' кВт':m.w+' Вт'}</b></span>
-            ${isFinite(pay)?`<span class="pill">⏱ окуп. <b>≈${fmtTime(pay)}</b></span>`:''}
           </div>
         </div>
       </div>
       <div class="shopBuy">
-        <div class="priceTag num">${cost===0?'FREE (staff)':fmtUSD(cost)}<small>в наличии: ${S.miners[m.id].n} шт${S.miners[m.id].broken?` · 🔧 ${S.miners[m.id].broken} сломано`:''}</small></div>
-        <button class="btn ${can?'btn-em':'btn-ghost'} btn-sm" data-act="buy" data-id="${m.id}" ${can?'':'disabled'}>${can?'Купить':'Мало средств'}</button>
+        <div class="priceTag num">${cost===0?'FREE':fmtUSD(cost)}<small>×${S.miners[m.id].n}</small></div>
+        <button class="btn ${can?'btn-em':'btn-ghost'} btn-sm" data-act="buy" data-id="${m.id}" ${can?'':'disabled'}>${can?'Купить':'Нет USD'}</button>
+      </div>
+    </div>`;
+  });
+  let gpuItems='';
+  GPUS.forEach(g=>{
+    const cost=gpuCost(g);
+    const can=S.usd>=cost;
+    gpuItems+=`<div class="shopCard">
+      <div class="shopTop">
+        <div class="shopArt" style="font-size:48px;display:flex;align-items:center;justify-content:center">${g.icon}</div>
+        <div class="shopInfo">
+          <div class="shopName" style="color:#c084fc">${g.name}</div>
+          <div class="shopDesc">${g.desc}</div>
+        </div>
+      </div>
+      <div class="shopBuy">
+        <div class="priceTag num">${cost===0?'FREE':fmtUSD(cost)}<small>×${S.gpus[g.id].n}</small></div>
+        <button class="btn ${can?'btn-purple':'btn-ghost'} btn-sm" data-act="buygpu" data-id="${g.id}" ${can?'':'disabled'}>${can?'Купить':'Нет USD'}</button>
       </div>
     </div>`;
   });
   $('screen').innerHTML=`
-    <div class="sectionTitle">🛒 Магазин оборудования</div>
-    <div class="hintBox">Цена растёт на 18% за каждую единицу одной модели. Мощные майнеры требуют охлаждения и энергоисточников!</div>
-    ${items}`;
+    <div class="sectionTitle">🛒 Оборудование для майнинга</div>
+    ${items}
+    <div class="sectionTitle">🎮 Видеокарты для апгрейдера</div>
+    <div class="hintBox">Покупайте карты и апгрейдите их в разделе «Апгрейд»!</div>
+    ${gpuItems}`;
 }
 
-// ═══════════ RENDER: LAB ═══════════
 function renderLab(){
   const dots=(l,max)=>`<span class="lvlDots">${Array.from({length:max},(_,i)=>`<i class="${i<l?'on':''}"></i>`).join('')}</span>`;
   const uCool=upgCost('cool'),uPow=upgCost('power'),uOc=upgCost('oc');
@@ -1119,9 +1183,9 @@ function renderLab(){
       <div class="labIcon">${r.ico}</div>
       <div class="upInfo">
         <div class="upName">${r.name}</div>
-        <div class="upDesc">${r.desc} · цена ${fmtFI(r.cost)} FI</div>
+        <div class="upDesc">${r.desc} · ${fmtFI(r.cost)} FI</div>
       </div>
-      ${owned?`<span class="ownedTag">✔ ИЗУЧЕНО</span>`:
+      ${owned?`<span class="ownedTag">✔</span>`:
       `<button class="btn btn-em btn-sm num" data-act="research" data-k="${k}" ${S.fi<r.cost?'disabled':''}>Изучить</button>`}
     </div>`;
   });
@@ -1129,22 +1193,22 @@ function renderLab(){
     <div class="sectionTitle">🔧 Инфраструктура</div>
     <div class="upCard">
       <div class="upIcon" style="background:${UPG.cool.bg}">${UPG.cool.icon}</div>
-      <div class="upInfo"><div class="upName">❄️ ${UPG.cool.name} ${dots(S.cool,UPG.cool.max)}</div><div class="upDesc">Ур. ${S.cool}/${UPG.cool.max} · ${UPG.cool.desc(S.cool)}</div></div>
+      <div class="upInfo"><div class="upName">❄️ ${UPG.cool.name} ${dots(S.cool,UPG.cool.max)}</div><div class="upDesc">${UPG.cool.desc(S.cool)}</div></div>
       <button class="btn btn-blue btn-sm num" data-act="upg" data-k="cool" ${S.cool>=UPG.cool.max||S.usd<uCool?'disabled':''}>${S.cool>=UPG.cool.max?'MAX':uCool===0?'FREE':fmtUSD(uCool)}</button>
     </div>
     <div class="upCard">
       <div class="upIcon" style="background:${UPG.power.bg}">${UPG.power.icon}</div>
-      <div class="upInfo"><div class="upName">⚡ ${UPG.power.name} ${dots(S.powerLvl,UPG.power.max)}</div><div class="upDesc">Ур. ${S.powerLvl}/${UPG.power.max} · ${UPG.power.desc(S.powerLvl)}</div></div>
+      <div class="upInfo"><div class="upName">⚡ ${UPG.power.name} ${dots(S.powerLvl,UPG.power.max)}</div><div class="upDesc">${UPG.power.desc(S.powerLvl)}</div></div>
       <button class="btn btn-blue btn-sm num" data-act="upg" data-k="power" ${S.powerLvl>=UPG.power.max||S.usd<uPow?'disabled':''}>${S.powerLvl>=UPG.power.max?'MAX':uPow===0?'FREE':fmtUSD(uPow)}</button>
     </div>
     <div class="upCard">
       <div class="upIcon" style="background:${UPG.oc.bg}">${UPG.oc.icon}</div>
-      <div class="upInfo"><div class="upName">🧬 ${UPG.oc.name} ${dots(S.oc,UPG.oc.max)}</div><div class="upDesc">Ур. ${S.oc}/${UPG.oc.max} · ${UPG.oc.desc(S.oc)}</div></div>
+      <div class="upInfo"><div class="upName">🧬 ${UPG.oc.name} ${dots(S.oc,UPG.oc.max)}</div><div class="upDesc">${UPG.oc.desc(S.oc)}</div></div>
       <button class="btn btn-blue btn-sm num" data-act="upg" data-k="oc" ${S.oc>=UPG.oc.max||S.usd<uOc?'disabled':''}>${S.oc>=UPG.oc.max?'MAX':uOc===0?'FREE':fmtUSD(uOc)}</button>
     </div>
     <div class="upCard">
       <div class="upIcon" style="background:${UPG.auto.bg}">${UPG.auto.icon}</div>
-      <div class="upInfo"><div class="upName">🤖 Автоспродажа FI</div><div class="upDesc">${UPG.auto.desc()}</div></div>
+      <div class="upInfo"><div class="upName">🤖 Автоспродажа</div><div class="upDesc">${UPG.auto.desc()}</div></div>
       ${S.autoBought?`<button class="switch ${S.autoSell?'on':''}" data-act="toggleauto"></button>`:
       `<button class="btn btn-gold btn-sm num" data-act="buyauto" ${(S.usd<UPG.auto.baseCost&&!S._god)?'disabled':''}>${S._god?'FREE':fmtUSD(UPG.auto.baseCost)}</button>`}
     </div>
@@ -1152,17 +1216,233 @@ function renderLab(){
     <div class="sectionTitle">🔥 Ремонт</div>
     <div class="upCard">
       <div class="upIcon" style="background:linear-gradient(135deg,#ef4444,#b91c1c)">${ICON.wrench}</div>
-      <div class="upInfo"><div class="upName">Сломано: ${brokenTotal} шт</div><div class="upDesc">Перегретые майнеры не работают до ремонта.</div></div>
-      <button class="btn btn-red btn-sm num" data-act="repairall" ${S.usd<repairTotal?'disabled':''}>Починить всё · ${repairTotal===0?'FREE':fmtUSD(repairTotal)}</button>
+      <div class="upInfo"><div class="upName">Сломано: ${brokenTotal}</div></div>
+      <button class="btn btn-red btn-sm num" data-act="repairall" ${S.usd<repairTotal?'disabled':''}>Починить · ${fmtUSD(repairTotal)}</button>
     </div>`:''}
-    <div class="sectionTitle">🔋 Энергетика · экономия ${(100-(energyMult()*100)).toFixed(0)}%</div>
+    <div class="sectionTitle">🔋 Энергетика · −${(100-(energyMult()*100)).toFixed(0)}%</div>
     ${energyHTML}
     <div class="sectionTitle">🔬 Исследования</div>
-    ${resHTML}
-    <div class="warnBox">⚠️ Оверклокинг даёт хешрейт, но греет ферму. Энергоисточники снижают счета, исследования — постоянные бонусы.</div>`;
+    ${resHTML}`;
 }
 
-// ═══════════ RENDER: PROFILE ═══════════
+function renderUpgrader(){
+  const ownedGPUs=GPUS.filter(g=>S.gpus[g.id].n>0);
+  let fromOptions='';
+  let toOptions='';
+  
+  ownedGPUs.forEach(g=>{
+    fromOptions+=`<div class="upgCard" data-gpu="${g.id}" data-type="from">
+      <div class="upgCardIcon">${g.icon}</div>
+      <div class="upgCardName">${g.name}</div>
+      <div class="upgCardPrice">${fmtUSD(g.price)} · ×${S.gpus[g.id].n}</div>
+    </div>`;
+  });
+  
+  GPUS.forEach(g=>{
+    toOptions+=`<div class="upgCard" data-gpu="${g.id}" data-type="to">
+      <div class="upgCardIcon">${g.icon}</div>
+      <div class="upgCardName">${g.name}</div>
+      <div class="upgCardPrice">${fmtUSD(g.price)}</div>
+    </div>`;
+  });
+  
+  let historyHTML='';
+  if(S.upgHistory.length>0){
+    historyHTML='<div class="upgHistory"><div style="font-size:12px;font-weight:700;margin-bottom:8px;color:#c084fc">📜 История</div>';
+    S.upgHistory.slice(0,5).forEach(h=>{
+      historyHTML+=`<div class="upgHistoryItem">
+        <span>${h.from} → ${h.to}</span>
+        <span style="color:${h.success?'var(--fi-green)':'var(--fi-red)'};font-weight:700">${h.success?'✅':'❌'}</span>
+      </div>`;
+    });
+    historyHTML+='</div>';
+  }
+  
+  $('screen').innerHTML=`
+    <div class="upgraderBox">
+      <div class="upgraderTitle">⚡ АПГРЕЙДЕР ВИДЕОКАРТ</div>
+      <div style="font-size:12px;color:var(--tg-sub);margin-bottom:16px">
+        Чем больше разница в цене, тем ниже шанс успеха!
+      </div>
+      <div class="upgraderCards">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--tg-sub);margin-bottom:8px">ИСХОДНАЯ</div>
+          <div id="fromCards" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+            ${fromOptions||'<div style="color:var(--tg-sub);font-size:11px;padding:20px">Купите карты в магазине!</div>'}
+          </div>
+        </div>
+        <div class="upgArrow">→</div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--tg-sub);margin-bottom:8px">ЦЕЛЕВАЯ</div>
+          <div id="toCards" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+            ${toOptions}
+          </div>
+        </div>
+      </div>
+      <div class="upgChance" id="upgChance">Выберите карты</div>
+      <button class="upgBtn" id="upgBtn" disabled>АПГРЕЙДНУТЬ</button>
+      <div id="upgResult"></div>
+    </div>
+    ${historyHTML}
+    <div class="hintBox">💡 Начинайте с малых шагов! GTX 1050→1060: ~54%, а GTX 1050→4090: 1%.</div>`;
+  
+  let selectedFrom=null, selectedTo=null;
+  
+  document.querySelectorAll('[data-type="from"]').forEach(card=>{
+    card.addEventListener('click',()=>{
+      document.querySelectorAll('[data-type="from"]').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedFrom=card.dataset.gpu;
+      updateChance();
+    });
+  });
+  
+  document.querySelectorAll('[data-type="to"]').forEach(card=>{
+    card.addEventListener('click',()=>{
+      document.querySelectorAll('[data-type="to"]').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedTo=card.dataset.gpu;
+      updateChance();
+    });
+  });
+  
+  function updateChance(){
+    if(!selectedFrom||!selectedTo){
+      $('upgChance').textContent='Выберите карты';
+      $('upgBtn').disabled=true;
+      return;
+    }
+    const fromGPU=GPUS.find(g=>g.id===selectedFrom);
+    const toGPU=GPUS.find(g=>g.id===selectedTo);
+    if(!fromGPU||!toGPU)return;
+    if(fromGPU.id===toGPU.id){$('upgChance').textContent='Выберите другую';$('upgBtn').disabled=true;return;}
+    if(fromGPU.price>=toGPU.price){$('upgChance').textContent='Целевая должна быть дороже';$('upgBtn').disabled=true;return;}
+    const chance=calcUpgradeChance(fromGPU,toGPU);
+    $('upgChance').innerHTML=`<span style="font-size:14px;color:var(--tg-sub)">Шанс:</span><br>${chance}%`;
+    $('upgBtn').disabled=false;
+  }
+  
+  $('upgBtn').addEventListener('click',()=>{
+    if(!selectedFrom||!selectedTo)return;
+    if(S.gpus[selectedFrom].n<1){toast('У вас нет этой карты!','❌','red');return;}
+    $('upgBtn').disabled=true;
+    $('upgBtn').textContent='АПГРЕЙД...';
+    setTimeout(()=>{
+      performUpgrade(selectedFrom,selectedTo);
+      renderUpgrader();
+    },1000);
+  });
+}
+
+function renderSocial(){
+  // DAILY BONUS SECTION
+  const today=todayStr();
+  const canClaim=canClaimDaily();
+  const streak=S.daily.streak||0;
+  let dotsHTML='';
+  for(let i=0;i<7;i++){
+    let cls='dailyDot';
+    if(i<streak)cls+=' claimed';
+    if(i===streak&&canClaim)cls+=' today';
+    dotsHTML+=`<div class="${cls}">${i+1}</div>`;
+  }
+  
+  // P2P TRANSFERS (requires research)
+  const hasTransfer=res('transfer')||S._god;
+  
+  $('screen').innerHTML=`
+    <div class="dailyBox">
+      <div class="dailyTitle">🎁 ЕЖЕДНЕВНЫЙ БОНУС</div>
+      <div style="font-size:11px;color:var(--tg-sub);margin-bottom:8px">Заходите каждый день и забирайте FI!</div>
+      <div class="dailyDays">${dotsHTML}</div>
+      <div style="font-size:13px;font-weight:700;margin:8px 0;color:var(--fi-gold)">
+        ${canClaim?`Доступно: <b>${fmtFI(DAILY_REWARDS[streak])} FI</b>`:`Следующий бонус через 24ч`}
+      </div>
+      <button class="btn btn-gold btn-sm" data-act="claimdaily" ${canClaim?'':'disabled'}>${canClaim?'ЗАБРАТЬ БОНУС':'Приходите завтра'}</button>
+    </div>
+
+    <div class="sectionTitle">📤 Перевод FI другу</div>
+    ${hasTransfer?`
+    <div class="transferBox">
+      <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--tg-blue)">💎 P2P Перевод FI</div>
+      <div style="font-size:11px;color:var(--tg-sub);margin-bottom:10px">Отправьте FI другу по @юзернейму (без комиссии!)</div>
+      <input class="inp" type="text" id="sendToUser" placeholder="@юзернейм получателя">
+      <input class="inp num" type="number" id="sendAmount" placeholder="Сумма FI" min="0.01">
+      <input class="inp" type="text" id="sendMemo" placeholder="Сообщение (необязательно)">
+      <button class="btn btn-em btn-lg" data-act="sendfi">📤 ОТПРАВИТЬ FI</button>
+      <div style="font-size:10px;color:var(--tg-sub);margin-top:8px;text-align:center">
+        Отправлено: ${S.transfersSent} · Получено: ${S.transfersReceived}
+      </div>
+    </div>
+    `:`
+    <div class="hintBox">🔒 Исследуйте «P2P протокол» в лаборатории, чтобы разблокировать переводы FI между игроками!</div>
+    `}
+
+    <div class="sectionTitle">⚔️ PvP Дуэли (FI vs Бот)</div>
+    <div class="duelBox">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--fi-orange)">⚔️ Сразитесь с ботом на ставку FI</div>
+      <div style="font-size:11px;color:var(--tg-sub);margin-bottom:10px">Шанс победы 50%. Побеждающий забирает весь банк минус комиссия 5%.</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" data-act="duel" data-v="10">10 FI</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1" data-act="duel" data-v="100">100 FI</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1" data-act="duel" data-v="1000">1K FI</button>
+      </div>
+      <input class="inp num" type="number" id="duelBet" placeholder="Своя ставка" min="1">
+      <button class="btn btn-red btn-lg" data-act="duelcustom">⚔️ НАЧАТЬ ДУЭЛЬ</button>
+    </div>
+
+    <div class="sectionTitle">🎰 Рулетка (красное/чёрное)</div>
+    <div class="rouletteBox">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#ec4899">🎰 FI-Рулетка</div>
+      <div style="font-size:11px;color:var(--tg-sub);margin-bottom:10px">Угадайте цвет: красное ×2 или чёрное ×2. Шанс 48.5% (2.5% казино).</div>
+      <input class="inp num" type="number" id="roulBet" placeholder="Ставка в FI" min="1">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-lg" style="flex:1;background:linear-gradient(135deg,#ef4444,#991b1b);color:#fff" data-act="roulette" data-c="red">🔴 КРАСНОЕ</button>
+        <button class="btn btn-lg" style="flex:1;background:linear-gradient(135deg,#1f2937,#000);color:#fff" data-act="roulette" data-c="black">⚫ ЧЁРНОЕ</button>
+      </div>
+    </div>
+
+    <div class="sectionTitle">📢 Реферальная программа</div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">🎁 Пригласите друзей и получайте 10% от их добычи!</div>
+      <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:10px;margin:8px 0;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--em);text-align:center;font-weight:800">${S.referralCode}</div>
+      <div style="font-size:11px;color:var(--tg-sub)">Поделитесь кодом с друзьями. Когда они активируют его при старте, вы получите бонус.</div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <input class="inp" type="text" id="refCodeInput" placeholder="Код друга (если есть)">
+        <button class="btn btn-pink btn-sm" data-act="activeref">Активировать</button>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--tg-sub)">
+        Ваш бонус: <b style="color:var(--fi-gold)">${fmtFI(S.referralBonus)} FI</b>
+      </div>
+    </div>
+
+    <div class="sectionTitle">🏆 ТОП-10 Игроков</div>
+    <div id="leaderboard"></div>
+  `;
+  
+  // Лидерборд (демо-данные + текущий игрок)
+  const demoPlayers=[
+    {name:'@CryptoKing',cap:5200000},{name:'@MinerPro',cap:1850000},
+    {name:'@FiWhale',cap:980000},{name:'@GreenHash',cap:420000},
+    {name:'@ASIC_Master',cap:280000},{name:'@HashRate',cap:165000},
+    {name:'@DiamondHand',cap:98000},{name:'@MoonShot',cap:55000},
+    {name:'@Satoshi_Jr',cap:32000},
+  ];
+  const myCap=capital(S);
+  const all=[...demoPlayers,{name:TG_USER?.username?`@${TG_USER.username}`:'@Вы',cap:myCap,me:true}].sort((a,b)=>b.cap-a.cap);
+  const lb=$('leaderboard');
+  if(lb){
+    lb.innerHTML=all.slice(0,10).map((p,i)=>{
+      const cls=i===0?'top1':i===1?'top2':i===2?'top3':'';
+      return `<div class="leaderboardItem ${cls} ${p.me?'me':''}">
+        <div class="rank">${i+1}</div>
+        <div class="uname">${p.name}${p.me?' (вы)':''}</div>
+        <div class="cap num">${fmtUSD(p.cap)}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
 function renderProfile(){
   const cap=capital(S);const rank=rankOf(cap);const inc=income();
   const nextRank=RANKS.find(r=>r[0]>cap);
@@ -1171,66 +1451,59 @@ function renderProfile(){
     return `<div class="achv ${done?'done':''}"><div class="achvIco">${a.ico}</div><div><div class="achvT">${a.t}</div><div class="achvD">${a.d}</div></div><div style="margin-left:auto;font-size:15px">${done?'✅':'🔒'}</div></div>`;}).join('');
   const crAv=crystalsAvail();
   $('screen').innerHTML=`
-    <div class="sectionTitle">👤 Профиль майнера</div>
+    <div class="sectionTitle">👤 Профиль</div>
     <div class="card" style="text-align:center;padding:20px">
       <div style="width:64px;height:64px;margin:0 auto 10px">${coinSVG()}</div>
-      <div style="font-size:16px;font-weight:800">Ваша майнинг-империя</div>
-      <div style="margin:8px 0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <div style="font-size:16px;font-weight:800">Майнинг-империя</div>
+      <div style="margin:8px 0;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
         <span class="rankBadge">${rank[2]} ${rank[1]}</span>
-        ${S.crystals>0?`<span class="crystalBadge">💎 ${S.crystals} кристаллов · ×${prestigeMult().toFixed(2)}</span>`:''}
+        ${S.crystals>0?`<span class="crystalBadge">💎 ${S.crystals} · ×${prestigeMult().toFixed(2)}</span>`:''}
+        ${S.referralBonus>0?`<span class="refBadge">+${fmtFI(S.referralBonus)} FI</span>`:''}
       </div>
-      ${nextRank?`<div style="font-size:11px;color:var(--tg-sub);margin-bottom:5px">До ранга «${nextRank[1]}»: ${fmtUSD(nextRank[0]-cap)}</div>
-      <div class="bar"><i style="width:${progress}%;background:linear-gradient(90deg,#17dd62,#3cf07e)"></i></div>`:
-      `<div style="font-size:11px;color:var(--em);font-weight:700">Максимальный ранг достигнут! 👑</div>`}
+      ${nextRank?`<div style="font-size:11px;color:var(--tg-sub);margin-bottom:5px">До «${nextRank[1]}»: ${fmtUSD(nextRank[0]-cap)}</div>
+      <div class="bar"><i style="width:${progress}%;background:linear-gradient(90deg,#17dd62,#3cf07e)"></i></div>`:''}
       <div style="font-size:24px;font-weight:800;margin-top:12px;color:var(--fi-green)" class="num">${fmtUSD(cap)}</div>
-      <div style="font-size:10.5px;color:var(--tg-sub);text-transform:uppercase;letter-spacing:1px;font-weight:700">Общий капитал</div>
+      <div style="font-size:10.5px;color:var(--tg-sub);text-transform:uppercase;letter-spacing:1px;font-weight:700">Капитал</div>
     </div>
-    <div class="sectionTitle">💎 Перерождение (престиж)</div>
+    <div class="sectionTitle">💎 Перерождение</div>
     <div class="card" style="background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(168,85,247,.04));border-color:rgba(168,85,247,.35)">
       <div style="font-size:12.5px;line-height:1.6;color:#d9c2f7">
-        Сбросьте ферму, балансы и апгрейды в обмен на <b style="color:#c084fc">💎 FI-кристаллы</b>. Каждый кристалл даёт <b>+2% к добыче навсегда</b> и переживает перерождение. Исследования тоже сбрасываются!
+        Сбросьте ферму за <b style="color:#c084fc">💎 кристаллы</b> (+2% добычи каждый навсегда).
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px;font-size:12px">
-        <span style="color:var(--tg-sub)">Накопленная ценность майнинга: <b class="num" style="color:#fff">${fmtUSD(S.fiValue)}</b></span>
+      <div style="display:flex;justify-content:space-between;margin:12px 0 8px;font-size:12px">
+        <span style="color:var(--tg-sub)">Ценность: <b class="num" style="color:#fff">${fmtUSD(S.fiValue)}</b></span>
+        <span style="color:#c084fc;font-weight:800">${crAv} кр.</span>
       </div>
-      <div class="bar" style="height:8px;margin-bottom:10px"><i style="width:${clamp((S.fiValue-50000*Math.pow(crAv,2))/(50000*(2*crAv+1))*100,0,100)}%;background:linear-gradient(90deg,#a855f7,#ec4899)"></i></div>
-      <button class="btn btn-lg" style="background:linear-gradient(135deg,#c084fc,#9333ea);color:#fff;box-shadow:0 4px 16px rgba(168,85,247,.4)" data-act="prestige" ${crAv<1?'disabled':''}>
-        ${crAv>=1?`💎 ПЕРEROДИТЬСЯ: получить ${crAv} кристалл(ов)`:`Нужно намайнить на $50K (сейчас ${fmtUSD(S.fiValue)})`}
+      <button class="btn btn-lg" style="background:linear-gradient(135deg,#c084fc,#9333ea);color:#fff" data-act="prestige" ${crAv<1?'disabled':''}>
+        ${crAv>=1?`💎 ПЕРЕРОДИТЬСЯ (+${crAv} кр.)`:`Нужно $50K (${fmtUSD(S.fiValue)})`}
       </button>
-      <div style="font-size:10.5px;color:var(--tg-sub);text-align:center;margin-top:7px">Перерождений совершено: ${S.prestigeCount}</div>
     </div>
     <div class="sectionTitle">📈 Статистика</div>
     <div class="statGrid">
-      <div class="statBox"><div class="l">Добыто всего</div><div class="v num" style="color:var(--em)">${fmtFI(S.totalFI)} FI</div></div>
-      <div class="statBox"><div class="l">Заработано USD</div><div class="v num" style="color:var(--fi-green)">${fmtUSD(S.totalEarnedUSD)}</div></div>
+      <div class="statBox"><div class="l">Добыто</div><div class="v num" style="color:var(--em)">${fmtFI(S.totalFI)} FI</div></div>
+      <div class="statBox"><div class="l">Заработано</div><div class="v num" style="color:var(--fi-green)">${fmtUSD(S.totalEarnedUSD)}</div></div>
       <div class="statBox"><div class="l">Счёт за свет</div><div class="v num" style="color:var(--fi-red)">−${fmtUSD(S.totalPowerUSD)}</div></div>
       <div class="statBox"><div class="l">Устройств</div><div class="v num">${totalUnits(S)} шт</div></div>
-      <div class="statBox"><div class="l">Хешрейт</div><div class="v num" style="color:var(--fi-cyan)">${fmtHash(inc.hash)}</div></div>
-      <div class="statBox"><div class="l">Доля в сети</div><div class="v num">${(inc.share*100).toFixed(4)}%</div></div>
-      <div class="statBox"><div class="l">Заданий выполнено</div><div class="v num">${S.questsDone}</div></div>
-      <div class="statBox"><div class="l">Время в игре</div><div class="v num">${fmtTime(S.playTime)}</div></div>
-      <div class="statBox"><div class="l">Халвингов</div><div class="v num" style="color:var(--fi-orange)">${S.halvings}</div></div>
-      <div class="statBox"><div class="l">Ремонтов</div><div class="v num">${S.repairDone}</div></div>
+      <div class="statBox"><div class="l">Отправлено FI</div><div class="v num">${S.transfersSent}</div></div>
+      <div class="statBox"><div class="l">Получено FI</div><div class="v num">${S.transfersReceived}</div></div>
+      <div class="statBox"><div class="l">Заданий</div><div class="v num">${S.questsDone}</div></div>
+      <div class="statBox"><div class="l">Время</div><div class="v num">${fmtTime(S.playTime)}</div></div>
     </div>
     <div class="sectionTitle">🏆 Достижения (${S.achv.length}/${ACHVS.length})</div>
     <div class="card">${achvHTML}</div>
-    <div class="sectionTitle">ℹ️ О FI coin</div>
-    <div class="hintBox em">FI coin — изумрудная криптовалюта сети FI. Халвинг каждые 5 минут, сложность растёт вместе с мощностями игроков. Перерождение открывает путь к бесконечному росту через кристаллы.</div>
     <button class="btn btn-red btn-lg" style="margin-top:8px" data-act="resetask">🗑 Сбросить прогресс</button>`;
 }
 
-// ═══════════ TABS ═══════════
 function switchTab(t){
   S.tab=t;
   document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
-  const r={farm:renderFarm,market:renderMarket,shop:renderShop,lab:renderLab,profile:renderProfile}[t];
+  const r={farm:renderFarm,market:renderMarket,shop:renderShop,lab:renderLab,upgrader:renderUpgrader,social:renderSocial,profile:renderProfile}[t];
   r&&r();
   $('screen').scrollTop=0;save();
 }
 document.querySelectorAll('.tabBtn').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
 function refresh(){switchTab(S.tab);}
 
-// ═══════════ GAME ACTIONS ═══════════
 $('screen').addEventListener('click',e=>{
   const btn=e.target.closest('[data-act]');if(!btn)return;
   const act=btn.dataset.act;
@@ -1238,80 +1511,137 @@ $('screen').addEventListener('click',e=>{
   if(act==='buy'){
     const m=MINERS.find(x=>x.id===btn.dataset.id);
     const cost=minerCost(m);
-    if(S.usd<cost){snd('err');toast('Недостаточно средств.','💸','red');return;}
+    if(S.usd<cost){snd('err');toast('Нет USD.','💸','red');return;}
     S.usd-=cost;S.totalSpentUSD+=cost;S.miners[m.id].n++;bumpDay('bought',1);
-    snd('buy');toast(`Куплен ${m.name}! ⛏️`,'📦','green');refresh();save();return;
+    snd('buy');toast(`Куплен ${m.name}!`,'📦','green');refresh();save();return;
+  }
+  if(act==='buygpu'){
+    const g=GPUS.find(x=>x.id===btn.dataset.id);
+    const cost=gpuCost(g);
+    if(S.usd<cost){snd('err');toast('Нет USD.','💸','red');return;}
+    S.usd-=cost;S.totalSpentUSD+=cost;S.gpus[g.id].n++;
+    snd('buy');toast(`Куплена ${g.name}!`,'📦','purple');refresh();save();return;
   }
   if(act==='buyenergy'){
     const k=btn.dataset.k;const cost=energyCost(k);
     if(S.usd<cost){snd('err');return;}
     S.usd-=cost;S.energy[k]++;
-    snd('buy');toast(`${ENERGY[k].ico} ${ENERGY[k].name} подключён! Счета снижены.`,'🔋','green');refresh();save();return;
+    snd('buy');toast(`${ENERGY[k].name} подключён!`,'🔋','green');refresh();save();return;
   }
   if(act==='research'){
     const k=btn.dataset.k;const r=RESEARCH[k];
-    if(res(k)||S.fi<r.cost){snd('err');toast('Недостаточно FI для исследования.','🔬','red');return;}
+    if(res(k)||S.fi<r.cost){snd('err');toast('Недостаточно FI.','🔬','red');return;}
     S.fi-=r.cost;S.research[k]=1;
-    snd('win');toast(`Исследовано: ${r.name}! ${r.desc}`,'🔬','em');refresh();save();return;
+    snd('win');toast(`Изучено: ${r.name}!`,'🔬','em');refresh();save();return;
   }
   if(act==='claimquest'){
     const q=S.quests.list[+btn.dataset.id];
     if(!q||q.claimed||questProgress(q)<q.target)return;
     q.claimed=true;S.questsDone++;
-    if(q.reward.fi){S.fi+=q.reward.fi;toast(`Задание выполнено! +${q.reward.fi} FI`,'📋','em');}
-    if(q.reward.usd){S.usd+=q.reward.usd;toast(`Задание выполнено! +${fmtUSD(q.reward.usd)}`,'📋','em');}
+    if(q.reward.fi){S.fi+=q.reward.fi;toast(`Задание: +${q.reward.fi} FI`,'📋','em');}
+    if(q.reward.usd){S.usd+=q.reward.usd;toast(`Задание: +${fmtUSD(q.reward.usd)}`,'📋','em');}
     snd('win');refresh();save();return;
+  }
+  if(act==='claimdaily'){
+    claimDaily();refresh();return;
+  }
+  if(act==='sendfi'){
+    if(!res('transfer')&&!S._god){snd('err');toast('Изучите P2P протокол!','🔒','red');return;}
+    const to=($('sendToUser')?$('sendToUser').value:'').trim().replace(/^@/,'').toLowerCase();
+    const amt=parseFloat($('sendAmount')?$('sendAmount').value:'0');
+    const memo=($('sendMemo')?$('sendMemo').value:'').trim();
+    if(!to){snd('err');toast('Укажите получателя!','📤','red');return;}
+    if(isNaN(amt)||amt<=0){snd('err');toast('Укажите сумму!','📤','red');return;}
+    if(amt<0.01){snd('err');toast('Минимум 0.01 FI','📤','red');return;}
+    if(S.fi<amt){snd('err');toast('Недостаточно FI','💸','red');return;}
+    if(TG_USER&&to===TG_USER.username){snd('err');toast('Нельзя отправить себе','❌','red');return;}
+    S.fi-=amt;S.transfersSent++;
+    snd('sell');
+    toast(`📤 Отправлено ${fmtFI(amt)} FI игроку @${to}${memo?': '+memo:''}`,'✅','green');
+    if($('sendToUser'))$('sendToUser').value='';
+    if($('sendAmount'))$('sendAmount').value='';
+    if($('sendMemo'))$('sendMemo').value='';
+    refresh();save();return;
+  }
+  if(act==='duel'){
+    const bet=parseFloat(btn.dataset.v);
+    if(S.fi<bet){snd('err');toast('Недостаточно FI','💸','red');return;}
+    executeDuel(bet);return;
+  }
+  if(act==='duelcustom'){
+    const bet=parseFloat($('duelBet')?$('duelBet').value:'0');
+    if(isNaN(bet)||bet<1){snd('err');toast('Минимум 1 FI','⚔️','red');return;}
+    if(S.fi<bet){snd('err');toast('Недостаточно FI','💸','red');return;}
+    executeDuel(bet);return;
+  }
+  if(act==='roulette'){
+    const bet=parseFloat($('roulBet')?$('roulBet').value:'0');
+    if(isNaN(bet)||bet<1){snd('err');toast('Минимум 1 FI','🎰','red');return;}
+    if(S.fi<bet){snd('err');toast('Недостаточно FI','💸','red');return;}
+    executeRoulette(bet,btn.dataset.c);return;
+  }
+  if(act==='activeref'){
+    const code=($('refCodeInput')?$('refCodeInput').value:'').trim().toUpperCase();
+    if(!code){snd('err');toast('Введите код','📢','red');return;}
+    if(code===S.referralCode){snd('err');toast('Нельзя свой код','❌','red');return;}
+    if(S.referredBy){snd('err');toast('Уже активирован','❌','red');return;}
+    S.referredBy=code;
+    const bonus=100;
+    S.fi+=bonus;S.totalFI+=bonus;S.referralBonus+=bonus;
+    snd('win');toast(`🎉 Код активирован! Бонус: ${fmtFI(bonus)} FI`,'🎁','gold');
+    refresh();save();return;
   }
   if(act==='lottery'){
     const betEl=$('lotBet');const bet=parseFloat(betEl?betEl.value:0);
-    if(isNaN(bet)||bet<1){snd('err');toast('Укажите ставку (мин. 1 FI).','🎰','orange');return;}
-    if(S.fi<bet){snd('err');toast('Недостаточно FI для ставки.','🎰','red');return;}
-    if(Date.now()-S._lotAt<3000){snd('err');toast('Барабан ещё крутится… подождите.','⏳','orange');return;}
+    if(isNaN(bet)||bet<1){snd('err');toast('Минимум 1 FI.','🎰','orange');return;}
+    if(S.fi<bet){snd('err');toast('Нет FI.','🎰','red');return;}
+    if(Date.now()-S._lotAt<3000){snd('err');toast('Подождите.','⏳','orange');return;}
     S._lotAt=Date.now();
     S.fi-=bet;
     const roll=Math.random();
     setTimeout(()=>{
-      if(roll<0.05){const win=bet*10;S.fi+=win;S.flags.jackpot=true;snd('win');toast(`🎰 ДЖЕКПОТ! Ставка ${fmtFI(bet)} FI → выпало ${fmtFI(win)} FI (×10)!`,'💥','gold');}
-      else if(roll<0.50){const win=bet*2;S.fi+=win;snd('win');toast(`🎰 Выигрыш! ${fmtFI(bet)} FI → ${fmtFI(win)} FI (×2)`,'🎉','green');}
-      else{snd('err');toast(`🎰 Мимо… ${fmtFI(bet)} FI сгорели в барабане.`,'💨','red');}
+      if(roll<0.05){const win=bet*10;S.fi+=win;S.flags.jackpot=true;snd('win');toast(`🎰 ДЖЕКПОТ! +${fmtFI(win)} FI`,'💥','gold');}
+      else if(roll<0.50){const win=bet*2;S.fi+=win;snd('win');toast(`🎰 +${fmtFI(win)} FI`,'🎉','green');}
+      else{snd('err');toast(`🎰 Проигрыш ${fmtFI(bet)} FI`,'💨','red');}
       updateHUD();save();
     },700);
-    toast('🎲 Барабан крутится…','🎰','gold');return;
+    toast('🎲 Крутится…','🎰','gold');return;
   }
   if(act==='prestige'){
     const cr=crystalsAvail();
     if(cr<1){snd('err');return;}
     modal(`<div style="font-size:40px">💎</div><h3>Перерождение</h3>
-      <p>Вы получите <b style="color:#c084fc">${cr} кристалл(ов)</b> (+${cr*2}% к добыче навсегда).<br>Ферма, балансы, апгрейды и исследования будут сброшены.</p>
+      <p>Получите <b style="color:#c084fc">${cr} кристаллов</b> (+${cr*2}% к добыче).</p>
       <div class="mRow"><button class="btn btn-ghost" onclick="closeModal()">Отмена</button><button class="btn btn-lg" style="flex:1;background:linear-gradient(135deg,#c084fc,#9333ea);color:#fff" id="doPrestige">Переродиться</button></div>`);
     $('doPrestige').onclick=()=>{
       closeModal();
-      const keepAchv=S.achv,keepQ=S.questsDone,keepCr=S.crystals+cr,keepP=S.prestigeCount+1,keepFlagJ=S.flags.jackpot;
+      const keep={achv:S.achv,questsDone:S.questsDone,crystals:S.crystals+cr,prestigeCount:S.prestigeCount+1,jackpot:S.flags.jackpot,upgradeSuccess:S.flags.upgradeSuccess,duelWin:S.flags.duelWin,sold:S.flags.sold,transfersSent:S.transfersSent,transfersReceived:S.transfersReceived,referralCode:S.referralCode,referredBy:S.referredBy,referralBonus:S.referralBonus,daily:S.daily,firstLogin:S.firstLogin};
       const ns=defaultState();
-      ns.started=true;ns.achv=keepAchv;ns.questsDone=keepQ;ns.crystals=keepCr;ns.prestigeCount=keepP;
-      ns.flags.jackpot=keepFlagJ;ns.sessionOpen=ns.price;
+      ns.started=true;
+      Object.assign(ns,keep);
+      ns.sessionOpen=ns.price;
       S=ns;pushPrice();
-      snd('win');toast(`💎 ПЕРЕРОЖДЕНИЕ! +${cr} кристаллов. Буст добычи ×${prestigeMult().toFixed(2)}`,'💎','gold');
+      snd('win');toast(`💎 ПЕРЕРОЖДЕНИЕ! +${cr} кр.`,'💎','gold');
       refresh();save();
     };
     return;
   }
   if(act==='repair'){
     const id=btn.dataset.id,c=repairCost(id);
-    if(S.usd<c){snd('err');toast('Не хватает средств на ремонт.','🔧','red');return;}
+    if(S.usd<c){snd('err');toast('Нет USD.','🔧','red');return;}
     S.usd-=c;S.miners[id].broken=0;S.repairDone++;
-    snd('buy');toast('Оборудование отремонтировано!','🔧','green');refresh();save();return;
+    snd('buy');toast('Отремонтировано!','🔧','green');refresh();save();return;
   }
   if(act==='repairall'){
     const total=MINERS.reduce((a,m)=>a+(S.miners[m.id].broken?repairCost(m.id):0),0);
     if(S.usd<total){snd('err');return;}
     S.usd-=total;MINERS.forEach(m=>{S.repairDone+=S.miners[m.id].broken;S.miners[m.id].broken=0;});
-    snd('buy');toast('Вся техника отремонтирована!','🔧','green');refresh();save();return;
+    snd('buy');toast('Всё отремонтировано!','🔧','green');refresh();save();return;
   }
   if(act==='upg'){
     const k=btn.dataset.k,c=upgCost(k);
     const lv=k==='cool'?S.cool:k==='power'?S.powerLvl:S.oc;
-    if(lv>=UPG[k].max||S.usd<c){snd('err');toast('Недостаточно средств.','⬆️','red');return;}
+    if(lv>=UPG[k].max||S.usd<c){snd('err');toast('Нет USD.','⬆️','red');return;}
     S.usd-=c;S.totalSpentUSD+=c;
     if(k==='cool')S.cool++;if(k==='power')S.powerLvl++;if(k==='oc')S.oc++;
     snd('buy');toast(`${UPG[k].name} → ур. ${lv+1}!`,'⬆️','green');refresh();save();return;
@@ -1335,23 +1665,58 @@ $('screen').addEventListener('click',e=>{
   if(act==='buyfi'){
     let usd=btn.dataset.usd==='all'?S.usd:+btn.dataset.usd;
     if(usd>S.usd)usd=S.usd;
-    if(usd<1){snd('err');toast('Недостаточно USD.','💸','red');return;}
+    if(usd<1){snd('err');toast('Нет USD.','💸','red');return;}
     const fi=usd/(S.price*1.01);
     S.usd-=usd;S.fi+=fi;
     snd('buy');toast(`Куплено ${fmtFI(fi)} FI`,'🛒','green');
     updateHUD();updateMarketLive();save();return;
   }
   if(act==='resetask'){
-    modal(`<div style="font-size:38px">⚠️</div><h3>Сбросить прогресс?</h3><p>Всё будет удалено безвозвратно, включая кристаллы престижа.</p>
+    modal(`<div style="font-size:38px">⚠️</div><h3>Сбросить прогресс?</h3><p>Всё будет удалено безвозвратно.</p>
       <div class="mRow"><button class="btn btn-ghost" onclick="closeModal()">Отмена</button><button class="btn btn-red" id="confirmReset">Сбросить</button></div>`);
-    $('confirmReset').onclick=()=>{localStorage.removeItem('fiMinerSave4');location.reload();};
+    $('confirmReset').onclick=()=>{localStorage.removeItem('fiMinerSave6');location.reload();};
     return;
   }
 });
 
-// ================================================================
-// ============  STAFF CONSOLE (ролевая система)  =================
-// ================================================================
+function executeDuel(bet){
+  S.fi-=bet;
+  const win=Math.random()<0.5;
+  setTimeout(()=>{
+    if(win){
+      const prize=bet*2*0.95;
+      S.fi+=prize;S.flags.duelWin=true;
+      snd('win');toast(`⚔️ ПОБЕДА! +${fmtFI(prize)} FI (банк −5%)`,'🏆','gold');
+    }else{
+      snd('err');toast(`⚔️ ПОРАЖЕНИЕ! −${fmtFI(bet)} FI`,'💀','red');
+    }
+    updateHUD();save();
+  },800);
+  toast('⚔️ Битва началась...','⚔️','orange');
+}
+
+function executeRoulette(bet,color){
+  S.fi-=bet;
+  const roll=Math.random();
+  let result;
+  if(roll<0.025)result='green';
+  else if(roll<0.5125)result='red';
+  else result='black';
+  setTimeout(()=>{
+    if(result===color){
+      const prize=bet*2;
+      S.fi+=prize;
+      snd('win');toast(`🎰 ${result==='red'?'🔴':'⚫'} ${result.toUpperCase()}! Выигрыш ${fmtFI(prize)} FI`,'🎉','green');
+    }else if(result==='green'){
+      snd('err');toast(`🎰 ВЫПАЛО ЗЕЛЁНОЕ (казино)! −${fmtFI(bet)} FI`,'💚','red');
+    }else{
+      snd('err');toast(`🎰 ${result==='red'?'🔴':'⚫'} ${result.toUpperCase()}. Проигрыш ${fmtFI(bet)} FI`,'😞','red');
+    }
+    updateHUD();save();
+  },1000);
+  toast('🎰 Шарик крутится...','🎰','pink');
+}
+
 let devOpen=false, devTab='';
 const dvNum=id=>{const el=$(id);return el?parseFloat(el.value):NaN;};
 
@@ -1365,7 +1730,7 @@ $('devToggle').addEventListener('click',()=>toggleDev());
 $('devClose').addEventListener('click',()=>toggleDev(false));
 $('devLogout').addEventListener('click',()=>{
   setRole(null,false);lsSet('fiDevRole',null);
-  toast('Вы вышли из консоли персонала','🚪','dev');
+  toast('Вы вышли','🚪','dev');
   renderDev();
 });
 document.addEventListener('keydown',e=>{
@@ -1395,11 +1760,11 @@ function renderDevLogin(){
     <div class="dvLogin">
       <div class="lockIco">🔐</div>
       <h3>STAFF CONSOLE</h3>
-      <p>Доступ только для персонала проекта: <b style="color:var(--fi-gold)">OWNER</b> / <b style="color:#5cabff">ADMIN</b> / <b style="color:#5cd6f5">MODERATOR</b>.<br>Введите ключ доступа вашей роли.</p>
-      <input class="din" type="password" id="dvKeyInput" placeholder="••••••••••" autocomplete="off">
+      <p>Доступ для персонала: <b style="color:var(--fi-gold)">OWNER</b> / <b style="color:#5cabff">ADMIN</b> / <b style="color:#5cd6f5">MODERATOR</b></p>
+      <input class="din" type="password" id="dvKeyInput" placeholder="Ключ доступа" autocomplete="off">
       <button class="dbtn" style="padding:10px 30px" data-dact="login">ВОЙТИ</button>
-      ${TG_USER?`<div class="dvHint" style="margin-top:14px">Обнаружен Telegram: @${TG_USER.username||'(нет юзернейма)'} · id ${TG_USER.id}</div>`:''}
-      <div class="dvHint" style="margin-top:10px">Роли выдаёт владелец проекта. Ключи настраиваются в коде игры (блок STAFF_CONFIG).</div>
+      ${TG_USER?`<div class="dvHint" style="margin-top:14px">Telegram: @${TG_USER.username||'—'} · id ${TG_USER.id}</div>`:''}
+      <div class="dvHint" style="margin-top:10px">OWNER: Timofey_U автоматически получает доступ.</div>
     </div>`;
   const inp=$('dvKeyInput');
   if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -1410,18 +1775,17 @@ function doLogin(){
   if(r){
     setRole(r,true);
     snd('win');
-    toast(`Доступ разрешён. Роль: ${ROLE_LABEL[r]}`,'🔓','dev');
+    toast(`Роль: ${ROLE_LABEL[r]}`,'🔓','dev');
     renderDev();
   }else{
     snd('err');
-    toast('Неверный ключ доступа','⛔','red');
+    toast('Неверный ключ','⛔','red');
     const inp=$('dvKeyInput');if(inp){inp.value='';inp.style.borderColor='#ff5c5c';setTimeout(()=>inp.style.borderColor='',800);}
   }
 }
 function renderDev(){
   if(!devOpen)return;
   updateRoleBadge();
-  // автологин если роль появилась
   if(!devRole){
     const auto=autoRole();
     if(auto)setRole(auto,true);
@@ -1462,39 +1826,52 @@ function renderDev(){
       <button class="dbtn dgr" data-dact="setfi0">= 0</button>
     </div>
     <div class="dvSec">😎 Режимы</div>
-    ${swHTML('god',S._god,'God Mode (всё бесплатно)')}
+    ${swHTML('god',S._god,'God Mode')}
     <div class="dvSec">💎 Престиж</div>
     <div class="dvRow"><span class="dvLabel">кристаллы:</span><input class="din" type="number" id="dvCrystals" value="${S.crystals}" min="0"><button class="dbtn" data-dact="setcrystals">SET</button></div>
+    <div class="dvSec">🎁 Ежедневка</div>
+    <div class="dvRow"><span class="dvLabel">streak:</span><input class="din" type="number" id="dvStreak" value="${S.daily.streak}" min="0" max="6"><button class="dbtn" data-dact="setstreak">SET</button></div>
+    <div class="dvGrid">
+      <button class="dbtn" data-dact="claimdailydev">Выдать бонус</button>
+      <button class="dbtn dgr" data-dact="resetdaily">Сбросить</button>
+    </div>
     <div class="dvSec">📊 Сервис</div>
     <div class="dvGrid">
-      <button class="dbtn warn" data-dact="zeroStats">Обнулить статистику</button>
+      <button class="dbtn warn" data-dact="zeroStats">Обнулить</button>
       <button class="dbtn" data-dact="allAchv">🏆 Все достижения</button>
     </div>`;
   }
   else if(devTab==='market'&&hasPerm('market')){
-    h=`<div class="dvSec">💹 Цена FI/USD</div>
-    <div class="dvRow"><span class="dvLabel">price:</span><span class="dvVal num" id="dvPriceNow">$${S.price.toFixed(4)}</span><span class="dvLabel">trend:</span><span class="dvVal num" id="dvTrendNow">$${S.trend.toFixed(4)}</span></div>
-    <div class="dvRow"><input class="din" type="number" id="dvPriceInput" value="${+S.price.toFixed(4)}" step="any"><button class="dbtn" data-dact="setprice">SET PRICE</button></div>
+    h=`<div class="dvSec">💹 УПРАВЛЕНИЕ КУРСОМ</div>
+    <div class="dvRow"><span class="dvLabel">текущий:</span><span class="dvVal num" id="dvPriceNow">$${S.price.toFixed(4)}</span></div>
+    <div class="dvRow"><input class="din" type="number" id="dvPriceInput" value="${+S.price.toFixed(4)}" step="any"><button class="dbtn" data-dact="setprice">SET</button></div>
+    <div class="dvSec">📈 Установить цену (OWNER)</div>
+    <div class="dvRow"><input class="din" type="number" id="dvTargetPrice" placeholder="Целевая цена" step="any"><button class="dbtn cyan" data-dact="settargetprice">УСТАНОВИТЬ</button></div>
+    <div class="dvHint">Принудительно установить цену (без плавной коррекции)</div>
+    <div class="dvSec">⚡ Быстрые манипуляции</div>
     <div class="dvGrid">
       <button class="dbtn" data-dact="mulprice" data-v="2">×2</button>
       <button class="dbtn" data-dact="mulprice" data-v="10">×10</button>
+      <button class="dbtn" data-dact="mulprice" data-v="100">×100</button>
       <button class="dbtn" data-dact="mulprice" data-v="0.5">÷2</button>
       <button class="dbtn" data-dact="mulprice" data-v="0.1">÷10</button>
-      <button class="dbtn cyan" data-dact="setprice100">= $100</button>
       <button class="dbtn dgr" data-dact="setprice001">= $0.01</button>
     </div>
     ${swHTML('frozen',S._frozen,'Заморозить цену')}
-    <div class="dvRow"><span class="dvLabel">sessionOpen:</span><input class="din" type="number" id="dvSessInput" value="${+S.sessionOpen.toFixed(4)}" step="any"><button class="dbtn" data-dact="setsess">SET</button></div>
-    <div class="dvSec">⛓ Сеть и эмиссия</div>
-    <div class="dvRow"><span class="dvLabel">netHash TH/s:</span><span class="dvVal num" id="dvNetNow">${fmtHash(S.netHash)}</span></div>
-    <div class="dvRow"><input class="din" type="number" id="dvNetInput" value="${Math.round(S.netHash)}" step="any"><button class="dbtn" data-dact="setnet">SET</button>
-      <button class="dbtn" data-dact="mulnet" data-v="2">×2</button><button class="dbtn" data-dact="mulnet" data-v="0.5">÷2</button></div>
-    ${swHTML('sharecap',S._shareCap,'Лимит доли сети 15%')}
-    <div class="dvRow"><span class="dvLabel">награда/блок:</span><input class="din" type="number" id="dvRewInput" value="${S.blockReward}" step="any"><button class="dbtn" data-dact="setrew">SET</button></div>
-    <div class="dvRow"><span class="dvLabel">до халвинга:</span><input class="din" type="number" id="dvHalvInput" value="${Math.ceil(S.halvIn)}" step="1"><button class="dbtn" data-dact="sethalv">SET</button><button class="dbtn warn" data-dact="halvenow">ХАЛВИНГ СЕЙЧАС</button></div>`;
+    <div class="dvSec">📉 Памп/Дамп</div>
+    <div class="dvRow"><input class="din" type="number" id="dvPumpPct" value="50" placeholder="%"><button class="dbtn cyan" data-dact="pump">ПАМП %</button><button class="dbtn dgr" data-dact="dump">ДАМП %</button></div>
+    <div class="dvSec">🎯 Тренд</div>
+    <div class="dvRow"><span class="dvLabel">trend:</span><span class="dvVal num" id="dvTrendNow">$${S.trend.toFixed(4)}</span></div>
+    <div class="dvRow"><input class="din" type="number" id="dvTrendInput" value="${+S.trend.toFixed(4)}" step="any"><button class="dbtn" data-dact="settrend">SET TREND</button></div>
+    <div class="dvSec">⛓ Сеть</div>
+    <div class="dvRow"><span class="dvLabel">netHash:</span><span class="dvVal num" id="dvNetNow">${fmtHash(S.netHash)}</span></div>
+    <div class="dvRow"><input class="din" type="number" id="dvNetInput" value="${Math.round(S.netHash)}"><button class="dbtn" data-dact="setnet">SET</button></div>
+    ${swHTML('sharecap',S._shareCap,'Лимит доли 15%')}
+    <div class="dvRow"><span class="dvLabel">награда/блок:</span><input class="din" type="number" id="dvRewInput" value="${S.blockReward}"><button class="dbtn" data-dact="setrew">SET</button></div>
+    <div class="dvRow"><span class="dvLabel">до халвинга:</span><input class="din" type="number" id="dvHalvInput" value="${Math.ceil(S.halvIn)}"><button class="dbtn" data-dact="sethalv">SET</button><button class="dbtn warn" data-dact="halvenow">ХАЛВИНГ</button></div>`;
   }
   else if(devTab==='farm'&&hasPerm('farm')){
-    h=`<div class="dvSec">⛏️ Оборудование (кол-во / сломано)</div>`;
+    h=`<div class="dvSec">⛏️ Оборудование</div>`;
     MINERS.forEach(m=>{
       const o=S.miners[m.id];
       h+=`<div class="dvRow" style="border:1px solid rgba(61,255,139,.12);border-radius:8px;padding:7px;margin-bottom:6px">
@@ -1502,33 +1879,38 @@ function renderDev(){
         <input class="din" style="width:56px" type="number" id="dvn-${m.id}" value="${o.n}" min="0">
         <input class="din" style="width:56px" type="number" id="dvb-${m.id}" value="${o.broken}" min="0">
         <button class="dbtn" data-dact="setminer" data-id="${m.id}">SET</button>
-        <button class="dbtn" data-dact="addminer" data-id="${m.id}" data-v="1">+1</button>
-        <button class="dbtn" data-dact="addminer" data-id="${m.id}" data-v="10">+10</button>
       </div>`;
     });
-    h+=`<div class="dvSec">⚡ Массовые операции</div>
+    h+=`<div class="dvSec">🎮 Видеокарты</div>`;
+    GPUS.forEach(g=>{
+      h+=`<div class="dvRow" style="border:1px solid rgba(61,255,139,.12);border-radius:8px;padding:7px;margin-bottom:6px">
+        <span class="dvLabel" style="min-width:100px;font-weight:700">${g.name}</span>
+        <input class="din" style="width:70px" type="number" id="dvgn-${g.id}" value="${S.gpus[g.id].n}" min="0">
+        <button class="dbtn" data-dact="setgpu" data-id="${g.id}">SET</button>
+      </div>`;
+    });
+    h+=`<div class="dvSec">⚡ Массовые</div>
     <div class="dvGrid">
-      <button class="dbtn" data-dact="allminers" data-v="1">Все ×1</button>
       <button class="dbtn" data-dact="allminers" data-v="10">Все ×10</button>
-      <button class="dbtn" data-dact="allminers" data-v="100">Все ×100</button>
-      <button class="dbtn dgr" data-dact="clearminers">Удалить все</button>
-      <button class="dbtn warn" data-dact="breakall">💥 Сломать все</button>
-      <button class="dbtn cyan" data-dact="repairfree">🔧 Починить всё</button>
+      <button class="dbtn dgr" data-dact="clearminers">Удалить всё</button>
+      <button class="dbtn warn" data-dact="breakall">💥 Сломать</button>
+      <button class="dbtn cyan" data-dact="repairfree">🔧 Починить</button>
+      <button class="dbtn" data-dact="allgpus" data-v="5">Все GPU ×5</button>
+      <button class="dbtn dgr" data-dact="cleargpus">Удалить GPU</button>
     </div>`;
   }
   else if(devTab==='upgrades'&&hasPerm('upgrades')){
-    h=`<div class="dvSec">🔧 Уровни апгрейдов</div>
-    <div class="dvRow"><span class="dvLabel">❄️ cooling:</span><input class="din" type="number" id="dvCool" value="${S.cool}" min="0"><button class="dbtn" data-dact="setupg" data-k="cool">SET</button></div>
-    <div class="dvRow"><span class="dvLabel">⚡ power:</span><input class="din" type="number" id="dvPower" value="${S.powerLvl}" min="0"><button class="dbtn" data-dact="setupg" data-k="power">SET</button></div>
-    <div class="dvRow"><span class="dvLabel">🧬 overclock:</span><input class="din" type="number" id="dvOc" value="${S.oc}" min="0"><button class="dbtn" data-dact="setupg" data-k="oc">SET</button></div>
+    h=`<div class="dvSec">🔧 Апгрейды</div>
+    <div class="dvRow"><span class="dvLabel">cool:</span><input class="din" type="number" id="dvCool" value="${S.cool}" min="0"><button class="dbtn" data-dact="setupg" data-k="cool">SET</button></div>
+    <div class="dvRow"><span class="dvLabel">power:</span><input class="din" type="number" id="dvPower" value="${S.powerLvl}" min="0"><button class="dbtn" data-dact="setupg" data-k="power">SET</button></div>
+    <div class="dvRow"><span class="dvLabel">oc:</span><input class="din" type="number" id="dvOc" value="${S.oc}" min="0"><button class="dbtn" data-dact="setupg" data-k="oc">SET</button></div>
     ${swHTML('autosellbuy',S.autoBought,'Автоспродажа куплена')}
-    ${swHTML('autosell',S.autoSell,'Автоспродажа включена')}
-    <div class="dvGrid" style="margin-top:8px">
+    ${swHTML('autosell',S.autoSell,'Автоспродажа вкл')}
+    <div class="dvGrid">
       <button class="dbtn" data-dact="maxupg">MAX всё</button>
-      <button class="dbtn dgr" data-dact="zeroupg">Сбросить</button>
+      <button class="dbtn dgr" data-dact="zeroupg">Сброс</button>
     </div>
     <div class="dvSec">🔋 Энергоисточники</div>
-    <div class="dvRow"><span class="dvLabel">solar/wind/gas/reactor:</span></div>
     <div class="dvRow">
       <input class="din" style="width:52px" type="number" id="dvESolar" value="${S.energy.solar}">
       <input class="din" style="width:52px" type="number" id="dvEWind" value="${S.energy.wind}">
@@ -1538,113 +1920,112 @@ function renderDev(){
     </div>
     <div class="dvSec">🔬 Исследования</div>
     <div class="dvGrid">
-      <button class="dbtn" data-dact="allresearch">Изучить все</button>
-      <button class="dbtn dgr" data-dact="zeroresearch">Сбросить все</button>
+      <button class="dbtn" data-dact="allresearch">Все</button>
+      <button class="dbtn dgr" data-dact="zeroresearch">Сброс</button>
     </div>`;
   }
   else if(devTab==='sim'&&hasPerm('sim')){
-    h=`<div class="dvSec">⏱ Управление временем</div>
-    ${swHTML('paused',S._paused,'ПАУЗА симуляции')}
+    h=`<div class="dvSec">⏱ Время</div>
+    ${swHTML('paused',S._paused,'ПАУЗА')}
     <div class="dvRow"><span class="dvLabel">скорость:</span>
       <select class="din" id="dvSpeedSel">
         ${[0.5,1,2,5,10,60,300].map(v=>`<option value="${v}" ${S._speed===v?'selected':''}>${v}×</option>`).join('')}
       </select>
     </div>
-    <div class="dvRow"><span class="dvLabel">playTime (с):</span><input class="din" type="number" id="dvPlaytime" value="${Math.round(S.playTime)}"><button class="dbtn" data-dact="setplaytime">SET</button></div>
-    <div class="dvSec">🌡 Температура и среда</div>
-    <div class="dvRow"><span class="dvLabel">temp сейчас:</span><span class="dvVal num" id="dvTempNow">${S.temp.toFixed(2)}°C</span></div>
-    <div class="dvRow"><input class="din" type="number" id="dvTempInput" value="${S.temp.toFixed(1)}" step="any"><button class="dbtn" data-dact="settemp">SET TEMP</button></div>
-    <div class="dvGrid">
-      <button class="dbtn cyan" data-dact="settempv" data-v="26">26°C</button>
-      <button class="dbtn warn" data-dact="settempv" data-v="80">80°C</button>
-      <button class="dbtn dgr" data-dact="settempv" data-v="100">100°C</button>
-    </div>
-    <div class="dvRow"><span class="dvLabel">ambientBoost:</span><input class="din" type="number" id="dvBoost" value="${S.ambientBoost}"><button class="dbtn" data-dact="setboost">SET</button></div>
+    <div class="dvRow"><span class="dvLabel">playTime:</span><input class="din" type="number" id="dvPlaytime" value="${Math.round(S.playTime)}"><button class="dbtn" data-dact="setplaytime">SET</button></div>
+    <div class="dvSec">🌡 Температура</div>
+    <div class="dvRow"><span class="dvLabel">temp:</span><span class="dvVal num" id="dvTempNow">${S.temp.toFixed(2)}°C</span></div>
+    <div class="dvRow"><input class="din" type="number" id="dvTempInput" value="${S.temp.toFixed(1)}"><button class="dbtn" data-dact="settemp">SET</button></div>
     <div class="dvSec">⚡ Блэкаут</div>
-    <div class="dvRow"><span class="dvLabel">статус:</span><span class="dvVal" id="dvBoNow">${blackedOut()?'АКТИВЕН':'нет'}</span></div>
     <div class="dvGrid">
-      <button class="dbtn dgr" data-dact="blackout" data-v="10">Блэкаут 10с</button>
-      <button class="dbtn dgr" data-dact="blackout" data-v="60">Блэкаут 60с</button>
+      <button class="dbtn dgr" data-dact="blackout" data-v="10">10с</button>
+      <button class="dbtn dgr" data-dact="blackout" data-v="60">60с</button>
       <button class="dbtn cyan" data-dact="blackout" data-v="0">Снять</button>
     </div>
-    <div class="dvSec">🎲 Таймер событий</div>
-    <div class="dvRow"><button class="dbtn warn" data-dact="eventnow">Случайное событие</button><button class="dbtn" data-dact="eventnever">Отключить на 1 час</button></div>`;
+    <div class="dvSec">🎲 События</div>
+    <div class="dvRow"><button class="dbtn warn" data-dact="eventnow">Случайное</button><button class="dbtn" data-dact="eventnever">Откл на 1ч</button></div>`;
   }
   else if(devTab==='events'&&hasPerm('events')){
-    h=`<div class="dvSec">🎲 Ручной запуск событий</div><div class="dvGrid" style="grid-template-columns:1fr">`;
+    h=`<div class="dvSec">🎲 Запуск событий</div><div class="dvGrid" style="grid-template-columns:1fr">`;
     Object.keys(EVENTS).forEach(k=>{
       h+=`<button class="dbtn" style="text-align:left;padding:11px" data-dact="event" data-k="${k}">${EVENTS[k].label}</button>`;
     });
     h+=`</div>
     <div class="dvSec">🌗 Специальные</div>
     <div class="dvGrid">
-      <button class="dbtn warn" data-dact="halvenow">🌗 Халвинг сейчас</button>
-      <button class="dbtn warn" data-dact="megacrash">☠️ Мега-крах −50%</button>
-      <button class="dbtn cyan" data-dact="megapump">🚀 Мега-памп ×3</button>
-      <button class="dbtn cyan" data-dact="golden">🍀 Золотой час ×10 (60с)</button>
+      <button class="dbtn warn" data-dact="halvenow">🌗 Халвинг</button>
+      <button class="dbtn warn" data-dact="megacrash">☠️ −50%</button>
+      <button class="dbtn cyan" data-dact="megapump">🚀 ×3</button>
+      <button class="dbtn cyan" data-dact="golden">🍀 ×10 (60с)</button>
     </div>`;
   }
   else if(devTab==='staff'&&hasPerm('staff')){
     const admins=getExtraAdmins(),mods=getExtraMods();
     h=`<div class="dvSec">👑 Состав персонала</div>
-    <div class="dvHint">Владелец назначается в коде (STAFF_CONFIG.OWNER_USERNAME). Админов и модераторов добавляйте ниже по @юзернейму. Хранится локально — после подключения сервера станет общим.</div>
-    <div class="staffRow"><span class="su">@${(STAFF_CONFIG.OWNER_USERNAME||'не задан')}</span><span class="sr owner">OWNER</span></div>
-    ${TG_USER?`<div class="staffRow"><span class="su">@${TG_USER.username||'—'} (вы · id ${TG_USER.id})</span><span class="sr ${devRole}">${ROLE_LABEL[devRole]}</span></div>`:''}
-    ${admins.map((a,i)=>`<div class="staffRow"><span class="su">@${a.u}</span><span class="sr admin">ADMIN</span><button class="dbtn dgr" style="padding:4px 8px" data-dact="remstaff" data-r="admin" data-i="${i}">✕</button></div>`).join('')||'<div class="dvHint">Админов пока нет</div>'}
-    ${mods.map((a,i)=>`<div class="staffRow"><span class="su">@${a.u}</span><span class="sr moderator">MODERATOR</span><button class="dbtn dgr" style="padding:4px 8px" data-dact="remstaff" data-r="mod" data-i="${i}">✕</button></div>`).join('')||'<div class="dvHint">Модераторов пока нет</div>'}
+    <div class="staffRow"><span class="su">@${STAFF_CONFIG.OWNER_USERNAME}</span><span class="sr owner">OWNER</span></div>
+    ${TG_USER?`<div class="staffRow"><span class="su">@${TG_USER.username||'—'}</span><span class="sr ${devRole}">${ROLE_LABEL[devRole]}</span></div>`:''}
+    ${admins.map((a,i)=>`<div class="staffRow"><span class="su">@${a.u}</span><span class="sr admin">ADMIN</span><button class="dbtn dgr" style="padding:4px 8px" data-dact="remstaff" data-r="admin" data-i="${i}">✕</button></div>`).join('')||'<div class="dvHint">Админов нет</div>'}
+    ${mods.map((a,i)=>`<div class="staffRow"><span class="su">@${a.u}</span><span class="sr moderator">MOD</span><button class="dbtn dgr" style="padding:4px 8px" data-dact="remstaff" data-r="mod" data-i="${i}">✕</button></div>`).join('')||'<div class="dvHint">Модов нет</div>'}
     <div class="dvSec">➕ Назначить</div>
-    <div class="dvRow"><input class="din wide" type="text" id="dvAddUser" placeholder="@юзернейм без @"><select class="din" id="dvAddRole"><option value="admin">ADMIN</option><option value="moderator">MODERATOR</option></select><button class="dbtn" data-dact="addstaff">ДОБАВИТЬ</button></div>
-    <div class="dvSec">🔑 Ключи входа (задаются в коде)</div>
-    <div class="dvHint">OWNER_KEY, ADMIN_KEY, MODERATOR_KEY — смените их в блоке STAFF_CONFIG перед публикацией!</div>
-    <div class="dvSec">📋 Задания дня</div>
-    <div class="dvGrid">
-      <button class="dbtn warn" data-dact="regenquests">🎲 Перегенерировать</button>
-      <button class="dbtn" data-dact="completequests">✅ Выполнить все</button>
-    </div>`;
+    <div class="dvRow"><input class="din wide" type="text" id="dvAddUser" placeholder="@юзернейм"><select class="din" id="dvAddRole"><option value="admin">ADMIN</option><option value="moderator">MOD</option></select><button class="dbtn" data-dact="addstaff">+</button></div>
+    <div class="dvSec">🔑 Ключи входа</div>
+    <div class="dvHint">OWNER_KEY: ${STAFF_CONFIG.OWNER_KEY}<br>ADMIN_KEY: ${STAFF_CONFIG.ADMIN_KEY}<br>MODERATOR_KEY: ${STAFF_CONFIG.MODERATOR_KEY}</div>
+    <div class="dvHint warn" style="color:#ffc94d">Смените ключи в коде!</div>`;
   }
   else if(devTab==='bans'&&hasPerm('bans')){
     const bans=getBanList();
     h=`<div class="dvSec">🚫 Бан-лист</div>
-    <div class="dvHint">Введите @юзернейм игрока (без @) и причину. Забаненный увидит экран блокировки при входе. ⚠️ Сейчас хранится локально на устройстве модератора — полноценные баны заработают после подключения сервера.</div>
-    <div class="dvRow"><input class="din wide" type="text" id="dvBanUser" placeholder="юзернейм игрока"></div>
-    <div class="dvRow"><input class="din wide" type="text" id="dvBanReason" placeholder="причина бана"><button class="dbtn dgr" data-dact="addban">🚫 ЗАБАНИТЬ</button></div>
-    <div class="dvSec">Забаненные (${bans.length})</div>
-    ${bans.map((b,i)=>`<div class="staffRow"><span class="su">@${b.u}<span style="color:rgba(255,123,123,.6);font-weight:400"> · ${b.r||'без причины'}</span></span><button class="dbtn" style="padding:4px 8px" data-dact="unban" data-i="${i}">разбанить</button></div>`).join('')||'<div class="dvHint">Бан-лист пуст</div>'}`;
+    <div class="dvRow"><input class="din wide" type="text" id="dvBanUser" placeholder="юзернейм"></div>
+    <div class="dvRow"><input class="din wide" type="text" id="dvBanReason" placeholder="причина"><button class="dbtn dgr" data-dact="addban">🚫 ЗАБАНИТЬ</button></div>
+    <div class="dvSec">Список (${bans.length})</div>
+    ${bans.map((b,i)=>`<div class="staffRow"><span class="su">@${b.u} · ${b.r||''}</span><button class="dbtn" style="padding:4px 8px" data-dact="unban" data-i="${i}">разбан</button></div>`).join('')||'<div class="dvHint">Пуст</div>'}`;
+  }
+  else if(devTab==='players'&&hasPerm('players')){
+    h=`<div class="dvSec">👥 Выдать игроку</div>
+    <div class="dvHint">Выдача работает локально (для текущего игрока). После подключения сервера — для любого игрока.</div>
+    <div class="dvRow"><input class="din wide" type="text" id="dvPlayerUser" placeholder="@юзернейм (опционально)"></div>
+    <div class="dvRow"><input class="din" type="number" id="dvGiveUSD" placeholder="USD" value="1000"><button class="dbtn" data-dact="giveusd">💵 USD</button></div>
+    <div class="dvRow"><input class="din" type="number" id="dvGiveFI" placeholder="FI" value="100"><button class="dbtn" data-dact="givefi">🪙 FI</button></div>
+    <div class="dvSec">🎯 Быстрые</div>
+    <div class="dvGrid">
+      <button class="dbtn" data-dact="giveall" data-v="1000">Всем +$1K</button>
+      <button class="dbtn" data-dact="giveall" data-v="10000">Всем +$10K</button>
+      <button class="dbtn" data-dact="giveallfi" data-v="100">Всем +100 FI</button>
+      <button class="dbtn" data-dact="giveallfi" data-v="1000">Всем +1K FI</button>
+    </div>
+    <div class="dvSec">📊 Статистика</div>
+    <div class="dvHint">Текущий: @${TG_USER?.username||'—'} · id ${TG_USER?.id||'—'}</div>`;
   }
   else if(devTab==='monitor'&&hasPerm('monitor')){
     const inc=income();
-    h=`<div class="dvSec">👁 Монитор состояния (только чтение)</div>
+    h=`<div class="dvSec">👁 Монитор</div>
     <div class="statGrid">
-      <div class="statBox"><div class="l">USD игрока</div><div class="v num" id="monUsd">${fmtUSD(S.usd)}</div></div>
-      <div class="statBox"><div class="l">FI игрока</div><div class="v num" id="monFi">${fmtFI(S.fi)}</div></div>
+      <div class="statBox"><div class="l">USD</div><div class="v num" id="monUsd">${fmtUSD(S.usd)}</div></div>
+      <div class="statBox"><div class="l">FI</div><div class="v num" id="monFi">${fmtFI(S.fi)}</div></div>
       <div class="statBox"><div class="l">Цена</div><div class="v num" id="monPrice">$${S.price.toFixed(4)}</div></div>
       <div class="statBox"><div class="l">Хешрейт</div><div class="v num" id="monHash">${fmtHash(inc.hash)}</div></div>
-      <div class="statBox"><div class="l">Температура</div><div class="v num" id="monTemp">${S.temp.toFixed(1)}°C</div></div>
+      <div class="statBox"><div class="l">Темп</div><div class="v num" id="monTemp">${S.temp.toFixed(1)}°C</div></div>
       <div class="statBox"><div class="l">Устройств</div><div class="v num" id="monUnits">${totalUnits(S)}</div></div>
-      <div class="statBox"><div class="l">Доля сети</div><div class="v num" id="monShare">${(inc.share*100).toFixed(4)}%</div></div>
-      <div class="statBox"><div class="l">Халвинг через</div><div class="v num" id="monHalv">${fmtMMSS(S.halvIn)}</div></div>
-      <div class="statBox"><div class="l">Скорость</div><div class="v num">${S._speed}× ${S._paused?'⏸':''}</div></div>
-      <div class="statBox"><div class="l">Аптайм</div><div class="v num">${fmtTime(S.playTime)}</div></div>
-    </div>
-    <div class="dvHint" style="margin-top:10px">Роль MODERATOR даёт только наблюдение и баны. Для управления состоянием нужны права ADMIN или OWNER.</div>`;
+      <div class="statBox"><div class="l">Доля</div><div class="v num" id="monShare">${(inc.share*100).toFixed(4)}%</div></div>
+      <div class="statBox"><div class="l">Халвинг</div><div class="v num" id="monHalv">${fmtMMSS(S.halvIn)}</div></div>
+    </div>`;
   }
   else if(devTab==='json'&&hasPerm('json')){
-    h=`<div class="dvSec">🧬 Полное состояние игры (только OWNER)</div>
-    <div class="dvHint">Прямое редактирование любого поля. Невалидный JSON будет отклонён.</div>
+    h=`<div class="dvSec">🧬 JSON (OWNER)</div>
     <textarea id="dvJson" spellcheck="false">${JSON.stringify(S,null,1).replace(/</g,'&lt;')}</textarea>
     <div class="dvRow" style="margin-top:8px">
       <button class="dbtn" data-dact="jsonapply">✔ ПРИМЕНИТЬ</button>
-      <button class="dbtn cyan" data-dact="jsonrefresh">↻ Обновить</button>
-      <button class="dbtn cyan" data-dact="jsoncopy">📋 Копировать</button>
+      <button class="dbtn cyan" data-dact="jsonrefresh">↻</button>
+      <button class="dbtn cyan" data-dact="jsoncopy">📋</button>
     </div>
-    <div class="dvSec">💾 Сохранение</div>
+    <div class="dvSec">💾</div>
     <div class="dvGrid">
-      <button class="dbtn" data-dact="forcesave">💾 Сохранить сейчас</button>
-      <button class="dbtn" data-dact="exportfile">⬇ Экспорт в файл</button>
-      <button class="dbtn dgr" data-dact="hardreset">☠ HARD RESET</button>
+      <button class="dbtn" data-dact="forcesave">💾 Save</button>
+      <button class="dbtn" data-dact="exportfile">⬇ Export</button>
+      <button class="dbtn dgr" data-dact="hardreset">☠ RESET</button>
     </div>`;
   }
-  c.innerHTML=h||'<div class="dvHint">Нет доступных разделов для вашей роли.</div>';
+  c.innerHTML=h||'<div class="dvHint">Нет прав для этой вкладки.</div>';
   updateDevLive();
 }
 function swHTML(id,on,label){return `<div class="dvRow"><span class="dvLabel">${label}</span><button class="dvSwitch ${on?'on':''}" data-dact="${id}"></button><span class="dvVal">${on?'ON':'OFF'}</span></div>`;}
@@ -1658,11 +2039,9 @@ function updateDevLive(){
   setT('dvTrendNow','$'+S.trend.toFixed(4));
   setT('dvNetNow',fmtHash(S.netHash));
   setT('dvTempNow',S.temp.toFixed(2)+'°C');
-  setT('dvBoNow',blackedOut()?'АКТИВЕН':'нет');
-  setT('dvTick','#'+tickCount+(S._paused?' [PAUSED]':''));
+  setT('dvTick','#'+tickCount+(S._paused?' [P]':''));
   setT('dvSpdLbl',S._speed+'×');
   setT('dvFootPrice','$'+S.price.toFixed(3));
-  // монитор
   setT('monUsd',fmtUSD(S.usd));
   setT('monFi',fmtFI(S.fi));
   setT('monPrice','$'+S.price.toFixed(4));
@@ -1680,85 +2059,88 @@ $('devContent').addEventListener('click',e=>{
   if(a==='login'){doLogin();return;}
   const after=()=>{save();refresh();updateDevLive();};
   switch(a){
-    case 'god':S._god=!S._god;devLog('God Mode: '+(S._god?'ON':'OFF'));renderDev();after();break;
-    case 'frozen':S._frozen=!S._frozen;devLog('Цена '+(S._frozen?'заморожена':'разморожена'));renderDev();after();break;
-    case 'sharecap':S._shareCap=!S._shareCap;devLog('Лимит доли: '+(S._shareCap?'15%':'выкл'));renderDev();after();break;
-    case 'paused':S._paused=!S._paused;devLog(S._paused?'⏸ Пауза':'▶ Запущено');renderDev();after();break;
+    case 'god':S._god=!S._god;devLog('God: '+(S._god?'ON':'OFF'));renderDev();after();break;
+    case 'frozen':S._frozen=!S._frozen;renderDev();after();break;
+    case 'sharecap':S._shareCap=!S._shareCap;renderDev();after();break;
+    case 'paused':S._paused=!S._paused;renderDev();after();break;
     case 'autosellbuy':S.autoBought=!S.autoBought;if(!S.autoBought)S.autoSell=false;renderDev();after();break;
     case 'autosell':if(!S.autoBought){snd('err');break;}S.autoSell=!S.autoSell;renderDev();after();break;
-    case 'setusd':{const x=dvNum('dvUsdInput');if(isNaN(x))break;S.usd=x;devLog('USD = '+fmtUSD(x));after();break;}
-    case 'addusd':S.usd+=v;devLog('+$'+v.toLocaleString());after();break;
+    case 'setusd':{const x=dvNum('dvUsdInput');if(isNaN(x))break;S.usd=x;after();break;}
+    case 'addusd':S.usd+=v;after();break;
     case 'setusd0':S.usd=0;after();break;
     case 'setfi':{const x=dvNum('dvFiInput');if(isNaN(x))break;S.fi=Math.max(0,x);after();break;}
     case 'addfi':S.fi=Math.max(0,S.fi+v);after();break;
     case 'setfi0':S.fi=0;after();break;
-    case 'setcrystals':{const x=Math.max(0,Math.floor(dvNum('dvCrystals')||0));S.crystals=x;devLog('Кристаллы = '+x+' (буст ×'+prestigeMult().toFixed(2)+')');after();break;}
-    case 'zeroStats':S.totalFI=0;S.totalPowerUSD=0;S.totalEarnedUSD=0;S.totalSpentUSD=0;S.blocks=0;S.playTime=0;S.repairDone=0;devLog('Статистика обнулена');after();break;
-    case 'allAchv':S.achv=ACHVS.map(x=>x.id);devLog('Все достижения открыты');after();break;
+    case 'setcrystals':{const x=Math.max(0,Math.floor(dvNum('dvCrystals')||0));S.crystals=x;after();break;}
+    case 'setstreak':{const x=clamp(Math.floor(dvNum('dvStreak')||0),0,6);S.daily.streak=x;renderDev();after();break;}
+    case 'claimdailydev':claimDaily();renderDev();break;
+    case 'resetdaily':S.daily={streak:0,lastClaim:'',claimedToday:false};renderDev();after();break;
+    case 'zeroStats':S.totalFI=0;S.totalPowerUSD=0;S.totalEarnedUSD=0;S.totalSpentUSD=0;S.blocks=0;S.playTime=0;S.repairDone=0;after();break;
+    case 'allAchv':S.achv=ACHVS.map(x=>x.id);after();break;
     case 'setprice':{const x=dvNum('dvPriceInput');if(isNaN(x)||x<=0)break;S.price=x;S.trend=x;pushPrice();after();break;}
+    case 'settargetprice':{const x=dvNum('dvTargetPrice');if(isNaN(x)||x<=0)break;S.price=x;S.trend=x;S.sessionOpen=x;pushPrice();devLog('Цена установлена: $'+x);after();break;}
     case 'mulprice':S.price=Math.max(0.0001,S.price*v);S.trend=S.price;pushPrice();after();break;
-    case 'setprice100':S.price=100;S.trend=100;pushPrice();after();break;
     case 'setprice001':S.price=0.01;S.trend=0.01;pushPrice();after();break;
-    case 'setsess':{const x=dvNum('dvSessInput');if(isNaN(x)||x<=0)break;S.sessionOpen=x;after();break;}
+    case 'settrend':{const x=dvNum('dvTrendInput');if(isNaN(x)||x<=0)break;S.trend=x;after();break;}
+    case 'pump':{const p=dvNum('dvPumpPct')||0;S.price*=1+p/100;S.trend=S.price;pushPrice();devLog('ПАМП +'+p+'%');after();break;}
+    case 'dump':{const p=dvNum('dvPumpPct')||0;S.price*=Math.max(0.0001,1-p/100);S.trend=S.price;pushPrice();devLog('ДАМП -'+p+'%');after();break;}
     case 'setnet':{const x=dvNum('dvNetInput');if(isNaN(x)||x<=0)break;S.netHash=x;after();break;}
-    case 'mulnet':S.netHash=Math.max(1,S.netHash*v);after();break;
     case 'setrew':{const x=dvNum('dvRewInput');if(isNaN(x)||x<0)break;S.blockReward=x;after();break;}
     case 'sethalv':{const x=dvNum('dvHalvInput');if(isNaN(x))break;S.halvIn=x;after();break;}
-    case 'halvenow':S.halvIn=0;devLog('Халвинг инициирован');after();break;
+    case 'halvenow':S.halvIn=0;after();break;
     case 'setminer':{const n=Math.max(0,Math.floor(dvNum('dvn-'+id)||0));const br=clamp(Math.floor(dvNum('dvb-'+id)||0),0,n);S.miners[id].n=n;S.miners[id].broken=br;after();break;}
-    case 'addminer':S.miners[id].n=Math.max(0,S.miners[id].n+v);after();break;
+    case 'setgpu':{const n=Math.max(0,Math.floor(dvNum('dvgn-'+id)||0));S.gpus[id].n=n;after();break;}
     case 'allminers':MINERS.forEach(m=>S.miners[m.id].n=v);after();break;
     case 'clearminers':MINERS.forEach(m=>{S.miners[m.id].n=0;S.miners[m.id].broken=0;});after();break;
-    case 'breakall':MINERS.forEach(m=>{S.miners[m.id].broken=S.miners[m.id].n;});devLog('💥 Всё сломано');after();break;
-    case 'repairfree':MINERS.forEach(m=>S.miners[m.id].broken=0);devLog('Всё отремонтировано');after();break;
+    case 'breakall':MINERS.forEach(m=>{S.miners[m.id].broken=S.miners[m.id].n;});after();break;
+    case 'repairfree':MINERS.forEach(m=>S.miners[m.id].broken=0);after();break;
+    case 'allgpus':GPUS.forEach(g=>S.gpus[g.id].n=v);after();break;
+    case 'cleargpus':GPUS.forEach(g=>S.gpus[g.id].n=0);after();break;
     case 'setupg':{
       const x=Math.max(0,Math.floor(dvNum(k==='cool'?'dvCool':k==='power'?'dvPower':'dvOc')||0));
-      if(k==='cool')S.cool=Math.min(x,99);
-      if(k==='power')S.powerLvl=Math.min(x,99);
-      if(k==='oc')S.oc=Math.min(x,99);
+      if(k==='cool')S.cool=x;
+      if(k==='power')S.powerLvl=x;
+      if(k==='oc')S.oc=x;
       renderDev();after();break;}
-    case 'maxupg':S.cool=8;S.powerLvl=6;S.oc=5;S.autoBought=true;devLog('Всё MAX');renderDev();after();break;
+    case 'maxupg':S.cool=8;S.powerLvl=6;S.oc=5;S.autoBought=true;renderDev();after();break;
     case 'zeroupg':S.cool=0;S.powerLvl=0;S.oc=0;S.autoSell=false;S.autoBought=false;renderDev();after();break;
     case 'setenergy':S.energy.solar=Math.max(0,Math.floor(dvNum('dvESolar')||0));S.energy.wind=Math.max(0,Math.floor(dvNum('dvEWind')||0));S.energy.gas=Math.max(0,Math.floor(dvNum('dvEGas')||0));S.energy.reactor=Math.max(0,Math.floor(dvNum('dvEReactor')||0));after();break;
-    case 'allresearch':Object.keys(RESEARCH).forEach(r=>S.research[r]=1);devLog('Все исследования изучены');after();break;
+    case 'allresearch':Object.keys(RESEARCH).forEach(r=>S.research[r]=1);after();break;
     case 'zeroresearch':Object.keys(RESEARCH).forEach(r=>S.research[r]=0);after();break;
     case 'setplaytime':{const x=dvNum('dvPlaytime');if(isNaN(x)||x<0)break;S.playTime=x;after();break;}
     case 'settemp':{const x=dvNum('dvTempInput');if(isNaN(x))break;S.temp=clamp(x,20,110);after();break;}
-    case 'settempv':S.temp=clamp(v,20,110);after();break;
-    case 'setboost':{const x=dvNum('dvBoost');if(isNaN(x))break;S.ambientBoost=x;S.boostUntil=x>0?Date.now()+36e5:0;after();break;}
     case 'blackout':S.blackoutUntil=v>0?Date.now()+v*1000:0;after();break;
     case 'eventnow':fireEvent();break;
-    case 'eventnever':S.nextEvent=Date.now()+36e5;devLog('События отключены на 1 час');break;
+    case 'eventnever':S.nextEvent=Date.now()+36e5;break;
     case 'event':EVENTS[k].f();after();break;
-    case 'megacrash':S.price*=0.5;S.trend=S.price;pushPrice();toast('МЕГА-КРАХ! FI −50%.','☠️','red');after();break;
-    case 'megapump':S.price*=3;S.trend=S.price;pushPrice();toast('МЕГА-ПАМП! FI ×3!','🚀','green');after();break;
-    case 'golden':{const old=S.blockReward;S.blockReward*=10;toast('🍀 ЗОЛОТОЙ ЧАС! Награда ×10 на 60 секунд!','🍀','gold');
-      setTimeout(()=>{S.blockReward=old;toast('Золотой час завершён.','⌛','');},60000);after();break;}
-    // staff
+    case 'megacrash':S.price*=0.5;S.trend=S.price;pushPrice();after();break;
+    case 'megapump':S.price*=3;S.trend=S.price;pushPrice();after();break;
+    case 'golden':{const old=S.blockReward;S.blockReward*=10;toast('ЗОЛОТОЙ ЧАС!','🍀','gold');
+      setTimeout(()=>{S.blockReward=old;},60000);after();break;}
     case 'addstaff':{
       const u=($('dvAddUser')?$('dvAddUser').value:'').trim().replace(/^@/,'').toLowerCase();
       const r=$('dvAddRole')?$('dvAddRole').value:'admin';
-      if(!u){snd('err');devLog('Введите юзернейм');break;}
+      if(!u){snd('err');break;}
       if(r==='admin'){const l=getExtraAdmins();if(!l.some(x=>x.u===u))l.push({u,t:Date.now()});lsSet('fiExtraAdmins',l);}
       else{const l=getExtraMods();if(!l.some(x=>x.u===u))l.push({u,t:Date.now()});lsSet('fiExtraMods',l);}
-      devLog(`@${u} назначен ${r.toUpperCase()}`);snd('win');renderDev();break;}
+      snd('win');renderDev();break;}
     case 'remstaff':{
       if(b.dataset.r==='admin'){const l=getExtraAdmins();l.splice(+b.dataset.i,1);lsSet('fiExtraAdmins',l);}
       else{const l=getExtraMods();l.splice(+b.dataset.i,1);lsSet('fiExtraMods',l);}
-      devLog('Сотрудник снят с должности');renderDev();break;}
-    case 'regenquests':S.quests={date:todayStr(),list:genQuests()};devLog('Задания перегенерированы');after();break;
-    case 'completequests':ensureQuests();S.quests.list.forEach(q=>{if(!q.claimed)q.claimed=true;});devLog('Все задания отмечены выполненными (награды не выданы)');after();break;
-    // bans
+      renderDev();break;}
     case 'addban':{
       const u=($('dvBanUser')?$('dvBanUser').value:'').trim().replace(/^@/,'').toLowerCase();
       const r=($('dvBanReason')?$('dvBanReason').value:'').trim();
-      if(!u){snd('err');devLog('Введите юзернейм');break;}
-      if(TG_USER&&(u===TG_USER.username||u===TG_USER.id)){snd('err');devLog('Нельзя забанить себя');break;}
+      if(!u){snd('err');break;}
+      if(TG_USER&&(u===TG_USER.username||u===TG_USER.id)){snd('err');break;}
       const l=getBanList();
-      if(!l.some(b=>b.u===u))l.push({u,r:r||'нарушение правил',by:devRole,t:Date.now()});
-      setBanList(l);devLog(`🚫 @${u} забанен`);snd('err');renderDev();break;}
-    case 'unban':{const l=getBanList();const rm=l.splice(+b.dataset.i,1);setBanList(l);devLog(`✅ @${rm[0]?rm[0].u:'?'} разбанен`);renderDev();break;}
-    // json (owner)
+      if(!l.some(b=>b.u===u))l.push({u,r:r||'нарушение',by:devRole,t:Date.now()});
+      setBanList(l);snd('err');renderDev();break;}
+    case 'unban':{const l=getBanList();l.splice(+b.dataset.i,1);setBanList(l);renderDev();break;}
+    case 'giveusd':{const amt=dvNum('dvGiveUSD');if(isNaN(amt)||amt<=0){snd('err');break;}S.usd+=amt;snd('win');after();break;}
+    case 'givefi':{const amt=dvNum('dvGiveFI');if(isNaN(amt)||amt<=0){snd('err');break;}S.fi+=amt;snd('win');after();break;}
+    case 'giveall':{S.usd+=v;snd('win');after();break;}
+    case 'giveallfi':{S.fi+=v;snd('win');after();break;}
     case 'jsonapply':{
       try{
         const p=JSON.parse($('dvJson').value);
@@ -1767,31 +2149,30 @@ $('devContent').addEventListener('click',e=>{
         MINERS.forEach(m=>{if(!S.miners[m.id])S.miners[m.id]={n:0,broken:0};
           S.miners[m.id].n=Math.max(0,Math.floor(S.miners[m.id].n||0));
           S.miners[m.id].broken=clamp(Math.floor(S.miners[m.id].broken||0),0,S.miners[m.id].n);});
-        devLog('✔ JSON применён');renderDev();refresh();updateHUD();save();
-      }catch(err){devLog('✖ Ошибка JSON: '+err.message);snd('err');}
+        renderDev();refresh();updateHUD();save();
+      }catch(err){devLog('Ошибка: '+err.message);snd('err');}
       break;}
     case 'jsonrefresh':renderDev();break;
     case 'jsoncopy':{
       const txt=$('dvJson').value;
-      if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>devLog('Скопировано')).catch(()=>devLog('Ошибка копирования'));
+      if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>devLog('Скопировано'));
       break;}
-    case 'forcesave':S.lastSave=Date.now();S.lastTick=Date.now();save();devLog('💾 Сохранено');break;
+    case 'forcesave':S.lastSave=Date.now();S.lastTick=Date.now();save();break;
     case 'exportfile':{
       const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
-      const a2=document.createElement('a');a2.href=URL.createObjectURL(blob);a2.download='fi-miner-save.json';a2.click();
+      const a2=document.createElement('a');a2.href=URL.createObjectURL(blob);a2.download='fi-save.json';a2.click();
       break;}
     case 'hardreset':
-      modal(`<div style="font-size:38px">☠️</div><h3>HARD RESET</h3><p>Полное удаление сохранения. Отменить нельзя.</p>
-        <div class="mRow"><button class="btn btn-ghost" onclick="closeModal()">Отмена</button><button class="btn btn-red" id="hardResetBtn">Удалить всё</button></div>`);
-      $('hardResetBtn').onclick=()=>{localStorage.removeItem('fiMinerSave4');location.reload();};
+      modal(`<div style="font-size:38px">☠️</div><h3>HARD RESET</h3><p>Всё будет удалено.</p>
+        <div class="mRow"><button class="btn btn-ghost" onclick="closeModal()">Отмена</button><button class="btn btn-red" id="hardResetBtn">Удалить</button></div>`);
+      $('hardResetBtn').onclick=()=>{localStorage.removeItem('fiMinerSave6');location.reload();};
       break;
   }
 });
 $('devContent').addEventListener('change',e=>{
-  if(e.target.id==='dvSpeedSel'){S._speed=parseFloat(e.target.value);devLog('Скорость: '+S._speed+'×');updateDevLive();save();}
+  if(e.target.id==='dvSpeedSel'){S._speed=parseFloat(e.target.value);save();}
 });
 
-// ═══════════ MENU ═══════════
 $('menuBtn').addEventListener('click',e=>{e.stopPropagation();$('menuDrop').classList.toggle('open');});
 document.addEventListener('click',e=>{if(!e.target.closest('#menuDrop')&&!e.target.closest('#menuBtn'))$('menuDrop').classList.remove('open');});
 document.querySelectorAll('[data-menu]').forEach(el=>el.addEventListener('click',()=>{
@@ -1799,21 +2180,20 @@ document.querySelectorAll('[data-menu]').forEach(el=>el.addEventListener('click'
   $('menuDrop').classList.remove('open');
   if(k==='sound'){S.sound=!S.sound;$('soundLabel').textContent='Звук: '+(S.sound?'вкл':'выкл');save();}
   if(k==='dev'){toggleDev(true);}
-  if(k==='about'){modal(`<div style="width:56px;height:56px;margin:0 auto 8px">${coinSVG()}</div><h3>FI Mining Bot v4.0</h3>
-    <p style="text-align:left">Изумрудная криптовалюта FI:<br><br>
-    ⛏️ 6 моделей ASIC · 🌡️ физика перегрева и поломок<br>🔋 солнечная и ядерная энергетика · 🔬 7 исследований<br>
-    📋 задания дня · 🎰 лотерея · 💎 престиж с кристаллами<br>🌗 халвинг каждые 5 минут · 📈 живая биржа</p>
+  if(k==='about'){modal(`<div style="width:56px;height:56px;margin:0 auto 8px">${coinSVG()}</div><h3>FI Mining Bot v6.0</h3>
+    <p style="text-align:left">Ultimate Edition:<br><br>
+    ⛏️ 6 ASIC + 🎮 7 GPU для апгрейдера<br>🌡️ физика перегрева · 🔋 4 энергоисточника · 🔬 8 исследований<br>
+    📤 P2P переводы FI · ⚔️ PvP дуэли · 🎰 рулетка<br>🎁 ежедневные бонусы · 💎 престиж · 🏆 лидерборд</p>
     <div class="mRow"><button class="btn btn-em" onclick="closeModal()">Круто!</button></div>`);}
   if(k==='reset'){switchTab('profile');setTimeout(()=>document.querySelector('[data-act="resetask"]')?.click(),120);}
 }));
 $('priceChip').addEventListener('click',()=>switchTab('market'));
 
-// ═══════════ INTRO ═══════════
 $('botAvatar').innerHTML=coinSVG();
 $('introCoin').innerHTML=coinSVG();
 const chatSeq=[
  {d:600,h:`<div class="chatBub">Добро пожаловать в <b style="color:var(--em)">FI Mining Bot</b>! 🤖</div>`},
- {d:1500,h:`<div class="chatBub">Стартовый капитал — <b style="color:var(--fi-green)">$500</b>. Стройте ферму, изучайте технологии, добывайте изумрудные FI coin и покоряйте рейтинг!</div>`},
+ {d:1500,h:`<div class="chatBub">Стартовый капитал <b style="color:var(--fi-green)">$500</b>. Майни FI, апгрейдь видеокарты, сражайся в дуэлях и отправляй FI друзьям!</div>`},
  {d:2400,h:`<div class="chatBub"><span class="cmd">/start</span> <span class="typing"><span></span><span></span><span></span></span></div>`},
 ];
 let introShown=false;
@@ -1824,23 +2204,20 @@ $('startBtn').addEventListener('click',()=>{
   $('intro').classList.add('hide');
   setTimeout(()=>$('intro').style.display='none',500);
   if(!S.started){S.started=true;S.sessionOpen=S.price;pushPrice();ensureQuests();
-    setTimeout(()=>toast('Стартовый капитал $500 зачислен. Купите первый майнер!','💵','em'),400);
-    setTimeout(()=>toast('Выполняйте задания дня — за них платят награды.','📋','gold'),3500);
+    setTimeout(()=>toast('Стартовый капитал $500 зачислен!','💵','em'),400);
   }
   save();
 });
 
-// ═══════════ INIT ═══════════
 function init(){
   $('soundLabel').textContent='Звук: '+(S.sound?'вкл':'выкл');
   while(S.priceHist.length<2)pushPrice();
   loadRole();
   updateRoleBadge();
-  // проверка бана
   if(isBanned()){
     $('intro').style.display='none';
     const ban=getBanList().find(b=>TG_USER&&(b.u===TG_USER.username||b.u===TG_USER.id));
-    $('banReason').textContent=`Причина: ${ban&&ban.r?ban.r:'нарушение правил проекта'}. Решение принято администрацией.`;
+    $('banReason').textContent=`Причина: ${ban&&ban.r?ban.r:'нарушение правил'}.`;
     $('banned').classList.add('show');
     return;
   }
