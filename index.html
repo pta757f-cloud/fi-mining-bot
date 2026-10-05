@@ -562,7 +562,7 @@ function prestigeMult(){return 1+S.crystals*0.02;}
 function coolingPower(){return 1200*Math.pow(1.9,S.cool);}
 function minerCost(m){return S._god?0:Math.ceil(m.price*Math.pow(1.18,S.miners[m.id].n));}
 function energyCost(k){return S._god?0:Math.ceil(ENERGY[k].price*Math.pow(1.6,S.energy[k]||0));}
-function upgCost(k){const u=UPG[k];const l=k==='cool'?S.cool:k==='power'?S.powerLvl:k==='oc'?0;if(S._god)return 0;return Math.ceil(u.baseCost*Math.pow(u.mult,l));}
+function upgCost(k){const u=UPG[k];const l=k==='cool'?S.cool:k==='power'?S.powerLvl:k==='oc'?S.oc:0;if(S._god)return 0;return Math.ceil(u.baseCost*Math.pow(u.mult,l));}
 function totalUnits(st){return MINERS.reduce((a,m)=>a+st.miners[m.id].n,0);}
 function capital(st){return st.usd+st.fi*st.price+MINERS.reduce((a,m)=>a+st.miners[m.id].n*m.price*0.6,0);}
 function rankOf(cap){let r=RANKS[0];for(const x of RANKS)if(cap>=x[0])r=x;return r;}
