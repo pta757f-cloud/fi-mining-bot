@@ -152,6 +152,7 @@ const minerCost = (m, n) => Math.ceil(m.price * Math.pow(CFG.minerPriceGrowth, n
 
 /* ------------------------- API TELEGRAM ------------------------- */
 const API = 'https://api.telegram.org/bot' + CFG.token;
+const PAGES_URL = 'https://pta757f-cloud.github.io/fi-mining-bot/';
 
 async function tg(method, params = {}) {
     for (let a = 1; a <= 3; a++) {
@@ -291,6 +292,7 @@ function kbMain() {
         [{ text: '👤 Профиль', callback_data: 'tab:profile' }, { text: '📈 Рынок', callback_data: 'tab:market' }],
         [{ text: '🏭 Магазин', callback_data: 'tab:shop' }, { text: '🏆 Топ', callback_data: 'tab:top' }],
         [{ text: '🎁 Бонус', callback_data: 'act:bonus' }, { text: '💼 Работа', callback_data: 'act:work' }],
+        [{ text: '📱 Код для приложения', callback_data: 'act:lcode' }],
         [{ text: '🛠 STAFF', callback_data: 'tab:staff' }]
     ];
 }
@@ -311,13 +313,21 @@ function priceHeader() {
 }
 
 function screenMain() {
-    return { text: `🏠 <b>${esc(S('title'))}</b>\n\n${S('welcome')}`, kb: kbMain() };
+    return {
+        text: `🏠 <b>${esc(S('title'))}</b>\n\n${S('welcome')}\n\n` +
+            `📱 Есть приложение на телефон — тот же баланс, что и тут.\n` +
+            `👉 Код для привязки: <code>/linkcode</code> или кнопка «📱 Код для приложения» (ниже и в 👤 Профиле).`,
+        kb: kbMain()
+    };
 }
 
 function screenProfile(p) {
     const h = totalHash(p);
     const perHour = h * S('fiPerThHour');
     const banBlock = p.banned ? `\n\n🚫 <b>Аккаунт заблокирован.</b>\nПричина: ${esc(p.banReason || 'не указана')}` : '';
+    const appLine = p.uid
+        ? `\n📱 <b>Приложение на телефоне привязано</b> · ID <code>${esc(p.uid)}</code>`
+        : `\n📱 <b>Приложение на телефоне:</b> не привязано — жми кнопку ниже`;
     return {
         text: `${priceHeader()}👤 <b>Профиль ${fname(p)}</b>\n\n` +
             `💵 USD: <b>${fmt(p.usd)}</b>\n` +
@@ -325,9 +335,10 @@ function screenProfile(p) {
             `⚡ Мощность: <b>${fmt(h)} TH/s</b> → ${CIn(perHour)}/час\n` +
             `⛏ Добыто всего: ${CIn(p.totalMined)}\n` +
             `🛒 Куплено ${CIn(p.bought)} | 📉 Продано ${CIn(p.sold)}\n` +
-            `📅 В игре с: ${new Date(p.joined).toLocaleDateString('ru-RU')}${banBlock}`,
+            `📅 В игре с: ${new Date(p.joined).toLocaleDateString('ru-RU')}${appLine}${banBlock}`,
         kb: [
             [{ text: '💼 Работа', callback_data: 'act:work' }, { text: '🎁 Бонус', callback_data: 'act:bonus' }],
+            [{ text: '📱 Код для приложения', callback_data: 'act:lcode' }],
             kbHomeRow()
         ]
     };
@@ -682,9 +693,12 @@ function saveStateToGitHub(force) {
     gitSaving = true; gitLastSave = now;
     return (async () => {
         try {
+            /* приватное в публичное зеркало не уезжает: коды привязки (кража с GitHub = захват игры
+               по связке) и контексты кнопок (чат-ID). В памяти бота они остаются включая использование */
+            const remote = Object.assign({}, state, { linkCodes: [], dialogs: {} });
             const body = {
                 message: 'chore: bot state sync',
-                content: Buffer.from(JSON.stringify(state)).toString('base64'),
+                content: Buffer.from(JSON.stringify(remote)).toString('base64'),
                 branch: GH.branch
             };
             if (state._gitSha) body.sha = state._gitSha;
@@ -770,6 +784,15 @@ function genCode() {
     let s = '';
     for (let i = 0; i < 8; i++) s += LINK_CODE_AB[Math.floor(Math.random() * LINK_CODE_AB.length)];
     return s.slice(0, 4) + '-' + s.slice(4);
+}
+/* одноразовый код привязки телефона (TTL 10 мин) — общий для Telegram и HTTP API */
+function createLinkCode(p) {
+    state.linkCodes = state.linkCodes || [];
+    state.linkCodes = state.linkCodes.filter(c => c.to !== String(p.id) && Date.now() - c.at < 10 * 60000);
+    const code = genCode();
+    state.linkCodes.push({ code, to: String(p.id), at: Date.now() });
+    saveState();
+    return code;
 }
 /* аутентификация запроса: Telegram initData (приоритет) ЛИБО подпись устройства */
 function deviceVerify(body) {
@@ -1300,11 +1323,7 @@ async function apiRoute(pathname, method, bodyRaw) {
                 const u = verifyInitData(body.init || '');
                 if (!u) return { ok: false, err: 'auth' };
                 const p = ensurePlayer(u);
-                state.linkCodes = state.linkCodes || [];
-                state.linkCodes = state.linkCodes.filter(c => c.to !== String(p.id) && Date.now() - c.at < 10 * 60000);
-                const code = genCode();
-                state.linkCodes.push({ code, to: String(p.id), at: Date.now() });
-                saveState();
+                const code = createLinkCode(p);
                 return { ok: true, code, msg: 'Код живёт 10 минут' };
             }
             /* телефон: отдельный профиль (нужен ник) */
@@ -1547,6 +1566,21 @@ async function onCallback(q) {
                 p.workAt = Date.now();
                 adminSay(`💼 ${fname(p)} отработал смену +$${pay}`);
                 await answer(q, `💼 Смена отработана! +$${fmt(pay)}`);
+            } else if (b === 'lcode') {
+                if (p.uid) {
+                    await answer(q, '📱 Приложение уже привязано');
+                    return send(chat, `📱 Приложение уже привязано к этому профилю (ID <code>${esc(p.uid)}</code>).\nОткрой игру на телефоне — баланс общий.`);
+                }
+                const code = createLinkCode(p);
+                adminSay(`📱 ${fname(p)} получил код для приложения`);
+                await answer(q, '📱 Код на 10 минут');
+                await send(chat,
+                    `📱 <b>Код для приложения на телефон</b>\n\n` +
+                    `<b><code>${code}</code></b>\n\n` +
+                    `1) Открой игру на телефоне (APK или сайт)\n` +
+                    `2) Введи код в поле «Код привязки (ABCD-1234)»\n` +
+                    `3) Баланс станет общим — и тут, и в приложении ✅\n\n` +
+                    `⏳ Код живёт 10 минут и работает один раз.`);
             }
             saveState();
             const sp = screenProfile(p);
@@ -1850,6 +1884,20 @@ async function onMessage(msg) {
 
     switch (cmd) {
         case 'help': return helpCmd(chat);
+        case 'linkcode': case 'app': {
+            const p = ensurePlayer(user);
+            if (p.banned) return send(chat, '🚫 Забанен — связка недоступна');
+            if (p.uid) return send(chat, `📱 Приложение уже привязано (ID <code>${esc(p.uid)}</code>).\nОткрой игру на телефоне — баланс общий.`);
+            const code = createLinkCode(p);
+            adminSay(`📱 ${fname(p)} получил код для приложения (/linkcode)`);
+            return send(chat,
+                `📱 <b>Код для приложения на телефон</b>\n\n` +
+                `<b><code>${code}</code></b>\n\n` +
+                `1) Открой игру на телефоне (APK: ${PAGES_URL}apk/FI-Coin.apk)\n` +
+                `2) Введи код в поле «Код привязки (ABCD-1234)»\n` +
+                `3) Баланс станет общим ✅\n\n` +
+                `⏳ Код живёт 10 минут и работает один раз.`);
+        }
         case 'profile': case 'bal': { const p = ensurePlayer(user); const s = screenProfile(p); return send(chat, s.text, s.kb); }
         case 'market': { const p = ensurePlayer(user); const s = screenMarket(p); return send(chat, s.text, s.kb); }
         case 'shop': { const p = ensurePlayer(user); const s = screenShop(p); return send(chat, s.text, s.kb); }
@@ -2136,6 +2184,8 @@ function helpCmd(chat) {
         `🏠 Меню — кнопкой или /start\n` +
         `👤 /profile · 📈 /market · 🏭 /shop · 🏆 /top\n` +
         `🎁 Бонус раз в день · 💼 Работа каждые ${S('workIntervalMin')} мин\n` +
+        `📱 /linkcode — код для приложения на телефон\n` +
+        `📲 APK: ${PAGES_URL}apk/FI-Coin.apk\n` +
         `ℹ️ /price · 🆔 /id\n\n` +
         `<b>STAFF (для админов):</b>\n` +
         `🛠 /staff — открыть консоль (вход по паролю)\n` +
