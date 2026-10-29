@@ -1,0 +1,33 @@
+{
+  "token": "ВСТАВЬ_СЮДА_ТОКЕН_ОТ_@BotFather",
+  "staffPassword": "FI-ADMIN-2026",
+  "ownerOnlyBans": false,
+  "minerPriceGrowth": 1.18,
+  "game": {
+    "title": "FI Mining Bot",
+    "coinName": "FI",
+    "coinEmoji": "🪙",
+    "welcome": "Добро пожаловать в мир FI Coin!\nДобывай, торгуй, становись крипто-олигархом.",
+    "startUsd": 1000,
+    "startFi": 0,
+    "startPrice": 2.40,
+    "fiPerThHour": 1.26,
+    "volatilityPct": 8,
+    "eventChancePct": 4,
+    "workIntervalMin": 40,
+    "workPayMin": 200,
+    "workPayMax": 500,
+    "bonusDailyUsd": 500,
+    "bonusDailyFi": 5,
+    "buySpreadPct": 2,
+    "sellSpreadPct": 2
+  },
+  "miners": [
+    { "id": "usb", "name": "⛏ FI Mini USB", "hash": 0.5, "price": 120, "desc": "Нормальная рампа для старта." },
+    { "id": "s9", "name": "⛏ FI Rig S9", "hash": 14, "price": 850, "desc": "Классический ASIC начального уровня." },
+    { "id": "m50", "name": "⛏ FI Miner M50", "hash": 114, "price": 4200, "desc": "Промышленно-эффективный пенал." },
+    { "id": "avx", "name": "⛏ FI Avalon X", "hash": 250, "price": 11500, "desc": "Серьёзный вагон." },
+    { "id": "hyd", "name": "⛏ FI Hydro H1", "hash": 600, "price": 29000, "desc": "Турбинный поезд." },
+    { "id": "imm", "name": "⛏ FI Immersion DC", "hash": 1500, "price": 75000, "desc": "Иммерсионный дата-центр." }
+  ]
+}
