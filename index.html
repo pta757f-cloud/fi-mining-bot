@@ -212,6 +212,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .emptyState .ico{font-size:52px;opacity:.35;margin-bottom:10px}
 .emptyState p{font-size:13px;line-height:1.5;margin-bottom:16px}
 .hintBox{background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.25);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#a8cef5;line-height:1.5;margin-bottom:12px}
+.chipRow{display:flex;gap:6px;margin:14px 0 10px}
+.chip{flex:1;background:rgba(0,0,0,.25);border:1px solid var(--tg-border);color:var(--tg-sub);font-family:inherit;font-weight:700;font-size:11px;padding:8px 2px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.chip.on{border-color:var(--em);color:var(--em);background:rgba(23,221,98,.07)}
+.nbadge{display:inline-block;min-width:14px;padding:0 4px;border-radius:8px;background:#ff5c5c;color:#fff;font-size:9px;font-weight:800;text-align:center;vertical-align:2px}
+.odot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#37d67a;box-shadow:0 0 6px rgba(55,214,122,.85);margin-right:8px;flex:none}
+.odot.off{background:#3d4a56;box-shadow:none}
+.pfRow{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--tg-border);border-radius:12px;padding:8px 10px;margin-bottom:6px}
+.btn-sm{padding:6px 11px;font-size:12px}
+.tabBtn{position:relative}
+.tabBadge{position:absolute;top:1px;right:calc(50% - 18px);min-width:13px;height:13px;border-radius:8px;background:#ff5c5c;color:#fff;font-size:8.5px;font-weight:800;line-height:13px;text-align:center;display:none;box-shadow:0 0 6px rgba(255,92,92,.6)}
 .hintBox.em{background:rgba(23,221,98,.07);border-color:rgba(23,221,98,.28);color:#9df0bc}
 .hintBox.gold{background:rgba(247,179,43,.08);border-color:rgba(247,179,43,.3);color:#ffd98a}
 
@@ -368,7 +378,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <button class="tabBtn" data-tab="shop"><svg viewBox="0 0 24 24"><path d="M6 7h12l1.5 13h-15z"/><path d="M9 10V6a3 3 0 016 0v4"/></svg>Магазин</button>
     <button class="tabBtn" data-tab="lab"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6.2L4.6 18a2.4 2.4 0 002.1 3.5h10.6a2.4 2.4 0 002.1-3.5L14 9.2V3"/><path d="M7.5 14.5h9"/></svg>Лаба</button>
     <button class="tabBtn" data-tab="upgrader"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Апгрейд</button>
-    <button class="tabBtn" data-tab="social"><svg viewBox="0 0 24 24"><path d="M7 11l5-5 5 5M7 17l5-5 5 5"/></svg>Соц</button>
+    <button class="tabBtn" data-tab="social"><svg viewBox="0 0 24 24"><path d="M7 11l5-5 5 5M7 17l5-5 5 5"/></svg>Соц<span id="socialBadge" class="tabBadge"></span></button>
     <button class="tabBtn" data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Профиль</button>
   </div>
 
@@ -1015,7 +1025,77 @@ function doSpin(){
 }
 
 /* =================================================== СОЦ =================================================== */
+/* ---------- Соц: чипы · 👥 игроки · ❤️ друзья · 🎯 арена ---------- */
+let socialSub='players';try{socialSub=localStorage.getItem('fiSocial')||'players'}catch(_){}
+function updateSocialBadge(){
+  const bb=$('socialBadge');if(!bb||!S||!S.me)return;
+  const n=(S.me.reqIn||[]).length;
+  bb.style.display=n?'block':'none';bb.textContent=n>9?'9+':String(n);
+}
 function renderSocial(){
+  const me=S.me;
+  const rqN=(me.reqIn||[]).length;
+  const chips=`<div class="chipRow">
+    <button class="chip ${socialSub==='players'?'on':''}" data-sub="players">👥 Игроки</button>
+    <button class="chip ${socialSub==='friends'?'on':''}" data-sub="friends">❤️ Друзья${rqN?` <span class="nbadge">${rqN}</span>`:''}</button>
+    <button class="chip ${socialSub==='arena'?'on':''}" data-sub="arena">🎯 Арена</button>
+  </div>`;
+  const hintHtml=socialSub==='players'
+    ?'🟢 точка = игрок в сети (заходил последние 2 минуты). Кнопка «＋» — подать заявку в друзья.'
+    :'Заявки сверху, друзья ниже. Подать заявку — кнопка «＋» во вкладке «👥 Игроки».';
+  $('screen').innerHTML=chips+`<div class="hintBox">${hintHtml}</div><div id="socialBody"></div>`;
+  document.querySelectorAll('.chip[data-sub]').forEach(b=>b.onclick=()=>{socialSub=b.dataset.sub;try{localStorage.setItem('fiSocial',socialSub)}catch(_){ }renderSocial();});
+  const el=$('socialBody');
+  if(socialSub==='players')renderPlayersTab(el);
+  else if(socialSub==='friends')renderFriendsTab(el);
+  else renderSocialArena(el);
+}
+function renderPlayersTab(el){
+  const me=S.me,all=me.players||[];
+  const fset={};(me.friends||[]).forEach(f=>fset[f.id]=1);
+  const outset={};(me.reqOut||[]).forEach(id=>outset[id]=1);
+  const onN=all.filter(r=>r.online).length;
+  const rows=all.map(r=>{
+    const isF=fset[r.id],out=!isF&&outset[r.id];
+    let act='';
+    if(isF)act=`<span style="color:var(--em);font-size:10.5px;font-weight:800;flex:none">✓ друг</span>`;
+    else if(out)act=`<span style="color:var(--tg-sub);font-size:10.5px;flex:none">⏳ заявка</span>`;
+    else act=`<button class="btn btn-green btn-sm" data-fa="${esc(r.id)}" style="flex:none">＋</button>`;
+    return `<div class="pfRow" data-n="${esc((r.name+' '+r.id).toLowerCase())}">
+      <span class="odot ${r.online?'':'off'}"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</div>
+        <div class="num" style="font-size:10px;color:var(--tg-sub)">🪪 ${esc(r.id)} · ${fmtUSD(r.usd)}</div>
+      </div>${act}</div>`;
+  }).join('');
+  el.innerHTML=`<div class="num" style="font-size:10.5px;color:var(--tg-sub);margin:2px 2px 8px">Игроков: ${all.length} · в сети: ${onN} 🟢</div>
+    <input class="inp" id="plySearch" placeholder="🔍 Поиск по нику или ID" style="margin-bottom:10px">${rows||'<div class="hintBox">Пока только ты. Позови друзей — пусть зайдут в игру!</div>'}`;
+  const s=$('plySearch');if(s)s.oninput=()=>{const q=s.value.toLowerCase();el.querySelectorAll('.pfRow').forEach(r=>{r.style.display=r.dataset.n.includes(q)?'':'none';});};
+  document.querySelectorAll('[data-fa]').forEach(b=>b.onclick=async()=>{const j=await doAction({a:'friendAdd',q:b.dataset.fa});if(j&&j.ok)render();});
+}
+function renderFriendsTab(el){
+  const me=S.me,req=me.reqIn||[],fr=me.friends||[];
+  let html=`<div class="sectionTitle">Заявки · ${req.length}</div>`;
+  html+=req.length?req.map(r=>`<div class="pfRow">
+    <span class="odot ${r.online?'':'off'}"></span>
+    <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(r.name)}</div>
+    <div class="num" style="font-size:10px;color:var(--tg-sub)">🪪 ${esc(r.id)}</div></div>
+    <button class="btn btn-green btn-sm" data-fy="${esc(r.id)}" style="flex:none">✅</button>
+    <button class="btn btn-ghost btn-sm" data-fn="${esc(r.id)}" style="flex:none">✖</button>
+  </div>`).join(''):`<div class="hintBox">Пока заявок нет. Игроки найдут тебя через «👥 Игроки».</div>`;
+  html+=`<div class="sectionTitle">Друзья · ${fr.length}</div>`;
+  html+=fr.length?fr.map(r=>`<div class="pfRow">
+    <span class="odot ${r.online?'':'off'}"></span>
+    <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(r.name)}</div>
+    <div class="num" style="font-size:10px;color:var(--tg-sub)">🪪 ${esc(r.id)} · ${fmtUSD(r.usd)}</div></div>
+    <button class="btn btn-ghost btn-sm" data-fd="${esc(r.id)}" style="flex:none">💔</button>
+  </div>`).join(''):`<div class="hintBox">Друзей нет. Добавляй кнопкой «＋» во вкладке «👥 Игроки».</div>`;
+  el.innerHTML=html;
+  document.querySelectorAll('[data-fy]').forEach(b=>b.onclick=async()=>{const j=await doAction({a:'friendYes',q:b.dataset.fy});if(j&&j.ok)render();});
+  document.querySelectorAll('[data-fn]').forEach(b=>b.onclick=async()=>{const j=await doAction({a:'friendNo',q:b.dataset.fn});if(j&&j.ok)render();});
+  document.querySelectorAll('[data-fd]').forEach(b=>b.onclick=async()=>{const j=await doAction({a:'friendDel',q:b.dataset.fd});if(j&&j.ok)render();});
+}
+function renderSocialArena(el){
   const me=S.me;
   const hasTransfer=me.lab&&me.lab.transfer>0;
   let html=`<div class="sectionTitle">📤 P2P переводы FI</div>
@@ -1062,7 +1142,7 @@ function renderSocial(){
       <button class="btn btn-green rA" data-c="green">🟢 ×14</button>
     </div>
   </div>`;
-  $('screen').innerHTML=html;
+  el.innerHTML=html;
   if(hasTransfer)$('trGo').onclick=()=>{
     const amt=parseFloat(($('trAmount').value||'').replace(',','.'));const to=$('trTo').value.trim();
     if(!(amt>0))return toast('Сколько отправить?','✏️');
@@ -1155,6 +1235,7 @@ function render(){
   if(!S)return;
   if(S.me&&S.me.banned){$('banned').classList.add('show');return;}
   paintBadge(S.me&&S.me.role?S.me.role:(role?{name:role.name,color:role.color}:null));
+  updateSocialBadge();
   (RENDER[tab]||renderFarm)();
 }
 
