@@ -208,7 +208,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .hintBox.em{background:rgba(23,221,98,.07);border-color:rgba(23,221,98,.28);color:#9df0bc}
 .hintBox.gold{background:rgba(247,179,43,.08);border-color:rgba(247,179,43,.3);color:#ffd98a}
 
-#toasts{position:absolute;left:10px;right:10px;bottom:76px;z-index:80;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+#toasts{position:absolute;left:10px;right:10px;bottom:76px;z-index:120;display:flex;flex-direction:column;gap:7px;pointer-events:none}
 .toast{background:rgba(23,33,43,.96);border:1px solid var(--tg-border);border-left:4px solid var(--tg-blue);border-radius:12px;padding:10px 13px;font-size:12.5px;font-weight:600;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.55);animation:toastIn .3s cubic-bezier(.2,1.4,.4,1);backdrop-filter:blur(8px);display:flex;gap:9px;align-items:flex-start}
 .toast .ico{font-size:15px;line-height:1.2}
 .toast.gold{border-left-color:var(--fi-gold)}
@@ -286,6 +286,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .dvCB{display:flex;flex-wrap:wrap;gap:5px}
 .dvCB label{display:flex;gap:4px;align-items:center;font-size:9.5px;color:rgba(61,255,139,.7);background:rgba(61,255,139,.06);border:1px solid rgba(61,255,139,.2);border-radius:6px;padding:4px 7px;cursor:pointer}
 .dvCB input{accent-color:#3dff8b}
+.dvItem.sel{border-color:var(--dv-green);background:rgba(61,255,139,.14);box-shadow:0 0 10px rgba(61,255,139,.14)}
+.dvSub{width:100%;border-top:1px dashed rgba(61,255,139,.3);margin-top:8px;padding-top:9px;display:flex;flex-direction:column;gap:7px}
+.dvCap{font-size:9px;letter-spacing:1.6px;color:rgba(61,255,139,.55);text-transform:uppercase;font-weight:700}
+.dvBtns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.swatches{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.sw{width:24px;height:24px;border-radius:7px;cursor:pointer;border:2px solid rgba(255,255,255,.12);flex-shrink:0;transition:.12s}
+.sw.on{border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.55);transform:scale(1.14)}
+.swTxt{background:#0a120d;border:1px solid rgba(61,255,139,.3);color:var(--dv-green);font-family:'JetBrains Mono',monospace;font-size:10.5px;border-radius:7px;padding:5px 7px;width:86px;outline:none;font-weight:700}
+.swTxt:focus{border-color:var(--dv-green)}
+[data-roleid]{cursor:pointer}
 
 .offlineBox{padding:40px 16px;text-align:center}
 .offlineBox .ico{font-size:46px}
@@ -358,7 +368,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <div id="dvContent"></div>
     <div class="dvFoot">
       <span>price: <b id="dvFootPrice">—</b></span>
-      <span class="num" style="margin-left:auto">плayers sync 2.5s</span>
+      <span class="num" style="margin-left:auto">обновление · 2.5s</span>
     </div>
   </div>
 
@@ -884,7 +894,9 @@ function doSpin(){
   doAction({a:'spin'}).then(j=>{
     if(!j||!j.ok){spinning=false;renderUpgrader();return;}
     const N=SPIN_SEGS.length,per=360/N;
-    spinFrom=0;spinTo=360*5+(360-(j.seg+0.5)*per);spinAt=Date.now();
+    const seg=Number.isInteger(j.seg)?Math.max(0,Math.min(N-1,j.seg)):Math.floor(Math.random()*N);
+    const win=Number(j.win)||0;
+    spinFrom=0;spinTo=360*5+(360-(seg+0.5)*per);spinAt=Date.now();
     const cont=document.querySelector('.upgraderBox');if(cont)cont.classList.add('upgSpin');
     const dur=4200;
     const anim=()=>{
@@ -895,8 +907,8 @@ function doSpin(){
       else{
         spinning=false;
         const rb=$('spinResult');
-        if(rb){rb.className='upgResult show '+(j.win>0?'success':'fail');
-          rb.textContent=j.win>0?('🏆 '+j.msg):'😞 '+j.msg;}
+        if(rb){rb.className='upgResult show '+(win>0?'success':'fail');
+          rb.textContent=win>0?('🏆 '+j.msg):'😞 '+j.msg;}
         const c2=document.querySelector('.upgraderBox');if(c2)c2.classList.remove('upgSpin');
         setTimeout(()=>{if(tab==='upgrader')render();},2200);
       }
@@ -916,12 +928,31 @@ function renderSocial(){
     <input class="inp" id="trTo" placeholder="Кому: @username или название из списка выше">
     <button class="btn btn-blue btn-lg" id="trGo">📤 Отправить</button>
   </div>`:`<div class="hintBox">🔒 Переводы монет между игроками закрыты. Открой «P2P протокол» в Лабе за $2500 — и здесь появится форма.</div>`}`;
-  html+=`<div class="sectionTitle">⚔️ Дуэли (PvP)</div>
-  <div class="duelBox">
-    <div class="rBox">1×1 со случайным соперником</div>
-    <div style="font-size:11.5px;color:var(--tg-sub);margin-bottom:9px">50 на 50, победитель забирает ставку. Рандом крутит сервер — никому не спрятать затычки.</div>
+  html+=`<div class="sectionTitle">⚔️ Дуэли (по вызову)</div>`;
+  const dq=me.duels||{incoming:[],outgoing:[]};
+  (dq.incoming||[]).forEach(d=>{
+    html+=`<div class="duelBox" style="border-color:rgba(255,92,92,.55)">
+      <div class="rBox">⚔️ ${esc(d.from)} вызывает тебя!</div>
+      <div style="font-size:11.5px;color:var(--tg-sub);margin-bottom:9px">Ставка ${fmtUSD(d.amount)} · победитель забирает ${fmtUSD(d.amount*2)} · осталось ${d.leftMin} мин</div>
+      <div class="rActions">
+        <button class="btn btn-green" data-dg="ok" data-id="${d.id}">⚔️ Принять</button>
+        <button class="btn btn-ghost" data-dg="no" data-id="${d.id}">✖ Отклонить</button>
+      </div>
+    </div>`;
+  });
+  (dq.outgoing||[]).forEach(d=>{
+    html+=`<div class="duelBox">
+      <div class="rBox">🎯 Твой вызов: ${esc(d.to)}</div>
+      <div style="font-size:11.5px;color:var(--tg-sub);margin-bottom:9px">${fmtUSD(d.amount)} в кассе · ответа ждём ${d.leftMin} мин</div>
+      <div class="rActions"><button class="btn btn-ghost" data-dg="cancel" data-id="${d.id}">✖ Отменить вызов</button></div>
+    </div>`;
+  });
+  html+=`<div class="duelBox">
+    <div class="rBox">Бросить вызов</div>
+    <div style="font-size:11.5px;color:var(--tg-sub);margin-bottom:9px">50 на 50, победитель забирает обе ставки. Соперник сам решает — принять (кнопка у него в чате) или отклонить. На ответ 5 минут, ставка ждёт в «кассе» и вернётся при отказе.</div>
     <input class="inp num" id="duelAmt" inputmode="decimal" placeholder="Ставка $ (от $10)">
-    <button class="btn btn-red btn-lg" id="duelGo">⚔️ ВЫЗВАТЬ НА ДУЭЛЬ</button>
+    <input class="inp" id="duelTo" placeholder="Соперник: @ник (пусто = случайный)">
+    <button class="btn btn-red btn-lg" id="duelGo">⚔️ БРОСИТЬ ВЫЗОВ</button>
     <div class="upgLegend" style="margin-top:8px;font-size:10px">Побед в дуэлях: ${(me.stats&&me.stats.duelWins)||0}</div>
   </div>
   <div class="sectionTitle">🎰 Рулетка</div>
@@ -941,10 +972,17 @@ function renderSocial(){
     if(!to)return toast('Кому отправить?','✏️');
     doAction({a:'transfer',fi:amt,to:to.replace('@','')});
   };
+  document.querySelectorAll('[data-dg]').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.dg,id=b.dataset.id;
+    if(k==='ok')doAction({a:'duelAccept',id});
+    else if(k==='no')doAction({a:'duelDecline',id});
+    else doAction({a:'duelCancel',id});
+  });
   $('duelGo').onclick=()=>{
     const amt=parseFloat(($('duelAmt').value||'').replace(',','.'));
     if(!(amt>=10))return toast('Ставка от $10','✏️');
-    doAction({a:'duel',amount:amt});
+    const to=($('duelTo')?$('duelTo').value:'').trim();
+    doAction({a:'duel',amount:amt,to:to||undefined});
   };
   document.querySelectorAll('.rA').forEach(b=>b.onclick=()=>{
     const amt=parseFloat(($('roulAmt').value||'').replace(',','.'));
@@ -1027,6 +1065,8 @@ const isO=()=>role&&role.kind==='owner';
 const can=p=>role&&(isO()||(role.perms||[]).includes(p));
 let dvTab='give';
 const dvCaches={roles:[],players:[]};
+let dvSel=null,dvSub=null,dvDelArm=null,dvEditRole=null;
+const DV_COLORS=['#3dff8b','#17dd62','#2fd46a','#f7b32b','#ff7a1a','#ff5c5c','#ec4899','#a855f7','#7c6cf5','#37c8ee','#3390ec','#e9f0f7'];
 function updateDevTag(){
   const tag=$('dvRoleTag');if(!tag)return;
   if(role){tag.style.display='';tag.textContent=role.name;tag.className='dvRoleTag '+(role.kind||'chat');}
@@ -1103,100 +1143,179 @@ function dvMarket(){
     apiStaff({a:'price',op:'set',v});
   };
 }
+function swatchStrip(sel,withHex){
+  const s=String(sel||'').toLowerCase();
+  return `<div data-strip><div class="swatches">${DV_COLORS.map(c=>`<div class="sw ${s===c?'on':''}" data-sw="${c}" style="background:${c}"></div>`).join('')}${withHex?`<input class="swTxt num" data-swt maxlength="7" placeholder="#rrggbb" value="${(/^#[0-9a-f]{6}$/i.test(s)&&!DV_COLORS.includes(s))?s:''}">`:''}</div></div>`;
+}
+function bindStrips(root){
+  root.querySelectorAll('[data-strip]').forEach(st=>{
+    st.querySelectorAll('.sw').forEach(sw=>sw.onclick=()=>{
+      st.querySelectorAll('.sw').forEach(x=>x.classList.remove('on'));
+      sw.classList.add('on');
+      const t=st.querySelector('[data-swt]');if(t)t.value='';
+    });
+    const t=st.querySelector('[data-swt]');
+    if(t)t.oninput=()=>{const v=t.value.trim().toLowerCase();st.querySelectorAll('.sw').forEach(x=>x.classList.toggle('on',x.dataset.sw===v));};
+  });
+}
+function pickColor(st){
+  if(!st)return null;
+  const t=st.querySelector('[data-swt]');
+  if(t&&/^#[0-9a-f]{6}$/i.test(t.value.trim()))return t.value.trim().toLowerCase();
+  const on=st.querySelector('.sw.on');
+  return on?on.dataset.sw:null;
+}
+async function dvCall(body,after){
+  try{
+    const j=await apiStaff(body);
+    toast(j.msg||(j.ok?'Готово':'Отказано'),j.ok?'🛠':'⛔',j.ok?'green':'red');
+    if(j.ok&&after)after();
+  }catch(_){toast('Сервер не отвечает','📡','red');}
+}
+
 async function dvPlayers(){
   $('dvContent').innerHTML=dvHead('ИГРОКИ')+'<div style="color:rgba(61,255,139,.5)">⏳ загрузка…</div>';
   const j=await apiStaff({a:'players'});
   if(!j||!j.ok){$('dvContent').innerHTML=dvHead('ИГРОКИ')+'<div style="color:rgba(61,255,139,.5)">нет доступа</div>';return;}
   dvCaches.players=j.players||[];
-  $('dvContent').innerHTML=dvHead(`ИГРОКИ (${dvCaches.players.length}) — тап = действия`)+
-  dvCaches.players.map((p,i)=>`<div class="dvItem" data-pi="${i}">
-    <span class="nm">${p.b?'🚫 ':''}${esc(p.n)}</span>
-    ${roleChipHTML(p.role)}
-    <span class="sub num" style="margin-left:auto">${fmtFI(p.fi)} FI · ${fmtUSD(p.usd)}</span>
-  </div>`).join('');
-  $('dvContent').querySelectorAll('[data-pi]').forEach(el=>el.onclick=()=>dvPlayerMenu(dvCaches.players[Number(el.dataset.pi)]));
+  if(dvSel&&!dvCaches.players.some(p=>String(p.id)===String(dvSel))){dvSel=null;dvSub=null;}
+  renderPlayersUI();
 }
-async function dvPlayerMenu(pl){
-  const opt=['give — выдать/забрать монеты','ban — забанить','unban — разбанить'];
-  if(isO())opt.push('role — назначить/снять роль');
-  const pick=prompt('Действие для '+pl.n+':\n'+opt.map((o,i)=>(i+1)+' — '+o).join('\n'),'1');
-  if(!pick)return;
-  const k=Number(pick.trim());
-  if(k===1){
-    const amt=parseFloat(prompt('Сумма (отрицательная — забрать)', '+100')||'');
-    if(!isFinite(amt)||amt===0)return;
-    const kind=prompt('Валюта: fi / usd','fi')||'';
-    await apiStaff({a:'give',kind:kind==='usd'?'usd':'fi',to:String(pl.id),amount:amt}).then(j=>toast(j.msg||'',j.ok?'🤝':'🔒',j.ok?'green':'red'));
-  }else if(k===2){
-    const r=prompt('Причина бана','нарушение правил')||'';
-    await apiStaff({a:'ban',to:String(pl.id),reason:r}).then(j=>toast(j.msg||'',j.ok?'🚫':'🔒',j.ok?'green':'red'));
-  }else if(k===3)await apiStaff({a:'unban',to:String(pl.id)}).then(j=>toast(j.msg||'',j.ok?'✅':'🔒',j.ok?'green':'red'));
-  else if(k===4&&isO())await dvAssign(pl);
-  if($('devPanel').classList.contains('open')&&dvTab==='players')dvPlayers();
+function playerSub(p){
+  const act=[];
+  if(can('give'))act.push('<button class="dbtn" data-sub="give">💰 монеты</button>');
+  if(can('bans')&&!p.b)act.push('<button class="dbtn dgr" data-sub="ban">🚫 бан</button>');
+  if(can('bans')&&p.b)act.push('<button class="dbtn" data-sub="unban">✅ разбан</button>');
+  if(isO())act.push('<button class="dbtn gold" data-sub="role">👑 роль</button>');
+  let inner='';
+  if(dvSub==='give'&&can('give'))inner+=`<input class="din wide" data-amt inputmode="decimal" placeholder="сумма (минус — забрать)">
+    <div class="dvBtns"><button class="dbtn" data-act="give-fi">＋ FI</button><button class="dbtn gold" data-act="give-usd">＋ USD</button></div>`;
+  if(dvSub==='ban'&&can('bans')&&!p.b)inner+=`<input class="din wide" data-reason placeholder="причина бана">
+    <div class="dvBtns"><button class="dbtn dgr" data-act="ban">🚫 забанить</button></div>`;
+  if(dvSub==='role'&&isO()){
+    const roles=dvCaches.roles||[];
+    inner+=roles.length
+      ?`<div class="dvCap">тапни роль, чтобы выдать игроку</div><div class="dvBtns">${roles.map(r=>roleChipHTML(r).replace('class="rBadge"','class="rBadge" data-roleid="'+r.id+'"')).join('')}<button class="dbtn dgr" data-act="unrole">− снять роль</button></div>`
+      :'<div style="color:rgba(61,255,139,.5)">ролей нет — создай во вкладке 👑 Роли</div>';
+  }
+  return `<div class="dvSub"><div class="dvCap">действия</div><div class="dvBtns">${act.join('')}</div>${inner?`<div data-panel>${inner}</div>`:''}</div>`;
 }
-async function dvAssign(pl){
-  const j=await apiStaff({a:'roles'});
-  if(!j||!j.ok)return;
-  const roles=j.roles||[];
-  if(!roles.length)return toast('Сначала создай роль в 👑 Роли','👑','red');
-  const cur=(j.assigned||{})[String(pl.id)];
-  const inp=prompt('Роль для '+pl.n+(cur?'\n(0 — снять текущую)':'')+':\n'+roles.map((r,i)=>(i+1)+' — '+r.name).join('\n'),cur?'0':'1');
-  if(inp===null)return;
-  const n=Number(inp.trim());
-  if(n===0)return void (await apiStaff({a:'assign',to:String(pl.id),roleId:''}).then(x=>toast(x.msg,'👑','green')));
-  const r=roles[n-1];if(!r)return toast('Нет такой роли','❌','red');
-  await apiStaff({a:'assign',to:String(pl.id),roleId:r.id}).then(x=>toast(x.msg,'👑','green'));
+function renderPlayersUI(){
+  const c=$('dvContent');
+  let html=dvHead(`ИГРОКИ (${dvCaches.players.length}) — тапни игрока`);
+  if(!dvCaches.players.length)html+='<div style="color:rgba(61,255,139,.5)">пока никого — пусть нажмут «Играть» или /start</div>';
+  html+=dvCaches.players.map(p=>{
+    const sel=String(p.id)===String(dvSel);
+    return `<div class="dvItem ${sel?'sel':''}" data-pid="${esc(String(p.id))}">
+      <span class="nm">${p.b?'🚫 ':''}${esc(p.n)}</span>
+      ${roleChipHTML(p.role)}
+      <span class="sub num">🪪 ${esc(String(p.id))}</span>
+      <span class="sub num" style="margin-left:auto">${fmtFI(p.fi)} FI · ${fmtUSD(p.usd)}</span>
+      ${sel?playerSub(p):''}
+    </div>`;
+  }).join('');
+  c.innerHTML=html;
+  c.querySelectorAll('[data-pid]').forEach(el=>el.onclick=e=>{
+    if(e.target.closest('[data-panel]'))return;
+    dvSel=(String(dvSel)===el.dataset.pid)?null:el.dataset.pid;dvSub=null;
+    renderPlayersUI();
+  });
+  if(!dvSel)return;
+  c.querySelectorAll('[data-sub]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    dvSub=(dvSub===b.dataset.sub)?null:b.dataset.sub;
+    if(dvSub==='role'&&!(dvCaches.roles&&dvCaches.roles.length)){loadRolesCache().then(renderPlayersUI);}
+    else renderPlayersUI();
+  });
+  const pl=dvCaches.players.find(p=>String(p.id)===String(dvSel));
+  if(!pl)return;
+  const on=(sel,fn)=>{const b=c.querySelector('[data-act="'+sel+'"]');if(b)b.onclick=e=>{e.stopPropagation();fn(b);};};
+  on('give-fi',()=>playerGiveMoney(pl,'fi'));
+  on('give-usd',()=>playerGiveMoney(pl,'usd'));
+  on('ban',()=>playerBan(pl));
+  if(isO()){
+    on('unrole',()=>dvCall({a:'assign',to:String(pl.id),roleId:''},()=>dvPlayers()));
+    c.querySelectorAll('[data-roleid]').forEach(ch=>ch.onclick=e=>{
+      e.stopPropagation();
+      dvCall({a:'assign',to:String(pl.id),roleId:ch.dataset.roleid},()=>dvPlayers());
+    });
+  }
 }
-let rolesCacheHTML=null;
+async function loadRolesCache(){try{const j=await apiStaff({a:'roles'});if(j&&j.ok)dvCaches.roles=j.roles||[];}catch(_){}}
+async function playerGiveMoney(pl,kind){
+  const inp=$('dvContent').querySelector('[data-amt]');
+  const amt=parseFloat(((inp&&inp.value)||'').replace(',','.'));
+  if(!isFinite(amt)||amt===0)return toast('Сумма? Отрицательная — забрать','✏️');
+  await dvCall({a:'give',kind,to:String(pl.id),amount:amt},()=>dvPlayers());
+}
+async function playerBan(pl){
+  const inp=$('dvContent').querySelector('[data-reason]');
+  const reason=((inp&&inp.value)||'').trim()||'нарушение правил';
+  await dvCall({a:'ban',to:String(pl.id),reason},()=>dvPlayers());
+}
 async function dvRoles(){
   $('dvContent').innerHTML=dvHead('РОЛИ')+'<div style="color:rgba(61,255,139,.5)">⏳…</div>';
   const j=await apiStaff({a:'roles'});
   if(!j||!j.ok){$('dvContent').innerHTML=dvHead('РОЛИ')+'<div style="color:rgba(61,255,139,.5)">только владелец</div>';return;}
-  const roles=j.roles||[];
+  dvCaches.roles=j.roles||[];
   const assigned=j.assigned||{};
-  let html=dvHead('СОЗДАТЬ РОЛЬ (владелец)')+
-  `<div class="dvRow"><input class="din wide" id="rName" placeholder="Название (до 16 симв)"></div>
-  <div class="dvRow"><span class="dvLabel">цвет</span><input type="color" id="rColor" value="#3dff8b" style="width:60px;height:30px;background:none;border:none;cursor:pointer"></div>
-  <div class="dvCB">${Object.entries(PERM_LABEL).map(([k,v])=>`<label><input type="checkbox" value="${k}">${v}</label>`).join('')}</div>
-  <div class="dvRow" style="margin-top:6px"><button class="dbtn gold" id="rAdd">➕ создать</button></div>`+
-  dvHead(`СУЩЕСТВУЮЩИЕ (${roles.length})`);
-  if(!roles.length)html+='<div style="color:rgba(61,255,139,.5)">пока пусто — значки с цветом появятся в топе после выдачи</div>';
-  roles.forEach(r=>{
-    const who=Object.entries(assigned).filter(([,rid])=>rid===r.id).map(([pid])=>pid);
-    html+=`<div class="dvItem">
-      ${roleChipHTML({name:r.name,color:r.color})}
-      <span class="sub">${(r.perms||[]).join('·')||'no perms'}</span>
-      <span style="margin-left:auto;display:flex;gap:5px">
-        <button class="dbtn" data-redit="${r.id}">✏️</button>
-        <button class="dbtn dgr" data-rdel="${r.id}">🗑</button>
-      </span>
+  const c=$('dvContent');
+  let html=dvHead('СОЗДАТЬ РОЛЬ')+
+  `<div class="dvRow"><input class="din wide" id="rName" maxlength="16" placeholder="название роли (до 16 символов)"></div>
+  <div class="dvCap" style="margin:4px 0">цвет значка — тапни или впиши hex</div>`+
+  swatchStrip('#3dff8b',true)+
+  `<div class="dvCB" style="margin-top:7px">${Object.entries(PERM_LABEL).map(([k,v])=>`<label><input type="checkbox" value="${k}">${v}</label>`).join('')}</div>
+  <div class="dvRow" style="margin-top:8px"><button class="dbtn gold" id="rAdd">➕ создать роль</button></div>`+
+  dvHead(`СУЩЕСТВУЮЩИЕ (${dvCaches.roles.length})`);
+  if(!dvCaches.roles.length)html+='<div style="color:rgba(61,255,139,.5)">пока пусто — создай первую роль, цветной значок появится в топе у ника</div>';
+  dvCaches.roles.forEach(r=>{
+    const whoN=Object.entries(assigned).filter(([,rid])=>rid===r.id).length;
+    const open=dvEditRole===r.id;
+    html+=`<div class="dvItem" style="flex-direction:column;align-items:flex-start" data-rid="${r.id}">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;width:100%">
+        ${roleChipHTML({name:r.name,color:r.color})}
+        <span class="sub">прав: ${(r.perms||[]).length||'нет'}${whoN?' · игроков: '+whoN:''}</span>
+        <button class="dbtn" data-redit="${r.id}" style="margin-left:auto">${open?'▲ свернуть':'✏️ править'}</button>
+        <button class="dbtn ${dvDelArm===r.id?'dgr':''}" data-rdel="${r.id}">${dvDelArm===r.id?'💥 точно?':'🗑'}</button>
+      </div>
+      ${open?`<div data-panel style="margin-top:9px;width:100%">
+        <input class="din wide" data-ename maxlength="16" value="${esc(r.name)}" placeholder="новое название">
+        <div class="dvCap" style="margin:6px 0 4px">цвет</div>
+        ${swatchStrip(r.color,true)}
+        <div class="dvCB" style="margin-top:7px">${Object.entries(PERM_LABEL).map(([k,v])=>`<label><input type="checkbox" value="${k}" ${(r.perms||[]).includes(k)?'checked':''}>${v}</label>`).join('')}</div>
+        <div class="dvBtns" style="margin-top:7px"><button class="dbtn gold" data-rsave="${r.id}">💾 сохранить</button></div>
+      </div>`:''}
     </div>`;
   });
-  $('dvContent').innerHTML=html;
+  c.innerHTML=html;
+  bindStrips(c);
   $('rAdd').onclick=()=>{
     const name=($('rName').value||'').trim();
-    if(!name)return toast('Название?','✏️');
-    const perms=Array.from($('dvContent').querySelectorAll('.dvCB input:checked')).map(x=>x.value);
-    apiStaff({a:'roleAdd',name,color:$('rColor').value,perms}).then(x=>{toast(x.msg,'👑','green');if(x.ok!==false)dvRoles();});
+    if(!name)return toast('Впиши название роли','✏️');
+    const perms=Array.from(c.querySelectorAll('.dvCB input:checked')).map(x=>x.value);
+    const color=pickColor(c.querySelector('[data-strip]'))||'#3dff8b';
+    dvCall({a:'roleAdd',name,color,perms},()=>dvRoles());
   };
-  $('dvContent').querySelectorAll('[data-rdel]').forEach(b=>b.onclick=()=>{
-    const r=roles.find(x=>x.id===b.dataset.rdel);
-    if(!r||!confirm('Удалить роль «'+r.name+'»?'))return;
-    apiStaff({a:'roleDel',id:r.id}).then(x=>{toast(x.msg,'🗑','green');dvRoles();});
+  c.querySelectorAll('[data-redit]').forEach(b=>b.onclick=()=>{
+    dvEditRole=(dvEditRole===b.dataset.redit)?null:b.dataset.redit;dvDelArm=null;dvRoles();});
+  c.querySelectorAll('[data-rdel]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.rdel;
+    if(dvDelArm!==id){dvDelArm=id;dvRoles();
+      setTimeout(()=>{if(dvDelArm===id){dvDelArm=null;if($('devPanel').classList.contains('open')&&dvTab==='roles')dvRoles();}},3500);
+      return;}
+    dvDelArm=null;
+    dvCall({a:'roleDel',id},()=>{dvEditRole=null;dvRoles();});
   });
-  $('dvContent').querySelectorAll('[data-redit]').forEach(b=>b.onclick=()=>{
-    const r=roles.find(x=>x.id===b.dataset.redit);
-    if(!r)return;
-    const name=prompt('Новое название:',r.name);if(name===null)return;
-    const color=prompt('Новый цвет (hex):',r.color);if(color===null)return;
-    const order=Object.keys(PERM_LABEL);
-    const inp=prompt('Права (номера через запятую):\n'+order.map((k,i)=>(i+1)+' — '+PERM_LABEL[k]).join('\n'),(r.perms||[]).map(k=>order.indexOf(k)+1).join(','));
-    if(inp===null)return;
-    const perms=inp.split(',').map(x=>order[Number(x.trim())-1]).filter(Boolean);
-    const body={a:'roleUpd',id:r.id,perms};
-    if(name.trim())body.name=name.trim();
-    if(color.trim())body.color=color.trim();
-    apiStaff(body).then(x=>{toast(x.msg,'✏️','green');dvRoles();});
+  c.querySelectorAll('[data-rsave]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.rsave;
+    const item=c.querySelector('[data-rid="'+id+'"]');
+    const name=item.querySelector('[data-ename]').value.trim();
+    const perms=Array.from(item.querySelectorAll('.dvCB input:checked')).map(x=>x.value);
+    const color=pickColor(item.querySelector('[data-strip]'));
+    const body={a:'roleUpd',id,perms};
+    if(name)body.name=name;
+    if(color)body.color=color;
+    dvCall(body,()=>{dvEditRole=null;dvRoles();});
   });
 }
 async function dvLog(){
@@ -1212,9 +1331,13 @@ function dvReset(){
   <div class="dvBox" style="margin-top:8px">Сбросы мгновенные. «ВСЁ» удаляет игроков средствами (кроме тебя) и историю рынка.</div>`;
   $('dvContent').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{
     const w=b.dataset.r;
-    if(w==='nuke'&&!confirm('Удалить ВСЕХ игроков и историю? Остонешься один.'))return;
-    if(w==='nuke'&&!confirm('Точно? Отмена невозможна.'))return;
-    apiStaff({a:'reset',what:w}).then(j=>toast(j.msg,'🧯','green'));
+    if(w==='nuke'&&b.dataset.armed!=='1'){
+      b.dataset.armed='1';b.textContent='💥 ТОЧНО ВСЁ УДАЛИТЬ?';
+      setTimeout(()=>{if(b.dataset.armed==='1'){b.dataset.armed='';b.textContent='💥 ВСЁ';}},3500);
+      return;
+    }
+    b.dataset.armed='';
+    dvCall({a:'reset',what:w},null);
   });
 }
 
