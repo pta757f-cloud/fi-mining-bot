@@ -38,8 +38,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .tgAvatar{width:40px;height:40px;border-radius:9px;overflow:hidden;flex-shrink:0;box-shadow:0 0 0 2px rgba(23,221,98,.45),0 0 14px rgba(23,221,98,.25);cursor:pointer}
 .tgAvatar svg{width:100%;height:100%;display:block}
 .tgInfo{flex:1;min-width:0}
-.tgName{display:flex;align-items:center;gap:5px;font-weight:700;font-size:15px;white-space:nowrap}
-.verified{width:15px;height:15px;flex-shrink:0}
+.tgName{display:flex;align-items:center;gap:4px;font-weight:700;font-size:15px;white-space:nowrap}
 .roleBadge{font-size:8.5px;font-weight:800;letter-spacing:1px;border-radius:6px;padding:2px 6px;font-family:'JetBrains Mono',monospace;display:none}
 .roleBadge.show{display:inline-block}
 .roleBadge.owner{background:rgba(247,179,43,.18);color:var(--fi-gold);border:1px solid rgba(247,179,43,.5)}
@@ -192,6 +191,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .upgCardName{font-size:12px;font-weight:700;margin-bottom:4px}
 .upgCardPrice{font-size:10px;color:var(--tg-sub)}
 .upgArrow{font-size:28px;color:#c084fc;font-weight:800}
+/* --- КОЛЕСО УДАЧИ --- */
+.upgWheelWrap{position:relative;width:216px;height:216px;margin:16px auto 2px}
+.upgWheel{width:100%;height:100%;border-radius:50%;transition:transform 4.2s cubic-bezier(.1,.68,.08,1.02);box-shadow:0 0 0 6px var(--tg-panel2),0 0 0 8px rgba(168,85,247,.45),0 0 30px rgba(168,85,247,.3),inset 0 0 26px rgba(0,0,0,.55)}
+.upgWheel::after{content:'';position:absolute;inset:14px;border-radius:50%;border:1px dashed rgba(255,255,255,.16);pointer-events:none}
+.upgSpin .upgWheel{box-shadow:0 0 0 6px var(--tg-panel2),0 0 0 8px rgba(168,85,247,.8),0 0 55px rgba(168,85,247,.55),inset 0 0 26px rgba(0,0,0,.55)}
+.upgHub{position:absolute;left:50%;top:50%;width:52px;height:52px;transform:translate(-50%,-50%);border-radius:50%;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 0 4px #0d141d,0 4px 14px rgba(0,0,0,.6);z-index:3}
+.upgPointer{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:19px solid #ffe08a;filter:drop-shadow(0 3px 6px rgba(0,0,0,.65));z-index:4}
+.upgSpin .upgPointer{animation:ptrShake .13s infinite}
+@keyframes ptrShake{0%,100%{transform:translateX(-50%) rotate(-5deg)}50%{transform:translateX(-50%) rotate(5deg)}}
+.upgLegend{font-size:11px;font-weight:700;color:var(--tg-sub);margin-top:6px}
 .upgChance{font-size:24px;font-weight:800;margin:12px 0;color:#c084fc}
 .upgBtn{width:100%;padding:14px;font-size:14px;font-weight:800;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 4px 16px rgba(168,85,247,.4);transition:.2s}
 .upgBtn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(168,85,247,.5)}
@@ -363,7 +372,6 @@ select.din{appearance:none;cursor:pointer}
       <div class="tgAvatar" id="botAvatar" title="Консоль персонала"></div>
       <div class="tgInfo">
         <div class="tgName">FI Mining Bot
-          <svg class="verified" viewBox="0 0 24 24"><path d="M12 1l2.6 2.1 3.3-.5 1.1 3.2 2.9 1.7-1.2 3.1 1.2 3.1-2.9 1.7-1.1 3.2-3.3-.5L12 23l-2.6-2.1-3.3.5-1.1-3.2L2.1 16.5l1.2-3.1-1.2-3.1 2.9-1.7 1.1-3.2 3.3.5z" fill="#17dd62"/><path d="M8 12.2l2.7 2.7L16.2 9.4" stroke="#052e13" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="roleBadge" id="roleBadge"></span>
         </div>
         <div class="tgStatus"><span class="dotOnline"></span><span id="statusText">бот · онлайн</span></div>
@@ -640,13 +648,12 @@ function calcUpgradeChance(fromGPU,toGPU){
   return Math.max(1,Math.round(100/Math.pow(ratio,1.5)));
 }
 
-function performUpgrade(fromId,toId){
+function performUpgrade(fromId,toId,forced){
   const fromGPU=GPUS.find(g=>g.id===fromId);
   const toGPU=GPUS.find(g=>g.id===toId);
   if(!fromGPU||!toGPU||S.gpus[fromId].n<1)return;
   const chance=calcUpgradeChance(fromGPU,toGPU);
-  const roll=Math.random()*100;
-  const success=roll<chance;
+  const success=forced!==undefined?!!forced:(Math.random()*100<chance);
   S.gpus[fromId].n--;
   if(success){
     S.gpus[toId].n++;
@@ -672,6 +679,7 @@ function snd(type){
     else if(type==='sell'){o.type='triangle';o.frequency.setValueAtTime(700,t);o.frequency.exponentialRampToValueAtTime(1200,t+.07);o.frequency.exponentialRampToValueAtTime(950,t+.16);g.gain.setValueAtTime(.1,t);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.start(t);o.stop(t+.25);}
     else if(type==='err'){o.type='square';o.frequency.setValueAtTime(160,t);g.gain.setValueAtTime(.06,t);g.gain.exponentialRampToValueAtTime(.001,t+.18);o.start(t);o.stop(t+.18);}
     else if(type==='ev'){o.type='sine';o.frequency.setValueAtTime(400,t);o.frequency.exponentialRampToValueAtTime(600,t+.12);o.frequency.exponentialRampToValueAtTime(800,t+.24);g.gain.setValueAtTime(.09,t);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.start(t);o.stop(t+.35);}
+    else if(type==='tick'){o.type='square';o.frequency.setValueAtTime(1900,t);g.gain.setValueAtTime(.025,t);g.gain.exponentialRampToValueAtTime(.001,t+.04);o.start(t);o.stop(t+.04);}
     else if(type==='win'){o.type='triangle';[660,880,1100,1320].forEach((f,i)=>{o.frequency.setValueAtTime(f,t+i*.09);});g.gain.setValueAtTime(.11,t);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.start(t);o.stop(t+.5);}
   }catch(e){}
 }
@@ -1234,6 +1242,8 @@ function renderLab(){
     ${resHTML}`;
 }
 
+let upgAngle=0,upgLastBG='',upgSpinId=0;
+
 function renderUpgrader(){
   const ownedGPUs=GPUS.filter(g=>S.gpus[g.id].n>0);
   let fromOptions='';
@@ -1270,8 +1280,8 @@ function renderUpgrader(){
   $('screen').innerHTML=`
     <div class="upgraderBox">
       <div class="upgraderTitle">⚡ АПГРЕЙДЕР ВИДЕОКАРТ</div>
-      <div style="font-size:12px;color:var(--tg-sub);margin-bottom:16px">
-        Чем больше разница в цене, тем ниже шанс успеха!
+      <div style="font-size:12px;color:var(--tg-sub);margin-bottom:14px">
+        Выберите карты — и крутите колесо удачи!<br>Чем больше разница в цене, тем меньше зелёный сектор.
       </div>
       <div class="upgraderCards">
         <div>
@@ -1288,15 +1298,38 @@ function renderUpgrader(){
           </div>
         </div>
       </div>
+      <div class="upgWheelWrap" id="upgWheelWrap">
+        <div class="upgPointer"></div>
+        <div class="upgWheel" id="upgWheel"></div>
+        <div class="upgHub">⚡</div>
+      </div>
+      <div class="upgLegend"><span style="color:var(--fi-green)">🟢 успех</span> · <span style="color:var(--fi-red)">🔴 провал</span></div>
       <div class="upgChance" id="upgChance">Выберите карты</div>
-      <button class="upgBtn" id="upgBtn" disabled>АПГРЕЙДНУТЬ</button>
+      <button class="upgBtn" id="upgBtn" disabled>🎯 КРУТИТЬ КОЛЕСО</button>
       <div id="upgResult"></div>
     </div>
     ${historyHTML}
     <div class="hintBox">💡 Начинайте с малых шагов! GTX 1050→1060: ~54%, а GTX 1050→4090: 1%.</div>`;
-  
-  let selectedFrom=null, selectedTo=null;
-  
+
+  let selectedFrom=null, selectedTo=null, spinning=false;
+  const wheelEl=$('upgWheel');
+  /* после перерендера сохраняем последнее положение колеса */
+  if(upgLastBG){
+    wheelEl.style.transition='none';
+    wheelEl.style.background=upgLastBG;
+    wheelEl.style.transform=`rotate(${upgAngle}deg)`;
+    void wheelEl.offsetWidth;
+    wheelEl.style.transition='';
+  }else{
+    wheelEl.style.background='conic-gradient(from 0deg,#26374a 0deg 360deg)';
+  }
+  function paintWheel(ch){
+    if(ch==null){upgLastBG='';wheelEl.style.background='conic-gradient(from 0deg,#26374a 0deg 360deg)';return;}
+    const deg=ch*3.6;
+    upgLastBG=`conic-gradient(from 0deg,#2fd46a 0deg ${deg}deg,#ff5c5c ${deg}deg 360deg)`;
+    wheelEl.style.background=upgLastBG;
+  }
+
   document.querySelectorAll('[data-type="from"]').forEach(card=>{
     card.addEventListener('click',()=>{
       document.querySelectorAll('[data-type="from"]').forEach(c=>c.classList.remove('selected'));
@@ -1319,27 +1352,61 @@ function renderUpgrader(){
     if(!selectedFrom||!selectedTo){
       $('upgChance').textContent='Выберите карты';
       $('upgBtn').disabled=true;
+      paintWheel(null);
       return;
     }
     const fromGPU=GPUS.find(g=>g.id===selectedFrom);
     const toGPU=GPUS.find(g=>g.id===selectedTo);
     if(!fromGPU||!toGPU)return;
-    if(fromGPU.id===toGPU.id){$('upgChance').textContent='Выберите другую';$('upgBtn').disabled=true;return;}
-    if(fromGPU.price>=toGPU.price){$('upgChance').textContent='Целевая должна быть дороже';$('upgBtn').disabled=true;return;}
+    if(fromGPU.id===toGPU.id){$('upgChance').textContent='Выберите другую';$('upgBtn').disabled=true;paintWheel(null);return;}
+    if(fromGPU.price>=toGPU.price){$('upgChance').textContent='Целевая должна быть дороже';$('upgBtn').disabled=true;paintWheel(null);return;}
     const chance=calcUpgradeChance(fromGPU,toGPU);
     $('upgChance').innerHTML=`<span style="font-size:14px;color:var(--tg-sub)">Шанс:</span><br>${chance}%`;
+    paintWheel(chance);
     $('upgBtn').disabled=false;
   }
-  
+
   $('upgBtn').addEventListener('click',()=>{
+    if(spinning)return;
     if(!selectedFrom||!selectedTo)return;
     if(S.gpus[selectedFrom].n<1){toast('У вас нет этой карты!','❌','red');return;}
+    const fromGPU=GPUS.find(g=>g.id===selectedFrom);
+    const toGPU=GPUS.find(g=>g.id===selectedTo);
+    if(!fromGPU||!toGPU)return;
+    const chance=calcUpgradeChance(fromGPU,toGPU);
+    /* результат определяется ДО вращения — колесо честно докручивается до него */
+    const success=Math.random()*100<chance;
+    spinning=true;upgSpinId++;
+    const mySpin=upgSpinId;
     $('upgBtn').disabled=true;
-    $('upgBtn').textContent='АПГРЕЙД...';
+    $('upgBtn').textContent='🎡 КРУТИМ...';
+    const rb=$('upgResult');if(rb)rb.innerHTML='';
+    $('upgWheelWrap').classList.add('upgSpin');
+    /* куда приземлиться: успех — в зелёный сектор, провал — в красный */
+    const deg=Math.max(0.01,chance*3.6);
+    let land;
+    if(success){const m=Math.min(1.2,deg/4);land=m+Math.random()*(deg-2*m);}
+    else land=deg+2+Math.random()*Math.max(1,356-deg);
+    const targetMod=((360-land)%360+360)%360;
+    upgAngle+=360*5+(((targetMod-upgAngle%360)%360)+360)%360;
+    wheelEl.style.transform=`rotate(${upgAngle}deg)`;
+    /* тики колеса: чаще в начале, реже в конце */
+    let tt=0,gap=55;
+    while(tt<4300){(t=>setTimeout(()=>{if(mySpin===upgSpinId&&spinning&&$('upgWheel'))snd('tick');},t))(tt);tt+=gap;gap*=1.18;}
     setTimeout(()=>{
-      performUpgrade(selectedFrom,selectedTo);
+      if(mySpin!==upgSpinId)return;
+      spinning=false;
+      const ww=$('upgWheelWrap');
+      if(ww)ww.classList.remove('upgSpin');
+      performUpgrade(selectedFrom,selectedTo,success);
+      const rb2=$('upgResult');
+      if(rb2)rb2.innerHTML=success
+        ?`<div class="upgResult success">🎉 УСПЕХ! ${fromGPU.name} → ${toGPU.name}</div>`
+        :`<div class="upgResult fail">💥 ПРОВАЛ! ${fromGPU.name} сгорела</div>`;
+      snd(success?'win':'err');
+      selectedFrom=null;selectedTo=null;
       renderUpgrader();
-    },1000);
+    },4350);
   });
 }
 
