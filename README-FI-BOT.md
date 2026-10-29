@@ -109,3 +109,22 @@
 - Все выдачи и вмешательства в цену пишутся в журнал действий (`📜 Журнал`) —
   видно, кто и когда двигал курс.
 
+
+---
+
+## 8. Облачный хостинг 24/7 (Render)
+
+Бот и его HTTP-API работают в облаке — ПК выключать можно.
+
+1. Создай свободный PAT на GitHub (если ещё нет): Settings → Developer settings → Personal access tokens → Classic (repo) — он нужен для синка состояния data/state.json.
+2. render.com → Sign in with GitHub → New → Web Service → выбери репозиторий fi-mining-bot.
+3. Настройки: Language — Node, Build Command — пусто, Start Command — node bot.js, Instance — Free.
+4. Environment → добавь переменные:
+   - BOT_TOKEN — токен от @BotFather
+   - GH_TOKEN — тот же GitHub PAT
+   - GH_REPO — имя/fi-mining-bot (необязательно, есть дефолт)
+   - PUBLIC_URL — https://ИМЯ-СЕРВИСА.onrender.com (бот запушит api.json в репо, и Mini App найдёт API)
+5. Deploy → в логах жди: «☁️ Состояние загружено из GitHub», «🌐 API онлайн».
+6. UptimeRobot → Add New Monitor (HTTP) → URL https://ИМЯ-СЕРВИСА.onrender.com/health → интервал 5 минут — чтобы free-инстанс не засыпал.
+
+Mini App на GitHub Pages (index.html) сам читает api.json и ходит в облако. После первого деплоя полностью закрой и заново открой Mini App.
