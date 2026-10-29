@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>FI Mining Bot v7.1.1 — играть в @FI_CoinBot</title>
-<meta property="og:title" content="FI Mining Bot v7.1.1">
+<title>FI Mining Bot v7.2 — играть в @FI_CoinBot</title>
+<meta property="og:title" content="FI Mining Bot v7.2">
 <meta property="og:description" content="Крипто-IDLE игра в Telegram: добывай FI, торгуй на рынке, строй майнинг-ферму. Играть: @FI_CoinBot">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.18/latin-400-normal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-400-normal.css">
@@ -89,7 +89,7 @@ h1{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-top:6px}
   <div class="card">
     <div class="coin">🪙</div>
     <h1>FI MINING BOT</h1>
-    <div class="sub">v7.1.1 · ultimate edition · <b>@FI_CoinBot</b></div>
+    <div class="sub">v7.2 · ultimate edition · <b>@FI_CoinBot</b></div>
 
     <div style="margin-top:14px">
       <div class="priceBox">
@@ -101,8 +101,8 @@ h1{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-top:6px}
     <div class="desc">Добывай <b style="color:var(--em)">FI Coin</b> майнерами, торгуй на живом рынке
       и строй крипто-империю прямо в <b>Telegram</b>.</div>
 
-    <a class="btn" id="play" href="https://t.me/FI_CoinBot">🎮 Играть — @FI_CoinBot</a>
-    <div class="hint">Кнопка закроет это окно → останешься в чате бота → жми <b>«НАЧАТЬ»</b> или кнопку «🏠 Меню»<br>игра живёт прямо в чате</div>
+    <a class="btn" id="play" href="https://t.me/FI_CoinBot?start=play">🚀 Запустить игру</a>
+    <div class="hint">Telegram сам откроет чат и покажет игровое меню.<br>Дальше играется кнопками прямо в чате</div>
 
     <div class="stat">
       <div class="cell"><div class="v">6</div><div class="k">майнеров</div></div>
@@ -130,13 +130,11 @@ h1{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-top:6px}
   var tg = window.Telegram && window.Telegram.WebApp;
   if (tg) { try{ tg.ready(); tg.expand(); }catch(e){} }
   document.getElementById('play').addEventListener('click', function(ev){
-    var raw = this.href;
-    if (tg) {
-      /* мини-приложение открыто из чата бота: закрываем окно — под ним уже чат с игрой */
+    var raw = this.href; /* глубокая ссылка t.me/FI_CoinBot?start=play — стартует игру сама */
+    if (tg && tg.openTelegramLink) {
       ev.preventDefault();
-      try { tg.close(); } catch (e) { window.location.href = raw; }
+      try { tg.openTelegramLink(raw); tg.close(); } catch (e) { window.location.href = raw; }
     } else {
-      /* открыто в обычном браузере — ведём в Telegram */
       ev.preventDefault();
       window.location.href = raw;
     }
