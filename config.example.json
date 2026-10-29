@@ -3,6 +3,12 @@
   "staffPassword": "FI-ADMIN-2026",
   "ownerOnlyBans": false,
   "minerPriceGrowth": 1.18,
+  "httpPort": 8787,
+  "ghToken": "GITHUB_PAT_С_ПРАВОМ_repo_для_синхронизации_состояния",
+  "ghRepo": "your-name/fi-mining-bot",
+  "ownerId": "ТВОЙ_TELEGRAM_ID",
+  "ownerUsername": "твой_username",
+  "publicUrl": "",
   "game": {
     "title": "FI Mining Bot",
     "coinName": "FI",
