@@ -94,6 +94,7 @@ function loadState() {
     if (!Array.isArray(state.customRoles)) state.customRoles = [];
     if (!state.playerRoles || typeof state.playerRoles !== 'object' || Array.isArray(state.playerRoles)) state.playerRoles = {};
     if (!Array.isArray(state.log)) state.log = [];
+    if (!Array.isArray(state.duels)) state.duels = [];
     if (!state.dialogs || typeof state.dialogs !== 'object') state.dialogs = {};
     if (!Number.isFinite(state.lastTick)) state.lastTick = 0;
     for (const p of Object.values(state.players)) {
@@ -384,11 +385,11 @@ function screenPlayers() {
         .sort((a, b) => a.first_name.localeCompare(b.first_name))
         .slice(0, 30)
         .map(p => [{
-            text: `${p.banned ? '🚫' : '👤'} ${p.first_name} — ${fmt(p.fi)}`,
+            text: `${p.banned ? '🚫' : '👤'} ${p.first_name}${p.username ? ' (@' + p.username + ')' : ''} · ID ${p.id}`,
             callback_data: 'st:player:' + p.id
         }]);
     return {
-        text: `👥 <b>Игроки (${Object.keys(state.players).length})</b>\n\nНажми на игрока для действий:`,
+        text: `👥 <b>Игроки (${Object.keys(state.players).length})</b>\n\nНажми на игрока для действий.\n🪪 ID показан у каждого — его можно использовать в выдаче монет: <code>ID сумма</code>.`,
         kb: [...rows, [{ text: '⬅️ Назад', callback_data: 'tab:staff' }]]
     };
 }
@@ -414,9 +415,9 @@ function screenPlayerCard(pid, viewerIsOwner) {
 
 function screenBans() {
     const list = bannedOnline();
-    const rows = list.map(p => [{ text: `🚫 ${p.first_name} (@${esc(p.username || '—')})`, callback_data: 'st:player:' + p.id }]);
+    const rows = list.map(p => [{ text: `🚫 ${p.first_name}${p.username ? ' (@' + p.username + ')' : ''} · ID ${p.id}`, callback_data: 'st:player:' + p.id }]);
     return {
-        text: `🚫 <b>Забаненные (список бана)</b>\n\n${list.map(p => `• ${fname(p)} — ${esc(p.banReason || '—')}`).join('\n') || 'Банов нет. Тишина и порядок.'}`,
+        text: `🚫 <b>Забаненные (список бана)</b>\n\n${list.map(p => `• ${fname(p)} (ID <code>${p.id}</code>) — ${esc(p.banReason || '—')}`).join('\n') || 'Банов нет. Тишина и порядок.'}`,
         kb: [...rows, [{ text: '⬅️ Назад', callback_data: 'tab:staff' }]]
     };
 }
@@ -749,6 +750,10 @@ function apiSnapshot(p) {
                 transfersSent: p.transfersSent || 0, duelWins: p.duelWins || 0,
                 spins: p.spinDone || 0, spinBest: p.spinBest || 0, questsDone: p.questsDone || 0
             },
+            duels: {
+                incoming: (state.duels || []).filter(d => String(d.toId) === String(p.id)).map(d => ({ id: d.id, from: d.fromName, amount: d.amount, leftMin: Math.max(0, Math.ceil((d.at + DUEL_TTL_MS - now) / 60000)) })),
+                outgoing: (state.duels || []).filter(d => String(d.fromId) === String(p.id)).map(d => ({ id: d.id, to: d.toName, amount: d.amount, leftMin: Math.max(0, Math.ceil((d.at + DUEL_TTL_MS - now) / 60000)) }))
+            },
             role: myRole ? { name: myRole.name, color: myRole.color } : null
         } : null,
         market: {
@@ -762,6 +767,31 @@ function apiSnapshot(p) {
         cfg: Object.fromEntries(Object.keys(API_SET_KEYS).map(k => [k, state.settings[k]])),
         top, supply: supply(), playersN: Object.keys(state.players).length
     };
+}
+
+/* ------------------------- ДУЭЛИ ПО ВЫЗОВУ ------------------------- */
+const DUEL_TTL_MS = 5 * 60000;
+function cleanupDuels() {
+    const now = Date.now();
+    const st = Array.isArray(state.duels) ? state.duels : [];
+    const keep = [];
+    for (const d of st) {
+        if (now - d.at > DUEL_TTL_MS) {
+            const fp = state.players[d.fromId];
+            if (fp) fp.usd += d.amount;
+            adminSay(`⌛ Вызов ${d.fromName} → ${d.toName} ($${fmt(d.amount)}) истёк — ставка возвращена`);
+        } else keep.push(d);
+    }
+    state.duels = keep;
+}
+async function notifyDuelIn(d) {
+    const kb = [
+        [{ text: '⚔️ Принять вызов', callback_data: `dacc:${d.id}` }],
+        [{ text: '✖️ Отклонить', callback_data: `ddeny:${d.id}` }]
+    ];
+    try {
+        await send(d.toId, `⚔️ <b>${esc(d.fromName)} вызывает тебя на дуэль!</b>\nСтавка: <b>$${fmt(d.amount)}</b>\n🏆 Победитель забирает $${fmt(d.amount * 2)}\n⏳ На ответ — 5 минут\n\nМини-игра → вкладка «Соц»: вызов ждёт и там.`, kb);
+    } catch (_) { }
 }
 
 /* Действия игрока (та же механика, что и кнопки в чате) */
@@ -892,18 +922,64 @@ function apiRunAction(p, act) {
             return { ok: true, msg: `✅ ${fname(tp)} получил ${fmt(amt)} ${S('coinName')}` };
         }
         case 'duel': {
-            const amt = Number(act.amount);
-            if (!isFinite(amt) || amt < 10 || amt > 1e6) return { ok: false, msg: '❌ Ставка: от $10' };
-            if (p.usd < amt) return { ok: false, msg: '❌ Не хватает денег' };
-            const opps = Object.values(state.players).filter(x => !x.banned && String(x.id) !== String(p.id));
-            if (!opps.length) return { ok: false, msg: '❌ Пока нет соперников' };
-            const tp = opps[Math.floor(Math.random() * opps.length)];
-            if ((tp.usd || 0) < amt) return { ok: false, msg: `❌ У соперника мало денег — попробуй позже` };
-            const winP = Math.random() < 0.5;
-            if (winP) { p.usd += amt; tp.usd -= amt; p.duelWins = (p.duelWins || 0) + 1; }
-            else { p.usd -= amt; tp.usd += amt; }
-            adminSay(`⚔️ Дуэль (mini): ${fname(p)} ${winP ? 'победил' : 'проиграл'} ${fname(tp)} на $${fmt(amt)}`);
-            return { ok: true, msg: winP ? `⚔️ Победа над ${fname(tp)}! +$${fmt(amt)}` : `⚔️ ${fname(tp)} сильнее… −$${fmt(amt)}` };
+            const amt = Math.round(Number(act.amount) * 100) / 100;
+            if (!isFinite(amt) || amt < 10 || amt > 1e6) return { ok: false, msg: '❌ Ставка: от $10 до $1M' };
+            if (p.usd < amt) return { ok: false, msg: '❌ Не хватает денег на ставку' };
+            if ((state.duels || []).some(d => String(d.fromId) === String(p.id))) return { ok: false, msg: '⚔️ У тебя уже есть активный вызов — отмени его или дождись ответа' };
+            let tp = null;
+            if (act.to) {
+                tp = findPlayerByNameOrId(String(act.to).replace(/^@/, ''));
+                if (!tp || String(tp.id) === String(p.id)) return { ok: false, msg: '❌ Соперник не найден' };
+                if (tp.banned) return { ok: false, msg: '🚫 Этот игрок забанен' };
+            } else {
+                const pool = Object.values(state.players).filter(x => !x.banned && String(x.id) !== String(p.id) && (x.usd || 0) >= amt);
+                if (!pool.length) return { ok: false, msg: '❌ Соперники с такой ставкой не найдены — снижай ставку' };
+                tp = pool[Math.floor(Math.random() * pool.length)];
+            }
+            if ((tp.usd || 0) < amt) return { ok: false, msg: `❌ У ${fname(tp)} слишком мало денег для этой ставки` };
+            p.usd -= amt;
+            const d = { id: 'd' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), fromId: String(p.id), fromName: fname(p), toId: String(tp.id), toName: fname(tp), amount: amt, at: Date.now() };
+            state.duels = state.duels || []; state.duels.push(d);
+            adminSay(`⚔️ ${fname(p)} (mini) вызвал ${fname(tp)} на дуэль — $${fmt(amt)}`);
+            try { notifyDuelIn(d); } catch (_) { }
+            return { ok: true, msg: `⚔️ Вызов отправлен ${fname(tp)} — ставка $${fmt(amt)} в кассе, ждём ответ (5 мин)` };
+        }
+        case 'duelAccept':
+        case 'duelDecline': {
+            const d = (state.duels || []).find(x => x.id === String(act.id || '') && String(x.toId) === String(p.id));
+            if (!d) return { ok: false, msg: '❌ Вызов не найден — возможно, истёк (5 минут)' };
+            const fp = state.players[d.fromId];
+            state.duels = state.duels.filter(x => x.id !== d.id);
+            if (a === 'duelDecline' || !fp) {
+                if (fp) fp.usd += d.amount;
+                adminSay(`✖️ ${fname(p)} (mini) отклонил вызов ${fname(fp)} — $${fmt(d.amount)} возвращено`);
+                try { if (fp) send(fp.id, `✖️ <b>${esc(fname(p))}</b> отклонил твой вызов. Ставка $${fmt(d.amount)} вернулась.`); } catch (_) { }
+                return { ok: true, msg: '✖️ Отклонено — ставка вернётся сопернику' };
+            }
+            if ((p.usd || 0) < d.amount) {
+                fp.usd += d.amount;
+                try { send(fp.id, `❗ ${esc(fname(p))} не смог оплатить ставку — вызов отменён, деньги возвращены.`); } catch (_) { }
+                return { ok: false, msg: `❌ Не хватает $${fmt(d.amount - p.usd)} на ставку — вызов отменён` };
+            }
+            p.usd -= d.amount;
+            const pot = d.amount * 2;
+            const accWins = Math.random() < 0.5;
+            const winner = accWins ? p : fp;
+            winner.usd += pot;
+            winner.duelWins = (winner.duelWins || 0) + 1;
+            adminSay(`⚔️ Дуэль (mini): ${fname(winner)} победил ${fname(accWins ? fp : p)} — банк $${fmt(pot)}`);
+            try { send(winner.id, `⚔️ <b>Дуэль с ${esc(fname(accWins ? fp : p))}</b>\n🏆 Победа! Приз $${fmt(pot)}`); } catch (_) { }
+            try { send(accWins ? fp.id : p.id, `⚔️ <b>Дуэль с ${esc(fname(winner))}</b>\n💀 Поражение. −$${fmt(d.amount)}`); } catch (_) { }
+            return { ok: true, msg: accWins ? `🏆 Победа в дуэли! +$${fmt(d.amount)}` : `💀 ${fname(fp)} сильнее — −$${fmt(d.amount)}` };
+        }
+        case 'duelCancel': {
+            const d = (state.duels || []).find(x => x.id === String(act.id || '') && String(x.fromId) === String(p.id));
+            if (!d) return { ok: false, msg: '❌ Твой вызов не найден' };
+            state.duels = state.duels.filter(x => x.id !== d.id);
+            p.usd += d.amount;
+            adminSay(`✖️ ${fname(p)} (mini) отменил вызов к ${d.toName} — ставка возвращена`);
+            try { const tpx = state.players[d.toId]; if (tpx) send(tpx.id, `✖️ ${esc(fname(p))} отменил вызов на дуэль.`); } catch (_) { }
+            return { ok: true, msg: `✅ Вызов отменён — +$${fmt(d.amount)} вернулись` };
         }
         case 'roulette': {
             const c = String(act.color || '');
@@ -1138,16 +1214,25 @@ async function apiRoute(pathname, method, bodyRaw) {
         if (!u) return { ok: false, err: 'auth' };
         const p = ensurePlayer(u);
         let msg = '';
+        let oneRes = null;
+        cleanupDuels();
         const actions = Array.isArray(body.actions) ? body.actions.slice(0, 10) : [];
         for (const act of actions) {
             const r = apiRunAction(p, act);
             if (r && r.msg) msg = r.msg;
+            if (actions.length === 1) oneRes = r || null;
             if (r && r.ok === false) break;
         }
         saveState();
         saveStateToGitHub(false);
         const snap = apiSnapshot(p);
         snap.msg = msg;
+        /* Результат одиночного действия отдаём в ответе целиком (ok/seg/win и т.п.) — иначе клиент не отличает успех от проигрыша */
+        if (actions.length === 1 && oneRes && typeof oneRes === 'object') {
+            const { msg: _m, ...rest } = oneRes;
+            snap.ok = oneRes.ok !== false;
+            Object.assign(snap, rest);
+        }
         return snap;
     }
 
@@ -1247,6 +1332,43 @@ async function onCallback(q) {
             delete state.dialogs[user.id];
             await answer(q, 'Отменено');
             return send(chat, '🆗 Отменено.');
+        }
+
+        /* дуэли: кнопки «Принять/Отклонить» в уведомлении — только тому, кому адресован вызов */
+        if (a === 'dacc' || a === 'ddeny') {
+            const p = ensurePlayer(user);
+            if (p.banned) { saveState(); return answer(q, '🚫 Забанен'); }
+            const d = (state.duels || []).find(x => x.id === b && String(x.toId) === String(p.id));
+            if (!d) { saveState(); return answer(q, '❗ Вызов уже неактуален'); }
+            state.duels = (state.duels || []).filter(x => x.id !== d.id);
+            const fp = state.players[d.fromId];
+            if (a === 'ddeny' || !fp) {
+                if (fp) fp.usd += d.amount;
+                if (fp) { try { send(fp.id, `✖️ <b>${esc(fname(p))}</b> отклонил твой вызов. Ставка $${fmt(d.amount)} вернулась.`); } catch (_) { } }
+                try { await edit(chat, mid, `✖️ ${esc(d.fromName)} → ${esc(fname(p))}: вызов отклонён, ставка возвращена.`); } catch (_) { }
+                adminSay(`✖️ ${fname(p)} (tg) отклонил вызов ${d.fromName} — $${fmt(d.amount)} возвращено`);
+                saveState();
+                return answer(q, 'Отклонено — ставка вернулась сопернику');
+            }
+            if ((p.usd || 0) < d.amount) {
+                fp.usd += d.amount;
+                try { send(fp.id, `❗ ${esc(fname(p))} не смог оплатить ставку — вызов отменён, деньги возвращены.`); } catch (_) { }
+                try { await edit(chat, mid, `❗ Ставку не оплатить — вызов отменён, ставка возвращена ${esc(fname(fp))}.`); } catch (_) { }
+                saveState();
+                return answer(q, 'Не хватило на ставку — вызов отменён');
+            }
+            p.usd -= d.amount;
+            const pot = d.amount * 2;
+            const accWins = Math.random() < 0.5;
+            const winner = accWins ? p : fp;
+            winner.usd += pot;
+            winner.duelWins = (winner.duelWins || 0) + 1;
+            adminSay(`⚔️ Дуэль (tg): ${fname(winner)} победил ${fname(accWins ? fp : p)} — банк $${fmt(pot)}`);
+            try { send(winner.id, `⚔️ <b>Дуэль с ${esc(fname(accWins ? fp : p))}</b>\n🏆 Победа! Приз $${fmt(pot)}`); } catch (_) { }
+            try { send((accWins ? fp : p).id, `⚔️ <b>Дуэль с ${esc(fname(winner))}</b>\n💀 Поражение. −$${fmt(d.amount)}`); } catch (_) { }
+            try { await edit(chat, mid, `⚔️ Дуэль ${esc(d.fromName)} vs ${esc(fname(p))}: <b>${esc(fname(winner))}</b> победил! Банк $${fmt(pot)}.`); } catch (_) { }
+            saveState();
+            return answer(q, accWins ? `🏆 Победа! +$${fmt(pot)}` : `💀 Проиграл −$${fmt(d.amount)}`);
         }
 
         const p = ensurePlayer(user);
