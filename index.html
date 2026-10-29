@@ -8,6 +8,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>FI Coin — Mini App · Ultimate Edition</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<meta name="theme-color" content="#0e1621">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FI Coin">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-400-normal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-700-normal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-800-normal.css">
@@ -238,6 +245,14 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 @keyframes glowPulse{0%,100%{box-shadow:0 4px 20px rgba(23,221,98,.35)}50%{box-shadow:0 4px 34px rgba(23,221,98,.65)}}
 #banned{position:absolute;inset:0;z-index:101;background:#120a0c;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
 #banned.show{display:flex}
+/* экран первого входа с телефона */
+#devCard{position:absolute;inset:0;z-index:100;background:linear-gradient(160deg,#0e1621,#10241c 55%,#0a1a10);display:none;flex-direction:column;align-items:center;justify-content:center;padding:26px;text-align:center;overflow-y:auto}
+#devCard.show{display:flex}
+.dinp{width:100%;max-width:280px;background:rgba(0,0,0,.3);border:1px solid var(--tg-border);color:var(--tg-text);font-family:inherit;font-weight:700;font-size:14px;border-radius:12px;padding:12px 14px;outline:none;text-align:center;margin-bottom:10px}
+.dinp:focus{border-color:var(--em)}
+.orRow{display:flex;align-items:center;gap:10px;width:100%;max-width:280px;color:var(--tg-sub);font-size:11px;margin:2px 0 10px}
+.orRow::before,.orRow::after{content:'';flex:1;height:1px;background:var(--tg-border)}
+#devErr{color:var(--fi-red);font-size:12px;font-weight:700;min-height:16px;margin-top:6px;max-width:280px}
 #banned h1{color:var(--fi-red);font-size:26px;margin:16px 0 8px}
 #banned p{color:var(--tg-sub);font-size:13px;line-height:1.6;max-width:280px}
 
@@ -329,6 +344,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
       <div class="tgMenu" id="menuBtn">•••</div>
     </div>
     <div id="menuDrop">
+      <div class="menuItem" data-menu="link" id="menuLink">🪺 Привязать телефон</div>
       <div class="menuItem" data-menu="about">ℹ️ Отношение фонда FI к игре</div>
       <div class="menuItem staff" data-menu="dev">🛠 Консоль персонала</div>
     </div>
@@ -384,6 +400,18 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <h1>FI Mining Bot</h1>
     <div class="sub">Изумрудная криптовалюта <b style="color:var(--em)">FI coin</b> — майнинг, биржа, лаборатория, колесо удачи и PvP-дуэли!</div>
     <button class="btn btn-em" id="startBtn">▶ НАЧАТЬ МАЙНИНГ</button>
+  </div>
+
+  <div id="devCard">
+    <div class="introCoin" id="devCoin"></div>
+    <h1 style="font-size:24px;font-weight:800;margin:16px 0 6px;background:linear-gradient(90deg,#7dffa8,#17dd62);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">FI Coin на телефоне</h1>
+    <div style="color:var(--tg-sub);font-size:13px;margin-bottom:16px;max-width:290px;line-height:1.5">Полное приложение игры. Впишешь ник — получишь профиль с уникальным ID (длиннее Telegram-ID, перепутать нельзя). Можно связать с Telegram — один баланс везде.</div>
+    <input class="dinp" id="devNick" maxlength="16" placeholder="Придумай ник (обязательно)">
+    <button class="btn btn-em" id="devGo" style="max-width:280px">🎮 Создать профиль</button>
+    <div class="orRow">или</div>
+    <input class="dinp num" id="devCode" placeholder="Код привязки (ABCD-1234)">
+    <button class="btn btn-blue" id="devLinkBtn" style="max-width:280px">🔗 Войти по коду из Telegram</button>
+    <div id="devErr"></div>
   </div>
 </div>
 
@@ -470,11 +498,80 @@ function closeModal(){$('modalWrap').classList.remove('open');}
 $('modalWrap').onclick=e=>{if(e.target.id==='modalWrap')closeModal();};
 
 /* ---------- состояние ---------- */
-const INIT=(function(){try{const t=window.Telegram&&window.Telegram.WebApp;return t? (t.initData||''):'';}catch(e){return '';}})();
+let TG_INIT='';
+try{const t=window.Telegram&&window.Telegram.WebApp;TG_INIT=t?(t.initData||''):'';}catch(e){TG_INIT='';}
+const IS_TG=TG_INIT.length>0;
+let DEV=null;
+try{DEV=JSON.parse(localStorage.getItem('fiDev')||'null');}catch(e){DEV=null;}
+if(DEV&&(!DEV.uid||!/^W\d{13}$/.test(String(DEV.uid))))DEV=null;
 let S=null;             // снапшот сервера
 let role=null;          // {kind,name,color,perms}
 let tab=localStorage.getItem('fiTab7')||'farm';
 let busy=false,apiBase='',spinning=false;
+
+/* телефонное устройство (PWA): uid W+13 цифр + секрет, подпись HMAC на каждый запрос */
+function newDevice(){
+  let u='W';for(let i=0;i<13;i++)u+=Math.floor(Math.random()*10);
+  const s=Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
+  return {uid:u,secret:s};
+}
+async function deviceBody(){
+  if(!DEV)return null;
+  const ts=String(Date.now());
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(DEV.secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const mac=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(DEV.uid+':'+ts));
+  return {uid:DEV.uid,ts,sig:Array.from(new Uint8Array(mac)).map(b=>b.toString(16).padStart(2,'0')).join('')};
+}
+async function authPayload(){if(IS_TG)return{init:TG_INIT};return{device:await deviceBody()};}
+function saveDev(d){DEV=d;try{localStorage.setItem('fiDev',JSON.stringify(d));}catch(e){}}
+async function devRegister(nick){
+  const d=newDevice();
+  const r=await fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'register',uid:d.uid,secret:d.secret,nick})});
+  return {r:await r.json(),d};
+}
+async function devLink(code){
+  const d=DEV||newDevice();
+  const r=await fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'link',uid:d.uid,secret:d.secret,code})});
+  return {r:await r.json(),d};
+}
+const NICK_RE=/^[-A-Za-zА-Яа-яЁё0-9_ ]{2,16}$/;
+function devErr(m){$('devErr').textContent=m||'';}
+function showDevCard(){$('intro').classList.add('hide');$('devCard').classList.add('show');$('devCoin').innerHTML=coinSVG();devErr('');}
+function bindDevCard(){
+  $('devGo').onclick=async()=>{
+    devErr();
+    const nick=($('devNick').value||'').trim();
+    if(!NICK_RE.test(nick))return devErr('Ник: 2–16 символов (буквы, цифры, пробел, _)');
+    const b=$('devGo');b.disabled=true;b.textContent='Создаю…';
+    try{
+      const {r,d}=await devRegister(nick);
+      if(!r.ok)devErr(r.msg||'Не получилось');
+      else{saveDev(d);$('devCard').classList.remove('show');await refresh().catch(()=>{});}
+    }catch(e){devErr('Нет связи с сервером');}
+    b.disabled=false;b.textContent='🎮 Создать профиль';
+  };
+  $('devLinkBtn').onclick=async()=>{
+    devErr();
+    const code=($('devCode').value||'').trim().toUpperCase();
+    if(!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code))return devErr('Формат кода: ABCD-1234');
+    const b=$('devLinkBtn');b.disabled=true;b.textContent='Связываю…';
+    try{
+      const {r,d}=await devLink(code);
+      if(!r.ok)devErr(r.msg||'Код не подошёл');
+      else{saveDev(d);$('devCard').classList.remove('show');await refresh().catch(()=>{});}
+    }catch(e){devErr('Нет связи с сервером');}
+    b.disabled=false;b.textContent='🔗 Войти по коду из Telegram';
+  };
+}
+async function lkGo(){
+  try{
+    const code=($('lkCode').value||'').trim().toUpperCase();
+    if(!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code))return toast('Формат кода: ABCD-1234','✏️');
+    const {r,d}=await devLink(code);
+    if(r.ok){saveDev(d);closeModal();toast('✅ Связано! Один баланс в двух местах','🔗','green');await refresh().catch(()=>{});}
+    else toast(r.msg||'Код не подошёл','❌','red');
+  }catch(_){toast('Сервер не отвечает','📡','red');}
+}
 
 function setNet(on){
   $('dotOnline').style.display=on?'block':'none';
@@ -506,7 +603,7 @@ async function findApi(){
 async function sync(actions){
   const res=await fetch(apiBase+'/api/sync',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({init:INIT,actions:actions||[]})
+    body:JSON.stringify(Object.assign(await authPayload(),{actions:actions||[]}))
   });
   if(!res.ok)throw new Error('http '+res.status);
   const j=await res.json();
@@ -516,7 +613,7 @@ async function sync(actions){
 async function apiStaff(action){
   const res=await fetch(apiBase+'/api/staff',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({init:INIT,action})
+    body:JSON.stringify(Object.assign(await authPayload(),{action}))
   });
   if(!res.ok)throw new Error('http '+res.status);
   return res.json();
@@ -999,6 +1096,7 @@ function renderProfile(){
   <div class="card" style="text-align:center">
     <div style="width:64px;height:64px;margin:0 auto 8px">${coinSVG()}</div>
     <div style="font-weight:800;font-size:16px">${esc(me.name)} ${me.role?roleChipHTML(me.role):''}</div>
+    <div class="num" style="margin-top:4px;font-size:10px;color:var(--tg-sub)">${me.via==='phone'?('📱 профиль телефона · 🪪 '+esc(me.id)):(me.linked?'🪺 телефон привязан к профилю':'✈️ профиль Telegram')} · 🪪 ${esc(me.id)}</div>
     <div style="margin-top:8px"><span class="rankBadge">${r[2]} ${r[1]}</span></div>
     <div class="num" style="margin-top:8px;font-size:11px;color:var(--tg-sub)">Капитал ${fmtUSD(cap)} · в игре с ${new Date(me.joined).toLocaleDateString('ru-RU')}</div>
   </div>
@@ -1344,9 +1442,20 @@ function dvReset(){
 /* ---------- меню ---------- */
 $('menuBtn').onclick=e=>{e.stopPropagation();$('menuDrop').classList.toggle('open');};
 document.addEventListener('click',e=>{if(!e.target.closest('#menuDrop')&&e.target.id!=='menuBtn')$('menuDrop').classList.remove('open');});
-$('menuDrop').onclick=e=>{
+$('menuDrop').onclick=async e=>{
   const m=e.target.closest('.menuItem');if(!m)return;
   $('menuDrop').classList.remove('open');
+  if(m.dataset.menu==='link'){
+    if(IS_TG){
+      try{
+        const r=await (await fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'linkcode',init:TG_INIT})})).json();
+        if(r.ok)modal(`<h3>🪺 Свяжи телефон</h3><p>Открой приложение (или этот же сайт) на телефоне и введи код:</p><div class="num" style="font-size:30px;font-weight:800;color:var(--em);letter-spacing:3px;margin:6px 0 12px;user-select:all">${esc(r.code)}</div><p style="font-size:11px">⏳ Код живёт 10 минут. На телефоне: «Войти по коду из Telegram» — и балансы будут общими.</p><button class="btn btn-em" onclick="closeModal()">Понятно</button>`);
+        else toast(r.msg||'Ошибка','❌','red');
+      }catch(_){toast('Сервер не отвечает','📡','red');}
+    } else if(DEV){
+      modal(`<h3>🔗 Связка с Telegram</h3><p>Возьми код в Telegram-версии: меню ••• → «Привязать телефон». Введи его здесь — тот же баланс и на телефоне, и в Telegram.</p><input class="dinp num" id="lkCode" maxlength="9" placeholder="ABCD-1234"><button class="btn btn-em" onclick="lkGo()">🔗 Связать</button>`);
+    } else toast('Сначала создай профиль на этом телефоне','📱');
+  }
   if(m.dataset.menu==='about')modal(`<h3>🪙 FI coin — что это?</h3><p>Единая цена на всех. Сервер считает рынок, доходы и рандом честно.\n\n⛏ Майни ригами\n📈 Торигуй на бирже\n🔬 Усилься в Лабе\n🎰 Крутани колесо\n⚔️ Дерись в дуэлях\n👑 Роли выдает владелец через STAFF</p><button class="btn btn-em" onclick="closeModal()">Понял</button>`);
   if(m.dataset.menu==='dev'){if(role)toggleDev(true);else toast('Нет roleId — напиши владельцу','🔒','red');}
 };
@@ -1360,13 +1469,16 @@ if(localStorage.getItem('fiIntroSeen7')==='1')$('intro').classList.add('hide');
 (async()=>{
   document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   apiBase=await findApi();
+  $('menuLink').textContent=IS_TG?'🪺 Привязать телефон':'🔗 Связать с Telegram';
+  if(!IS_TG&&!DEV){showDevCard();bindDevCard();if(!apiBase)setNet(false);return;}
+  if(!IS_TG)$('intro').classList.add('hide');
   if(!apiBase){setNet(false);renderOffline(null);return;}
-  const j0=await apiStaff({a:'who'}).catch(()=>null);
-  if(j0&&j0.ok&&j0.role)setRole(j0.role);
+  if(IS_TG){const j0=await apiStaff({a:'who'}).catch(()=>null);if(j0&&j0.ok&&j0.role)setRole(j0.role);}
   await refresh();
   if(S&&S.me&&S.me.banned)$('banned').classList.add('show');
 })().catch(()=>renderOffline(null));
 
+if('serviceWorker' in navigator&&!IS_TG)navigator.serviceWorker.register('sw.js').catch(()=>{});
 setInterval(()=>{if(!document.hidden&&S&&apiBase&&!spinning)refresh().catch(()=>{});},2500);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&apiBase)refresh().catch(()=>{});});
 </script>
