@@ -95,6 +95,7 @@ function loadState() {
     if (!state.playerRoles || typeof state.playerRoles !== 'object' || Array.isArray(state.playerRoles)) state.playerRoles = {};
     if (!Array.isArray(state.log)) state.log = [];
     if (!Array.isArray(state.duels)) state.duels = [];
+    if (!Array.isArray(state.friendReqs)) state.friendReqs = [];
     if (!state.deviceVault || typeof state.deviceVault !== 'object' || Array.isArray(state.deviceVault)) state.deviceVault = {};
     if (!Array.isArray(state.linkCodes)) state.linkCodes = [];
     if (!state.dialogs || typeof state.dialogs !== 'object') state.dialogs = {};
@@ -103,6 +104,7 @@ function loadState() {
     for (const p of Object.values(state.players)) {
         if (!p.lab || typeof p.lab !== 'object' || Array.isArray(p.lab)) p.lab = {};
         if (!p.upg || typeof p.upg !== 'object' || Array.isArray(p.upg)) p.upg = {};
+        if (!p.friends || typeof p.friends !== 'object' || Array.isArray(p.friends)) p.friends = {};
         if (p.day && typeof p.day === 'object' && !Array.isArray(p.day)) { delete p.day.claimedArr; }
         dayOf(p);
     }
@@ -814,6 +816,34 @@ function authPlayer(body) {
     if (p) return { p, tg: p };
     return null;
 }
+/* ------------------------- СОЦИАЛКА: друзья и онлайн ------------------------- */
+const ONLINE_MS = 120000;              /* 🟢 = заходил в игру последние 2 минуты */
+const FRIENDS_MAX = 50;
+
+function socialRow(x) {
+    return { id: String(x.id), name: fname(x), online: (Date.now() - (x.lastSeen || 0)) < ONLINE_MS, usd: Math.floor(x.usd || 0) };
+}
+function socialPlayersList(selfId) {
+    const isOn = x => (Date.now() - (x.lastSeen || 0)) < ONLINE_MS ? 1 : 0;
+    return Object.values(state.players)
+        .filter(x => !x.banned && String(x.id) !== String(selfId))
+        .sort((a, b) => isOn(b) - isOn(a) || (b.usd || 0) - (a.usd || 0))
+        .slice(0, 300)
+        .map(socialRow);
+}
+function friendsOf(p) {
+    const f = p.friends || {};
+    return Object.keys(f).map(k => { const x = state.players[k]; return x ? Object.assign(socialRow(x), { since: f[k] }) : null; }).filter(Boolean);
+}
+function reqInFor(p) {
+    return (state.friendReqs || []).filter(r => String(r.t) === String(p.id))
+        .map(r => { const x = state.players[r.f]; return x ? { id: String(x.id), name: fname(x), online: (Date.now() - (x.lastSeen || 0)) < ONLINE_MS, at: r.at } : null; })
+        .filter(Boolean);
+}
+function reqOutFor(p) {
+    return (state.friendReqs || []).filter(r => String(r.f) === String(p.id)).map(r => String(r.t));
+}
+
 function apiSnapshot(p) {
     const M = state.market;
     const price = M.price;
@@ -851,6 +881,10 @@ function apiSnapshot(p) {
             }),
             via: p.via === 'phone' ? 'phone' : 'tg',
             linked: !!p.uid,
+            players: socialPlayersList(String(p.id)),
+            friends: friendsOf(p),
+            reqIn: reqInFor(p),
+            reqOut: reqOutFor(p),
             stats: {
                 transfersSent: p.transfersSent || 0, duelWins: p.duelWins || 0,
                 spins: p.spinDone || 0, spinBest: p.spinBest || 0, questsDone: p.questsDone || 0
@@ -1101,6 +1135,68 @@ function apiRunAction(p, act) {
             if (win > (p.spinBest || 0)) p.spinBest = win;
             adminSay(`🎰 Рулетка (mini): ${fname(p)} → ${label}, ставка $${fmt(amt)}, выигрыш $${fmt(win)}`);
             return { ok: true, msg: win > 0 ? `${label}! +$${fmt(win)}` : `${label}… −$${fmt(amt)}` };
+        }
+        /* ---------- друзья ---------- */
+        case 'friendAdd': {
+            const q = String(act.q || '').replace(/^@/, '').trim();
+            if (!q) return { ok: false, msg: '❌ Ник или ID игрока?' };
+            const tp = findPlayerByNameOrId(q);
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            if (String(tp.id) === String(p.id)) return { ok: false, msg: '🤨 Это ты сам' };
+            if (tp.banned) return { ok: false, msg: '🚫 Игрок заблокирован' };
+            p.friends = p.friends || {};
+            tp.friends = tp.friends || {};
+            if (p.friends[String(tp.id)]) return { ok: false, msg: '✅ Вы уже друзья' };
+            /* встречная заявка = мгновенная дружба (он мне уже отправлял) */
+            state.friendReqs = state.friendReqs || [];
+            const back = state.friendReqs.find(r => String(r.f) === String(tp.id) && String(r.t) === String(p.id));
+            if (back) {
+                p.friends[String(tp.id)] = Date.now();
+                tp.friends[String(p.id)] = Date.now();
+                state.friendReqs = state.friendReqs.filter(r => r !== back && Date.now() - r.at < 7 * 86400000);
+                adminSay(`❤️ ${fname(p)} и ${fname(tp)} теперь друзья (встречная)`);
+                try { send(tp.id, `❤️ <b>${fname(p)}</b> тоже добавил тебя — вы друзья!`); } catch (_) { }
+                return { ok: true, msg: `❤️ ${fname(tp)} теперь у тебя в друзьях` };
+            }
+            if (state.friendReqs.some(r => String(r.f) === String(p.id) && String(r.t) === String(tp.id))) return { ok: false, msg: '⏳ Заявка уже отправлена' };
+            if (Object.keys(tp.friends).length >= FRIENDS_MAX) return { ok: false, msg: '❌ У игрока уже максимум друзей' };
+            state.friendReqs.push({ f: String(p.id), t: String(tp.id), at: Date.now() });
+            adminSay(`👥 ${fname(p)} отправил заявку в друзья → ${fname(tp)}`);
+            try { send(tp.id, `👥 <b>${fname(p)}</b> хочет добавить тебя в друзья.\nОткрой мини-игру → ❤️ Друзья → заявки.`); } catch (_) { }
+            return { ok: true, msg: `📨 Заявка отправлена: ${fname(tp)}` };
+        }
+        case 'friendYes': {
+            state.friendReqs = state.friendReqs || [];
+            const i = state.friendReqs.findIndex(r => String(r.t) === String(p.id) && String(r.f) === String(act.q || ''));
+            if (i < 0) return { ok: false, msg: '❌ Заявка не найдена (или устарела)' };
+            const req = state.friendReqs[i];
+            const rp = state.players[req.f];
+            p.friends = p.friends || {};
+            p.friends[req.f] = Date.now();
+            if (rp) {
+                rp.friends = rp.friends || {};
+                rp.friends[String(p.id)] = Date.now();
+                try { send(rp.id, `❤️ <b>${fname(p)}</b> принял заявку — вы теперь друзья!`); } catch (_) { }
+            }
+            state.friendReqs.splice(i, 1);
+            adminSay(`❤️ ${fname(p)} принял дружбу: ${rp ? fname(rp) : req.f}`);
+            return { ok: true, msg: `❤️ Теперь вы друзья` };
+        }
+        case 'friendNo': {
+            const before = (state.friendReqs || []).length;
+            state.friendReqs = (state.friendReqs || []).filter(r => !(String(r.t) === String(p.id) && String(r.f) === String(act.q || '')));
+            return before === state.friendReqs.length ? { ok: false, msg: '❌ Заявка не найдена' } : { ok: true, msg: '🚮 Заявка отклонена' };
+        }
+        case 'friendDel': {
+            const k = String(act.q || '');
+            p.friends = p.friends || {};
+            if (!p.friends[k]) return { ok: false, msg: '❌ Этого игрока нет в друзьях' };
+            delete p.friends[k];
+            const tp = state.players[k];
+            if (tp && tp.friends) delete tp.friends[String(p.id)];
+            state.friendReqs = (state.friendReqs || []).filter(r => !((String(r.f) === k && String(r.t) === String(p.id)) || (String(r.t) === k && String(r.f) === String(p.id))));
+            adminSay(`💔 ${fname(p)} удалил из друзей: ${tp ? fname(tp) : k}`);
+            return { ok: true, msg: '💔 Удалено из друзей' };
         }
     }
 }
@@ -1387,6 +1483,7 @@ async function apiRoute(pathname, method, bodyRaw) {
         const au = authPlayer(body);
         if (!au) return { ok: false, err: 'auth' };
         const p = au.p;
+        p.lastSeen = Date.now(); /* 🟢 онлайн = заходил в игру последние 2 минуты */
         let msg = '';
         let oneRes = null;
         cleanupDuels();
