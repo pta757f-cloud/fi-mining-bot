@@ -1416,7 +1416,7 @@ async function apiRoute(pathname, method, bodyRaw) {
         const role = apiRole(au.tg);
         if (!role) return { ok: false, err: 'forbidden' };
         const p = au.p;
-        const r = apiRunStaff(u, role, body.action || {});
+        const r = apiRunStaff(au.tg, role, body.action || {});
         if (r && r.ok !== false) { saveState(); saveStateToGitHub(false); }
         const out = Object.assign({ role: { kind: role.kind, name: role.name, color: role.color, perms: role.perms } }, r);
         if (!/^(players|log|who|roles)$/.test(String((body.action || {}).a))) out.snap = apiSnapshot(p);
