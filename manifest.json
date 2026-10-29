@@ -1,0 +1,16 @@
+{
+  "name": "FI Coin — крипта-майнинг",
+  "short_name": "FI Coin",
+  "description": "Майнинг FI, биржа, лаборатория, колесо удачи и дуэли. Общая экономика с ботом в Telegram — один баланс везде.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1621",
+  "theme_color": "#0e1621",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
