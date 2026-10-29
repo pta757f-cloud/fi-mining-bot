@@ -96,6 +96,12 @@ function loadState() {
     if (!Array.isArray(state.log)) state.log = [];
     if (!state.dialogs || typeof state.dialogs !== 'object') state.dialogs = {};
     if (!Number.isFinite(state.lastTick)) state.lastTick = 0;
+    for (const p of Object.values(state.players)) {
+        if (!p.lab || typeof p.lab !== 'object' || Array.isArray(p.lab)) p.lab = {};
+        if (!p.upg || typeof p.upg !== 'object' || Array.isArray(p.upg)) p.upg = {};
+        if (p.day && typeof p.day === 'object' && !Array.isArray(p.day)) { delete p.day.claimedArr; }
+        dayOf(p);
+    }
 }
 function saveState() {
     try {
@@ -216,6 +222,50 @@ function ensurePlayer(user) {
 const totalHash = p => { let h = 0; if (p.miners) for (const id in p.miners) { const m = miner(id); if (m) h += m.hash * p.miners[id]; } return h; };
 const supply = () => Object.values(state.players).reduce((a, p) => a + (p.fi || 0), 0);
 const bannedOnline = () => Object.values(state.players).filter(p => p.banned);
+
+/* ------------------------- ИГРОВЫЕ УЛУЧШЕНИЯ (v6-механики на сервере) ------------------------- */
+const LAB_ITEMS = {
+    chips1: { name: 'Эффективность чипов I', ico: '🔬', max: 5, base: 500, mult: 2.1, desc: '+10% хешрейт за уровень' },
+    chips2: { name: 'Эффективность чипов II', ico: '🧪', max: 3, base: 3000, mult: 2.4, desc: '+15% хешрейт за уровень' },
+    cryo: { name: 'Крио-паста', ico: '❄️', max: 3, base: 800, mult: 2.0, desc: '+5% хешрейт за уровень' },
+    broker: { name: 'Биржевой брокер', ico: '📉', max: 1, base: 1200, mult: 1, desc: 'Комиссия биржи 1% → 0.5%' },
+    algo: { name: 'Алгоритм FI-XX', ico: '📐', max: 1, base: 8000, mult: 1, desc: '+20% хешрейта' },
+    transfer: { name: 'P2P протокол', ico: '📤', max: 1, base: 2500, mult: 1, desc: 'Разблокирует переводы FI' }
+};
+const UPG_ITEMS = {
+    cool: { name: 'Система охлаждения', ico: '❄', max: 8, base: 400, mult: 2.1, pct: 3, desc: l => `+${l * 3}% хешрейта` },
+    power: { name: 'Низкий тариф', ico: '⚡', max: 6, base: 600, mult: 2.4, pct: 2, desc: l => `+${l * 2}% хешрейта` },
+    oc: { name: 'Оверклокинг чипов', ico: '🔥', max: 5, base: 1500, mult: 2.6, pct: 12, desc: l => `+${l * 12}% хешрейта` }
+};
+const SPIN_COST_FI = 50;
+const SPIN_SEGS = [
+    { w: 22, t: 'мимо', color: '#2a3a4e' },
+    { w: 14, k: 'fi', m: 2, t: '+2× FI', color: '#17dd62' },
+    { w: 18, t: 'мимо', color: '#1e2c3a' },
+    { w: 12, k: 'usd', a: 50, t: '+$50', color: '#2fd46a' },
+    { w: 16, t: 'мимо', color: '#243447' },
+    { w: 8, k: 'fi', m: 5, t: '+5× FI', color: '#f7b32b' },
+    { w: 7, k: 'usd', a: 200, t: '+$200', color: '#37c8ee' },
+    { w: 2, k: 'usd', a: 1000, t: '💰 ДЖЕКПОТ', color: '#a855f7' },
+    { w: 1, k: 'usd', a: 2500, t: '💎 МЕГА-ДЖЕКПОТ', color: '#ec4899' }
+];
+const QUEST_DEFS = [
+    { k: 'sell', t: 25, ico: '💱', d: 'Продай 25 FI на бирже', r: { usd: 150 } },
+    { k: 'buy', t: 40, ico: '🟢', d: 'Купи 40 FI на бирже', r: { fi: 8 } },
+    { k: 'mine', t: 60, ico: '⛏', d: 'Добудь 60 FI майнингом', r: { usd: 200 } }
+];
+const todayStr = () => new Date().toDateString();
+function dayOf(p) {
+    if (!p.day || p.day.date !== todayStr()) p.day = { date: todayStr(), sell: 0, buy: 0, mine: 0, claimed: {} };
+    return p.day;
+}
+function labCost(it, lvl) { return Math.ceil(it.base * Math.pow(it.mult, lvl)); }
+function labHashMult(p) {
+    const l = p.lab || {}, u = p.upg || {};
+    return (1 + 0.10 * (l.chips1 || 0) + 0.15 * (l.chips2 || 0)) *
+        (l.algo ? 1.2 : 1) * (1 + 0.05 * (l.cryo || 0)) *
+        (1 + 0.03 * (u.cool || 0) + 0.02 * (u.power || 0) + 0.12 * (u.oc || 0));
+}
 
 /* ------------------------- РОЛИ ------------------------- */
 const isStaff = user => user && state.staffIds.includes(user.id);
@@ -541,9 +591,10 @@ function marketTick() {
         if (p.banned) continue;
         const h = totalHash(p);
         if (h > 0) {
-            const gain = h * (S('fiPerThHour') / 3600) * (dt / 1000);
+            const gain = h * (S('fiPerThHour') / 3600) * (dt / 1000) * labHashMult(p);
             p.fi += gain;
             p.totalMined += gain;
+            dayOf(p).mine += gain;
         }
     }
     saveState();
@@ -685,6 +736,19 @@ function apiSnapshot(p) {
             workReady: now >= p.workAt + S('workIntervalMin') * 60000,
             workLeftMin: Math.max(0, Math.ceil((p.workAt + S('workIntervalMin') * 60000 - now) / 60000)),
             owned: p.miners || {},
+            lab: Object.assign({}, p.lab || {}),
+            upg: Object.assign({}, p.upg || {}),
+            fee: (p.lab && p.lab.broker) ? 0.5 : 1,
+            cap: p.usd + p.fi * price,
+            quests: QUEST_DEFS.map((q, i) => {
+                const d = p.day && p.day.date === new Date().toDateString() ? p.day : { sell: 0, buy: 0, mine: 0, claimed: {} };
+                const v = q.k === 'sell' ? d.sell : q.k === 'buy' ? d.buy : d.mine;
+                return { i, ico: q.ico, d: q.d, t: q.t, v: Math.round(v * 100) / 100, claimed: !!(d.claimed || {})[i], done: v >= q.t };
+            }),
+            stats: {
+                transfersSent: p.transfersSent || 0, duelWins: p.duelWins || 0,
+                spins: p.spinDone || 0, spinBest: p.spinBest || 0, questsDone: p.questsDone || 0
+            },
             role: myRole ? { name: myRole.name, color: myRole.color } : null
         } : null,
         market: {
@@ -725,23 +789,25 @@ function apiRunAction(p, act) {
         }
         case 'buy': {
             const M = state.market;
+            const bp = S('buySpreadPct') * ((p.lab && p.lab.broker) ? 0.5 : 1);
             let amt = Number(act.fi);
-            if (act.all) amt = p.usd / (M.price * (1 + S('buySpreadPct') / 100));
+            if (act.all) amt = p.usd / (M.price * (1 + bp / 100));
             if (!isFinite(amt) || amt <= 0) return { ok: false, msg: '❌ Сколько монет купить?' };
-            const cost = amt * M.price * (1 + S('buySpreadPct') / 100);
-            if (cost > p.usd + 1e-9) return { ok: false, msg: `❌ Хватает на ${fmt(p.usd / (M.price * (1 + S('buySpreadPct') / 100)))} монет — жми «ВСЁ»` };
-            p.usd -= cost; p.fi += amt; p.bought += amt;
+            const cost = amt * M.price * (1 + bp / 100);
+            if (cost > p.usd + 1e-9) return { ok: false, msg: `❌ Хватает на ${fmt(p.usd / (M.price * (1 + bp / 100)))} монет — жми «ВСЁ»` };
+            p.usd -= cost; p.fi += amt; p.bought += amt; dayOf(p).buy += amt;
             adminSay(`🟢 ${fname(p)} купил ${fmt(amt)} ${S('coinName')} за $${fmt(cost)} (mini app)`);
             return { ok: true, msg: `🟢 Куплено ${fmt(amt)} ${S('coinName')} за $${fmt(cost)}` };
         }
         case 'sell': {
             const M = state.market;
+            const sp = S('sellSpreadPct') * ((p.lab && p.lab.broker) ? 0.5 : 1);
             let amt = Number(act.fi);
             if (act.all) amt = p.fi;
             if (!isFinite(amt) || amt <= 0) return { ok: false, msg: '❌ Сколько монет продать?' };
             if (amt > p.fi) return { ok: false, msg: `❌ У тебя только ${fmt(p.fi)} ${S('coinName')}` };
-            const usd = amt * M.price * (1 - S('sellSpreadPct') / 100);
-            p.fi -= amt; p.usd += usd; p.sold += amt;
+            const usd = amt * M.price * (1 - sp / 100);
+            p.fi -= amt; p.usd += usd; p.sold += amt; dayOf(p).sell += amt;
             adminSay(`🔴 ${fname(p)} продал ${fmt(amt)} ${S('coinName')} за $${fmt(usd)} (mini app)`);
             return { ok: true, msg: `🔴 Продано ${fmt(amt)} ${S('coinName')} за $${fmt(usd)}` };
         }
@@ -757,6 +823,104 @@ function apiRunAction(p, act) {
             return { ok: true, msg: `✅ ${m.name}: +${fmt(m.hash)} TH/s` };
         }
         default: return { ok: false, msg: '❌ Неизвестное действие' };
+        /* --- механики v6, живущие на сервере --- */
+        case 'labBuy': {
+            const it = LAB_ITEMS[String(act.id || '')];
+            if (!it) return { ok: false, msg: '❌ Нет такого исследования' };
+            p.lab = p.lab || {};
+            const lvl = p.lab[act.id] || 0;
+            if (lvl >= it.max) return { ok: false, msg: `✅ Уже максимум (${it.max}/${it.max})` };
+            const cost = labCost(it, lvl);
+            if (p.usd < cost) return { ok: false, msg: `❌ Не хватает $${fmt(cost - p.usd)}` };
+            p.usd -= cost; p.lab[act.id] = lvl + 1;
+            adminSay(`🔬 ${fname(p)} (mini) исследовал «${it.name}» ур.${lvl + 1} за $${fmt(cost)}`);
+            return { ok: true, msg: `${it.ico} ${it.name} — уровень ${lvl + 1}` };
+        }
+        case 'upgBuy': {
+            const it = UPG_ITEMS[String(act.id || '')];
+            if (!it) return { ok: false, msg: '❌ Нет такого апгрейда' };
+            p.upg = p.upg || {};
+            const lvl = p.upg[act.id] || 0;
+            if (lvl >= it.max) return { ok: false, msg: `✅ Уже максимум (${it.max}/${it.max})` };
+            const cost = labCost(it, lvl);
+            if (p.usd < cost) return { ok: false, msg: `❌ Не хватает $${fmt(cost - p.usd)}` };
+            p.usd -= cost; p.upg[act.id] = lvl + 1;
+            adminSay(`🔧 ${fname(p)} (mini) улучшил «${it.name}» ур.${lvl + 1} за $${fmt(cost)}`);
+            return { ok: true, msg: `${it.ico} ${it.name} — уровень ${lvl + 1}` };
+        }
+        case 'spin': {
+            if ((p.fi || 0) < SPIN_COST_FI) return { ok: false, msg: `❌ Нужно ${fmt(SPIN_COST_FI)} FI на спин` };
+            const r = Math.random() * 100;
+            let acc = 0, idx = SPIN_SEGS.length - 1;
+            for (let i = 0; i < SPIN_SEGS.length; i++) { acc += SPIN_SEGS[i].w; if (r < acc) { idx = i; break; } }
+            const seg = SPIN_SEGS[idx];
+            p.fi -= SPIN_COST_FI;
+            let win = 0, kind = '';
+            if (seg.k === 'fi') { win = SPIN_COST_FI * seg.m; p.fi += win; kind = 'fi'; }
+            else if (seg.k === 'usd') { win = seg.a; p.usd += win; kind = 'usd'; }
+            p.spinDone = (p.spinDone || 0) + 1;
+            if (win > (p.spinBest || 0)) p.spinBest = win;
+            adminSay(`🎰 ${fname(p)} (mini) крутанул колесо → ${seg.t}`);
+            return { ok: true, seg: idx, win, kind, msg: `🎰 Выигрыш: ${seg.t}` };
+        }
+        case 'questClaim': {
+            const d = dayOf(p);
+            const i = Number(act.i) || 0;
+            const q = QUEST_DEFS[i];
+            if (!q) return { ok: false, msg: '❌ Нет такого задания' };
+            const v = q.k === 'sell' ? d.sell : q.k === 'buy' ? d.buy : d.mine;
+            if (v < q.t) return { ok: false, msg: `⏳ Прогресс ${fmt(v)} / ${fmt(q.t)}` };
+            d.claimed = d.claimed || {};
+            if (d.claimed[i]) return { ok: false, msg: '✅ Награда уже получена' };
+            d.claimed[i] = 1;
+            p.questsDone = (p.questsDone || 0) + 1;
+            if (q.r.usd) p.usd += q.r.usd;
+            if (q.r.fi) p.fi += q.r.fi;
+            adminSay(`📋 ${fname(p)} (mini) выполнил задание «${q.d}»`);
+            return { ok: true, msg: `✅ Награда: ${q.r.usd ? '+$' + fmt(q.r.usd) : '+' + fmt(q.r.fi) + ' ' + S('coinName')}` };
+        }
+        case 'transfer': {
+            const l = p.lab || {};
+            if (!l.transfer) return { ok: false, msg: '🔒 Нужно исследование «P2P протокол»' };
+            const amt = Number(act.fi);
+            if (!isFinite(amt) || amt <= 0 || amt > p.fi + 1e-9) return { ok: false, msg: `❌ У тебя только ${fmt(p.fi)} FI` };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp || String(tp.id) === String(p.id)) return { ok: false, msg: '❌ Игрок не найден' };
+            p.fi -= amt; tp.fi = (tp.fi || 0) + amt;
+            p.transfersSent = (p.transfersSent || 0) + 1;
+            adminSay(`📤 ${fname(p)} (mini) отправил ${fmt(amt)} ${S('coinName')} → ${fname(tp)}`);
+            return { ok: true, msg: `✅ ${fname(tp)} получил ${fmt(amt)} ${S('coinName')}` };
+        }
+        case 'duel': {
+            const amt = Number(act.amount);
+            if (!isFinite(amt) || amt < 10 || amt > 1e6) return { ok: false, msg: '❌ Ставка: от $10' };
+            if (p.usd < amt) return { ok: false, msg: '❌ Не хватает денег' };
+            const opps = Object.values(state.players).filter(x => !x.banned && String(x.id) !== String(p.id));
+            if (!opps.length) return { ok: false, msg: '❌ Пока нет соперников' };
+            const tp = opps[Math.floor(Math.random() * opps.length)];
+            if ((tp.usd || 0) < amt) return { ok: false, msg: `❌ У соперника мало денег — попробуй позже` };
+            const winP = Math.random() < 0.5;
+            if (winP) { p.usd += amt; tp.usd -= amt; p.duelWins = (p.duelWins || 0) + 1; }
+            else { p.usd -= amt; tp.usd += amt; }
+            adminSay(`⚔️ Дуэль (mini): ${fname(p)} ${winP ? 'победил' : 'проиграл'} ${fname(tp)} на $${fmt(amt)}`);
+            return { ok: true, msg: winP ? `⚔️ Победа над ${fname(tp)}! +$${fmt(amt)}` : `⚔️ ${fname(tp)} сильнее… −$${fmt(amt)}` };
+        }
+        case 'roulette': {
+            const c = String(act.color || '');
+            if (!['red', 'black', 'green'].includes(c)) return { ok: false, msg: '❌ Ставь на красное, чёрное или зелёное' };
+            const amt = Number(act.amount);
+            if (!isFinite(amt) || amt < 10 || amt > 1e6) return { ok: false, msg: '❌ Ставка: от $10' };
+            if (p.usd < amt) return { ok: false, msg: '❌ Не хватает денег' };
+            const r37 = Math.random();
+            let win = 0, label = '';
+            if (r37 < 1 / 37) { if (c === 'green') { win = amt * 14; } label = '🟢 ЗЕРО'; }
+            else if (r37 < 19 / 37) { if (c === 'red') { win = amt * 2; } label = '🔴 Красное'; }
+            else { if (c === 'black') { win = amt * 2; } label = '⚫ Чёрное'; }
+            p.usd += win - amt;
+            if (win > (p.spinBest || 0)) p.spinBest = win;
+            adminSay(`🎰 Рулетка (mini): ${fname(p)} → ${label}, ставка $${fmt(amt)}, выигрыш $${fmt(win)}`);
+            return { ok: true, msg: win > 0 ? `${label}! +$${fmt(win)}` : `${label}… −$${fmt(amt)}` };
+        }
     }
 }
 
@@ -1624,7 +1788,7 @@ async function onDialogInput(user, chat, dlg, text) {
         if (dlg.type === 'trade_buy') {
             const cost = amt * M.price * (1 + S('buySpreadPct') / 100);
             if (cost > p.usd) return answerNow(`❌ Хватает только на ${fmt(p.usd / (M.price * (1 + S('buySpreadPct') / 100)))} монет. Пришли меньше или «все».`);
-            p.usd -= cost; p.fi += amt; p.bought += amt;
+            p.usd -= cost; p.fi += amt; p.bought += amt; dayOf(p).buy += amt;
             adminSay(`🟢 ${fname(p)} купил ${CIn(amt).replace(/<[^>]+>/g, '')} за $${fmt(cost)}`);
             return answerNow(`🟢 Куплено ${CIn(amt)}\n💵 Осталось: $${fmt(p.usd)}\n🪙 Теперь: ${CIn(p.fi)}`, kbHome());
         }
