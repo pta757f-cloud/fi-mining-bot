@@ -1422,6 +1422,18 @@ async function apiRoute(pathname, method, bodyRaw) {
                 const code = createLinkCode(p);
                 return { ok: true, code, msg: 'Код живёт 10 минут' };
             }
+            /* APK просит код подтверждения входа (покажем игроку в приложении) */
+            if (mode === 'pair') {
+                const uid = String(body.uid || ''), secret = String(body.secret || '');
+                if (!/^W\d{13}$/.test(uid) || !/^[0-9a-f]{64}$/.test(secret)) return { ok: false, msg: '❌ Некорректные данные устройства' };
+                state.linkCodes = state.linkCodes || [];
+                state.linkCodes = state.linkCodes.filter(c => Date.now() - c.at < 10 * 60000);
+                state.linkCodes = state.linkCodes.filter(c => !(c.uid === uid && c.kind === 'pair'));
+                const code = genCode();
+                state.linkCodes.push({ kind: 'pair', code, uid, at: Date.now() });
+                saveState();
+                return { ok: true, code };
+            }
             /* подтверждение входа устройства ПРЯМО из мини-игры (кнопка, без кода) */
             if (mode === 'bind') {
                 const u = verifyInitData(body.init || '');
@@ -1435,6 +1447,26 @@ async function apiRoute(pathname, method, bodyRaw) {
                 saveState();
                 adminSay(`🌐 ${fname(p)} подтвердил вход устройства …${uid.slice(-4)}`);
                 return { ok: true, msg: `✅ Готово! Открой FI Coin на телефоне — войдёшь как ты.` };
+            }
+            /* подтверждение входа по коду: игрок вводит код из APK в мини-игре (2FA-вход) */
+            if (mode === 'bindConfirm') {
+                const u = verifyInitData(body.init || '');
+                if (!u) return { ok: false, err: 'auth' };
+                const code = String(body.code || '').trim().toUpperCase();
+                if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) return { ok: false, msg: '❌ Формат кода: ABCD-1234' };
+                state.linkCodes = state.linkCodes || [];
+                state.linkCodes = state.linkCodes.filter(c => Date.now() - c.at < 10 * 60000);
+                const e = state.linkCodes.find(c => c.code === code && c.kind === 'pair');
+                if (!e) return { ok: false, msg: '❌ Код не найден или истёк (10 минут) — возьми новый в приложении' };
+                const uid = e.uid;
+                if (!/^W\d{13}$/.test(uid || '')) return { ok: false, msg: '❌ Код без устройства — возьми новый в приложении' };
+                const p = ensurePlayer(u);
+                state.linkCodes = state.linkCodes.filter(c => c.uid !== uid);
+                state.linkCodes.push({ uid, to: String(p.id), at: Date.now() });
+                saveState();
+                adminSay(`🔐 ${fname(p)} подтвердил вход устройства …${uid.slice(-4)} (по коду)`);
+                try { send(p.id, `🔐 <b>Вход в FI Coin подтверждён</b>\nУстройство <code>…${uid.slice(-4)}</code> теперь играет твоим профилем.\nЕсли это был не ты — дай знать владельцу.`); } catch (_) { }
+                return { ok: true, msg: '✅ Готово! Открой FI Coin на телефоне — войдёшь как ты.' };
             }
             /* телефон: отдельный профиль (нужен ник) */
             if (mode === 'register') {
@@ -1462,8 +1494,8 @@ async function apiRoute(pathname, method, bodyRaw) {
                 if (!/^W\d{13}$/.test(uid) || !/^[0-9a-f]{64}$/.test(secret)) return { ok: false, msg: '❌ Некорректные данные устройства' };
                 state.linkCodes = state.linkCodes || [];
                 state.linkCodes = state.linkCodes.filter(c => Date.now() - c.at < 10 * 60000);
-                /* авто-вход: игрок подтвердил привязку этого uid в мини-игре уже */
-                let lc = state.linkCodes.find(c => c.uid === uid);
+                /* авто-вход: игрок подтвердил привязку этого uid в мини-игре уже (kind==='pair' — НЕ подтверждение!) */
+                let lc = state.linkCodes.find(c => c.uid === uid && !c.kind);
                 if (!lc) lc = state.linkCodes.find(c => c.code === code);
                 if (!lc) {
                     if (!code) return { ok: false, wait: true, msg: '⏳ Жду подтверждения в Telegram…' };
