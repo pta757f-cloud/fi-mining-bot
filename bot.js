@@ -1422,6 +1422,20 @@ async function apiRoute(pathname, method, bodyRaw) {
                 const code = createLinkCode(p);
                 return { ok: true, code, msg: 'Код живёт 10 минут' };
             }
+            /* подтверждение входа устройства ПРЯМО из мини-игры (кнопка, без кода) */
+            if (mode === 'bind') {
+                const u = verifyInitData(body.init || '');
+                if (!u) return { ok: false, err: 'auth' };
+                const uid = String(body.uid || '');
+                if (!/^W\d{13}$/.test(uid)) return { ok: false, msg: '❌ Некорректный UID устройства' };
+                const p = ensurePlayer(u);
+                state.linkCodes = state.linkCodes || [];
+                state.linkCodes = state.linkCodes.filter(c => c.uid !== uid && Date.now() - c.at < 10 * 60000);
+                state.linkCodes.push({ uid, to: String(p.id), at: Date.now() });
+                saveState();
+                adminSay(`🌐 ${fname(p)} подтвердил вход устройства …${uid.slice(-4)}`);
+                return { ok: true, msg: `✅ Готово! Открой FI Coin на телефоне — войдёшь как ты.` };
+            }
             /* телефон: отдельный профиль (нужен ник) */
             if (mode === 'register') {
                 const uid = String(body.uid || ''), secret = String(body.secret || ''), nick = String(body.nick || '').trim();
@@ -1436,19 +1450,25 @@ async function apiRoute(pathname, method, bodyRaw) {
                 const p = newPlayer({ id: uid, first_name: nick.slice(0, 16), username: '' });
                 p.via = 'phone';
                 state.players[uid] = p;
+                state.linkCodes = (state.linkCodes || []).filter(c => c.uid !== uid); /* отозванные подтверждения не прилетят задним числом */
                 putDevice(uid, { s: secret, p: uid });
                 adminSay(`📱 Новый телефонный игрок «${fname(p)}» (${uid})`);
                 return { ok: true, msg: '✅ Профиль создан', nick: fname(p) };
             }
-            /* телефон + код из мини-игры → играем тем же профилем, что в Telegram */
+            /* телефон + код из мини-игры (или кнопка-подтверждение) → играем тем же профилем, что в Telegram */
             if (mode === 'link') {
                 const uid = String(body.uid || ''), secret = String(body.secret || '');
                 const code = String(body.code || '').trim().toUpperCase();
                 if (!/^W\d{13}$/.test(uid) || !/^[0-9a-f]{64}$/.test(secret)) return { ok: false, msg: '❌ Некорректные данные устройства' };
                 state.linkCodes = state.linkCodes || [];
                 state.linkCodes = state.linkCodes.filter(c => Date.now() - c.at < 10 * 60000);
-                const lc = state.linkCodes.find(c => c.code === code);
-                if (!lc) return { ok: false, msg: '❌ Код не найден или истёк (10 минут) — возьми новый в мини-игре' };
+                /* авто-вход: игрок подтвердил привязку этого uid в мини-игре уже */
+                let lc = state.linkCodes.find(c => c.uid === uid);
+                if (!lc) lc = state.linkCodes.find(c => c.code === code);
+                if (!lc) {
+                    if (!code) return { ok: false, wait: true, msg: '⏳ Жду подтверждения в Telegram…' };
+                    return { ok: false, msg: '❌ Код не найден или истёк (10 минут) — возьми новый в мини-игре' };
+                }
                 const tp = state.players[lc.to];
                 if (!tp) return { ok: false, msg: '❌ Профиль Telegram не найден' };
                 /* если телефон раньше играл отдельно — переносим его прогресс в Telegram-профиль */
@@ -1470,7 +1490,7 @@ async function apiRoute(pathname, method, bodyRaw) {
                 }
                 tp.uid = uid;
                 putDevice(uid, { s: secret, p: String(tp.id) });
-                state.linkCodes = state.linkCodes.filter(c => c.code !== code);
+                state.linkCodes = state.linkCodes.filter(c => c.code !== code && c.uid !== uid);
                 adminSay(`🔗 ${fname(tp)} привязал телефон (${uid})`);
                 try { send(tp.id, `📱 <b>Телефон привязан!</b>\nОткрой приложение на телефоне — тот же баланс и та же ферма, что и здесь.`); } catch (_) { }
                 return { ok: true, msg: '✅ Связано! Открывай игру на телефоне' };
