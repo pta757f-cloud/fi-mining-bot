@@ -417,7 +417,12 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <h1 style="font-size:24px;font-weight:800;margin:16px 0 6px;background:linear-gradient(90deg,#7dffa8,#17dd62);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">FI Coin на телефоне</h1>
     <div style="color:var(--tg-sub);font-size:13px;margin-bottom:16px;max-width:290px;line-height:1.5">Полное приложение игры. Войди через Telegram — тот же профиль и баланс, что в боте. Или игри отдельно — свяжешь потом.</div>
     <button class="btn btn-em" id="devTgGo" style="max-width:280px">🌐 Войти через Telegram</button>
-    <div id="devWait" style="display:none;max-width:280px;margin-top:10px;background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.25);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#a8cef5;line-height:1.5;text-align:left">📱 Переключись в Telegram → откроется игра → жми «✅ Подтвердить».<br><span style="font-size:10px">Ждём подтверждения до 6 минут — войдём автоматически.</span></div>
+    <div id="devPairCode" style="display:none;max-width:280px;margin-top:10px;text-align:center;background:rgba(23,221,98,.06);border:1px solid rgba(23,221,98,.3);border-radius:12px;padding:10px 10px 12px">
+      <div style="font-size:10.5px;color:var(--tg-sub);margin-bottom:2px">код подтверждения</div>
+      <div class="num" id="devPairCodeTxt" style="font-size:25px;font-weight:800;color:var(--em);letter-spacing:2px;user-select:all">—</div>
+      <div style="font-size:10px;color:var(--tg-sub);margin-top:6px;line-height:1.45">Telegram не открылся сам? Открой чат @FI_CoinBot → «Играть 🪙» → меню ••• → «🪺Привязать телефон» → введи этот код</div>
+    </div>
+    <div id="devWait" style="display:none;max-width:280px;margin-top:10px;background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.25);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#a8cef5;line-height:1.5;text-align:left">📱 Подтверди вход в Telegram — приложение войдёт само (до 6 минут).</div>
     <div class="orRow">или</div>
     <button class="btn btn-ghost" id="devPhoneTg" style="max-width:280px">🎮 Играть без Telegram</button>
     <div id="devPhoneForm" style="display:none">
@@ -559,19 +564,27 @@ let devPoll=null;
 function bindDevCard(){
   $('devPhoneTg').onclick=()=>{devErr();const f=$('devPhoneForm');const on=f.style.display==='none';f.style.display=on?'':'none';$('devCodeForm').style.display='none';if(on)$('devNick').focus();};
   $('devCodeTg').onclick=()=>{devErr();const f=$('devCodeForm');const on=f.style.display==='none';f.style.display=on?'':'none';$('devPhoneForm').style.display='none';if(on){$('devCode').focus();toast('Возьми код в Telegram: чат @FI_CoinBot → /linkcode','📲');}};
-  $('devTgGo').onclick=()=>{
+  $('devTgGo').onclick=async()=>{
     devErr();
     if(!DEV)saveDev(newDevice());
-    $('devWait').style.display='block';
-    const b=$('devTgGo');b.disabled=true;b.textContent='Открываю Telegram…';
-    setTimeout(()=>{b.disabled=false;b.textContent='🌐 Открыть Telegram ещё раз';},1500);
-    try{location.href='tg://resolve?domain=FI_CoinBot&startapp=bind-'+DEV.uid;}catch(_){ }
-    if(devPoll)clearInterval(devPoll);let tries=0;
+    if(devPoll){clearInterval(devPoll);devPoll=null;}
+    $('devPairCode').style.display='none';$('devWait').style.display='none';
+    const b=$('devTgGo');b.disabled=true;b.textContent='Готовлю вход…';
+    let code='';
+    try{
+      const j=await (await fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'pair',uid:DEV.uid,secret:DEV.secret})})).json();
+      if(j.ok)code=j.code;
+      else{devErr(j.msg||'Не получилось');b.disabled=false;b.textContent='🌐 Войти через Telegram';return;}
+    }catch(e){devErr('Нет связи с сервером');b.disabled=false;b.textContent='🌐 Войти через Telegram';return;}
+    b.disabled=false;b.textContent='🌐 Открыть Telegram ещё раз';
+    $('devPairCode').style.display='block';$('devPairCodeTxt').textContent=code;$('devWait').style.display='block';
+    try{location.href='https://t.me/FI_CoinBot?startapp=pair-'+code;}catch(_){ }
+    let tries=0;
     devPoll=setInterval(async()=>{
       tries++;
       try{
         const {r,d}=await devLink('');
-        if(r.ok){clearInterval(devPoll);devPoll=null;$('devWait').style.display='none';saveDev(d);$('devCard').classList.remove('show');$('intro').classList.remove('hide');await refresh().catch(()=>{});toast('🌐 Вошёл через Telegram','✅','green');}
+        if(r.ok){clearInterval(devPoll);devPoll=null;$('devWait').style.display='none';$('devPairCode').style.display='none';saveDev(d);$('devCard').classList.remove('show');$('intro').classList.remove('hide');await refresh().catch(()=>{});toast('🌐 Вошёл через Telegram','✅','green');}
         else if(!r.wait){clearInterval(devPoll);devPoll=null;$('devWait').style.display='none';devErr(r.msg||'Не получилось');}
       }catch(e){ }
       if(tries>90){clearInterval(devPoll);devPoll=null;$('devWait').style.display='none';devErr('Долго нет подтверждения. Попробуй ещё раз');}
@@ -1550,6 +1563,9 @@ function dvReset(){
 }
 
 /* ---------- подтверждение входа из APK прямо в мини-игре ---------- */
+function confirmAppLogin(payload){
+  return fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+}
 function showBindConfirm(uid){
   modal(`<h3>🎮 Вход из приложения</h3>
   <div class="card" style="text-align:left">
@@ -1562,10 +1578,29 @@ function showBindConfirm(uid){
   $('bindYes').onclick=async()=>{
     const b=$('bindYes');b.disabled=true;b.textContent='Связываю…';
     try{
-      const j=await (await fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'bind',init:TG_INIT,uid})})).json();
+      const j=await confirmAppLogin({mode:'bind',init:TG_INIT,uid});
       if(j.ok){closeModal();toast('✅ Готово! Вернись в FI Coin','🌐','green');}
       else{closeModal();toast(j.msg||'Не получилось','❌','red');}
-    }catch(_){closeModal();toast('Сервер недоступен','📡','red');}
+    }catch(_){b.disabled=false;b.textContent='✅ Подтвердить';toast('Сервер недоступен','📡','red');}
+  };
+}
+function showConfirmByCode(code){
+  modal(`<h3>🎮 Вход из приложения</h3>
+  <div class="card" style="text-align:left">
+    <div style="font-weight:800;font-size:14px;margin-bottom:6px">Приложение FI Coin просит войти как ты</div>
+    <div class="num" style="font-size:10.5px;color:var(--tg-sub);margin-bottom:2px">код подтверждения</div>
+    <div class="num" style="font-size:24px;font-weight:800;color:var(--em);letter-spacing:2px;margin-bottom:12px;user-select:all">${esc(code)}</div>
+    <button class="btn btn-em" id="bindYes" style="width:100%">✅ Подтвердить</button>
+    <button class="btn btn-ghost" id="bindNo" style="width:100%;margin-top:6px">Отмена</button>
+  </div>`);
+  $('bindNo').onclick=()=>{closeModal();toast('Вход не подтверждён','🚫');};
+  $('bindYes').onclick=async()=>{
+    const b=$('bindYes');b.disabled=true;b.textContent='Связываю…';
+    try{
+      const j=await confirmAppLogin({mode:'bindConfirm',init:TG_INIT,code});
+      if(j.ok){closeModal();toast('✅ Готово! Вернись в FI Coin','🌐','green');}
+      else{closeModal();toast(j.msg||'Не получилось','❌','red');}
+    }catch(_){b.disabled=false;b.textContent='✅ Подтвердить';toast('Сервер недоступен','📡','red');}
   };
 }
 
@@ -1579,8 +1614,30 @@ $('menuDrop').onclick=async e=>{
     if(IS_TG){
       try{
         const r=await (await fetch(apiBase+'/api/device',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'linkcode',init:TG_INIT})})).json();
-        if(r.ok)modal(`<h3>🪺 Свяжи телефон</h3><p>Открой приложение (или этот же сайт) на телефоне и введи код:</p><div class="num" style="font-size:30px;font-weight:800;color:var(--em);letter-spacing:3px;margin:6px 0 12px;user-select:all">${esc(r.code)}</div><p style="font-size:11px">⏳ Код живёт 10 минут. На телефоне: «Войти по коду из Telegram» — и балансы будут общими.</p><button class="btn btn-em" onclick="closeModal()">Понятно</button>`);
+        if(r.ok)modal(`<h3>🪺 Телефон ↔ Telegram</h3>
+        <div style="font-size:11px;color:var(--tg-sub);margin-bottom:6px"><b>① Вход с телефона</b> — введи этот код в приложении на телефоне:</div>
+        <div class="num" style="font-size:26px;font-weight:800;color:var(--em);letter-spacing:3px;margin:4px 0 8px;user-select:all">${esc(r.code)}</div>
+        <div style="font-size:10.5px;color:var(--tg-sub);margin-bottom:14px">⏳ Код живёт 10 минут. В приложении: «Войти по коду из Telegram».</div>
+        <div style="border-top:1px solid var(--tg-border);padding-top:10px">
+          <div style="font-size:11px;color:var(--tg-sub);margin-bottom:6px"><b>② Есть код из приложения?</b> Подтверди вход — это 2FA:</div>
+          <input class="dinp num" id="pairIn" maxlength="9" placeholder="ABCD-1234" style="max-width:240px" inputmode="default">
+          <button class="btn btn-em" id="pairYes" style="max-width:240px;width:100%;margin-top:6px">✅ Войти как я</button>
+          <div class="num" id="pairErr" style="font-size:10.5px;color:#ff8a8a;margin-top:6px;min-height:14px"></div>
+        </div>
+        <button class="btn btn-ghost" data-close="1" style="margin-top:10px">Закрыть</button>`);
         else toast(r.msg||'Ошибка','❌','red');
+        document.querySelectorAll('#modalBox [data-close]').forEach(x=>x.onclick=closeModal);
+        const py=$('pairYes');
+        if(py)py.onclick=async()=>{
+          const code=($('pairIn').value||'').trim().toUpperCase();
+          if(!/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)){$('pairErr').textContent='Формат кода: ABCD-1234';return;}
+          py.disabled=true;py.textContent='Связываю…';
+          try{
+            const j=await confirmAppLogin({mode:'bindConfirm',init:TG_INIT,code});
+            if(j.ok){closeModal();toast('✅ Приложение войдёт само','🌐','green');}
+            else{$('pairErr').textContent=(j.msg||'Не получилось').replace('❌ ','');py.disabled=false;py.textContent='✅ Войти как я';}
+          }catch(_){py.disabled=false;py.textContent='✅ Войти как я';$('pairErr').textContent='Сервер недоступен';}
+        };
       }catch(_){toast('Сервер не отвечает','📡','red');}
     } else if(DEV){
       modal(`<h3>🔗 Связка с Telegram</h3><p>Возьми код в Telegram-версии: меню ••• → «Привязать телефон». Введи его здесь — тот же баланс и на телефоне, и в Telegram.</p><input class="dinp num" id="lkCode" maxlength="9" placeholder="ABCD-1234"><button class="btn btn-em" onclick="lkGo()">🔗 Связать</button>`);
@@ -1604,8 +1661,14 @@ if(localStorage.getItem('fiIntroSeen7')==='1')$('intro').classList.add('hide');
   if(!IS_TG)$('intro').classList.add('hide');
   if(!apiBase){setNet(false);renderOffline(null);return;}
   if(IS_TG){
+    try{
+      const sp=(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe)||{};
+      const pm=String(sp.start_param||'').match(/^pair-([A-Z0-9]{4}-[A-Z0-9]{4})$/);
+      const um=String(sp.start_param||'').match(/^bind-(W\d{13})$/);
+      if(pm)showConfirmByCode(pm[1]);
+      else if(um)showBindConfirm(um[1]);
+    }catch(_){ }
     const j0=await apiStaff({a:'who'}).catch(()=>null);if(j0&&j0.ok&&j0.role)setRole(j0.role);
-    try{const sp=(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe)||{};const mb=String(sp.start_param||'').match(/^bind-(W\d{13})$/);if(mb)showBindConfirm(mb[1]);}catch(_){ }
   }
   await refresh();
   if(S&&S.me&&S.me.banned)$('banned').classList.add('show');
