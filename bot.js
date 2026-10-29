@@ -10,6 +10,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const crypto = require('crypto');
 
 /* ------------------------- КОНФИГ-ФАЙЛ ------------------------- */
 const CFG_PATH = path.join(__dirname, 'config.json');
@@ -89,6 +91,8 @@ function loadState() {
     state.settings = Object.assign({}, CFG.game, state.settings || {});
     if (!Array.isArray(state.staffIds)) state.staffIds = [];
     if (!Number.isFinite(state.ownerId)) state.ownerId = 0;
+    if (!Array.isArray(state.customRoles)) state.customRoles = [];
+    if (!state.playerRoles || typeof state.playerRoles !== 'object' || Array.isArray(state.playerRoles)) state.playerRoles = {};
     if (!Array.isArray(state.log)) state.log = [];
     if (!state.dialogs || typeof state.dialogs !== 'object') state.dialogs = {};
     if (!Number.isFinite(state.lastTick)) state.lastTick = 0;
@@ -316,6 +320,7 @@ function screenStaff() {
             [{ text: `🪙 Всем +100`, callback_data: 'st:allfi:100' }, { text: '💵 Всем +$1000', callback_data: 'st:allusd:1000' }],
             [{ text: '📈 Цена ↑', callback_data: 'st:price:up' }, { text: '📉 Цена ↓', callback_data: 'st:price:down' }],
             [{ text: '🎯 Цена X', callback_data: 'dlg:price' }, { text: state.market.frozen ? '▶️ Отпустить' : '❄️ Заморозить', callback_data: 'st:freeze' }],
+            [{ text: '🤖 Авто-рынок — вернуть живой курс', callback_data: 'st:auto' }],
             [{ text: '👥 Игроки', callback_data: 'st:players' }, { text: '🚫 Баны', callback_data: 'st:banlist' }],
             [{ text: '⚙️ Настройки', callback_data: 'st:settings' }, { text: '📢 Всем сообщение', callback_data: 'dlg:broadcast' }],
             [{ text: '📜 Журнал', callback_data: 'st:log' }, { text: '🏠 Закрыть', callback_data: 'tab:main' }]
@@ -542,6 +547,487 @@ function marketTick() {
         }
     }
     saveState();
+    saveStateToGitHub(false);
+}
+
+/* ==================== ☁ ОБЛАКО: GitHub-хранилище состояния ==================== */
+const ENV = k => String(process.env[k] || '').trim();
+const GH = {
+    token: ENV('GH_TOKEN') || CFG.ghToken || '',
+    repo: ENV('GH_REPO') || CFG.ghRepo || 'pta757f-cloud/fi-mining-bot',
+    branch: ENV('GH_BRANCH') || 'main'
+};
+async function ghApi(method, url, body) {
+    if (!GH.token) return null;
+    try {
+        const res = await fetch('https://api.github.com/repos/' + GH.repo + url, {
+            method,
+            headers: {
+                'Authorization': 'Bearer ' + GH.token,
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'fi-bot-server'
+            },
+            body: body ? JSON.stringify(body) : undefined
+        });
+        if (!res.ok) { console.error('[gh]', method, url, res.status); return null; }
+        return await res.json();
+    } catch (e) { console.error('[gh]', e.message); return null; }
+}
+async function loadStateFromGitHub() {
+    if (!GH.token) return false;
+    const j = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch);
+    if (!j || !j.content) { console.log('☁️ GitHub: state.json не найден — начинаем с пустого.'); return false; }
+    try {
+        const obj = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'));
+        Object.assign(state, obj);
+        state._gitSha = j.sha;
+        console.log(`☁️ Состояние загружено из GitHub (${Object.keys(state.players || {}).length} игроков, цена $${fmt(state.market ? state.market.price : 0)})`);
+        return true;
+    } catch (e) { console.error('[gh] parse', e.message); return false; }
+}
+
+/* Публикуем адрес облачного API в репозиторий, чтобы Pages-мини-приложение всегда знало, куда стучаться */
+async function pushApiJson() {
+    const url = ENV('PUBLIC_URL') || CFG.publicUrl || '';
+    if (!url || !GH.token) return;
+    try {
+        const j = await ghApi('GET', '/contents/api.json?ref=' + GH.branch);
+        const body = {
+            message: 'chore: api url',
+            content: Buffer.from(JSON.stringify({ api: url.replace(/\/+$/, ''), t: Date.now() })).toString('base64'),
+            branch: GH.branch
+        };
+        if (j && j.sha) body.sha = j.sha;
+        const r = await ghApi('PUT', '/contents/api.json', body);
+        if (r) console.log('📡 api.json обновлён в GitHub → ' + url);
+    } catch (e) { console.error('[gh] api.json', e.message); }
+}
+let gitSaving = false, gitLastSave = 0;
+function saveStateToGitHub(force) {
+    if (!GH.token) return Promise.resolve(false);
+    const now = Date.now();
+    if (!force && (gitSaving || now - gitLastSave < 140000)) return Promise.resolve(false);
+    gitSaving = true; gitLastSave = now;
+    return (async () => {
+        try {
+            const body = {
+                message: 'chore: bot state sync',
+                content: Buffer.from(JSON.stringify(state)).toString('base64'),
+                branch: GH.branch
+            };
+            if (state._gitSha) body.sha = state._gitSha;
+            const j = await ghApi('PUT', '/contents/data/state.json', body);
+            if (j && j.content && j.content.sha) { state._gitSha = j.content.sha; return true; }
+            return false;
+        } catch (e) { console.error('[gh] save', e.message); return false; }
+        finally { gitSaving = false; }
+    })();
+}
+
+/* ==================== 🎮 Мини-приложение: HTTP API ==================== */
+/* Ключи/роли берём ТОЛЬКО из config.json или env — в HTML и репозитории их нет. */
+const API_PORT = Number(ENV('PORT') || CFG.httpPort || 8787);
+const API_OWNER_ID = String(CFG.ownerId || '');
+const API_OWNER_USER = String(CFG.ownerUsername || 'timofey_u').toLowerCase();
+const API_ALL_PERMS = ['give', 'market', 'bans', 'players', 'log', 'config'];
+const API_SET_KEYS = {
+    title: ['s', 40], welcome: ['s', 300], coinName: ['s', 12], coinEmoji: ['s', 4],
+    startUsd: ['n', 0, 1e9], startPrice: ['n', 0.01, 1e9], fiPerThHour: ['n', 0, 1e6],
+    volatilityPct: ['n', 0, 50], eventChancePct: ['n', 0, 50], buySpreadPct: ['n', 0, 50],
+    sellSpreadPct: ['n', 0, 50], bonusDailyUsd: ['n', 0, 1e9], bonusDailyFi: ['n', 0, 1e6],
+    workPayMin: ['n', 0, 1e9], workPayMax: ['n', 0, 1e9], workIntervalMin: ['n', 0, 1440]
+};
+
+/* Верификация initData из Telegram (подпись HMAC-SHA256 секретным ключом бота).
+   Клиент не может подделать чужой id — сервер сам знает, кто пришёл. */
+function verifyInitData(raw) {
+    try {
+        if (typeof raw !== 'string' || !raw || raw.length > 4096) return null;
+        const params = new URLSearchParams(raw);
+        const hash = (params.get('hash') || '').toLowerCase();
+        if (!hash) return null;
+        const pairs = [];
+        for (const [k, v] of params.entries()) if (k !== 'hash') pairs.push([k, v]);
+        pairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+        const secret = crypto.createHmac('sha256', 'WebAppData').update(CFG.token).digest();
+        const calc = crypto.createHmac('sha256', secret).update(pairs.map(([k, v]) => `${k}=${v}`).join('\n')).digest('hex');
+        if (calc !== hash) return null;
+        let u = null; try { u = JSON.parse(params.get('user') || 'null'); } catch (_) { }
+        if (!u || !Number.isFinite(u.id)) return null;
+        return { id: u.id, first_name: (u.first_name || 'Игрок').slice(0, 24), username: (u.username || '') };
+    } catch (e) { return null; }
+}
+
+/* Полный срез мира для клиента */
+function apiSnapshot(p) {
+    const M = state.market;
+    const price = M.price;
+    const h = M.hist || [];
+    const old = h.length > 48 ? h[h.length - 48].p : (h[0] ? h[0].p : price);
+    const d24 = old ? ((price - old) / old) * 100 : 0;
+    const top = Object.values(state.players)
+        .sort((a, b) => (b.fi * price + b.usd) - (a.fi * price + a.usd))
+        .slice(0, 10)
+        .map(x => { const th = totalHash(x); const rd = roleDefOf(x.id); return { n: fname(x), fi: x.fi, usd: x.usd, h: th, role: rd ? { name: rd.name, color: rd.color } : null }; });
+    const now = Date.now();
+    const hash = p ? totalHash(p) : 0;
+    const myRole = roleDefOf(p ? p.id : '');
+    return {
+        t: now,
+        skin: { title: S('title'), coin: S('coinName'), emoji: S('coinEmoji'), welcome: S('welcome') },
+        me: p ? {
+            id: p.id, name: fname(p),
+            usd: p.usd, fi: p.fi,
+            hash, perHour: hash * S('fiPerThHour'),
+            totalMined: p.totalMined, bought: p.bought, sold: p.sold, joined: p.joined,
+            banned: !!p.banned, banReason: p.banReason || '',
+            bonusReady: p.bonusDay !== new Date().toDateString(),
+            workReady: now >= p.workAt + S('workIntervalMin') * 60000,
+            workLeftMin: Math.max(0, Math.ceil((p.workAt + S('workIntervalMin') * 60000 - now) / 60000)),
+            owned: p.miners || {},
+            role: myRole ? { name: myRole.name, color: myRole.color } : null
+        } : null,
+        market: {
+            price, d24,
+            frozen: !!M.frozen,
+            buy: price * (1 + S('buySpreadPct') / 100),
+            sell: price * (1 - S('sellSpreadPct') / 100),
+            hist: h.slice(-48).map(x => [x.t, Math.round(x.p * 10000) / 10000])
+        },
+        miners: MINERS.map(m => ({ id: m.id, name: m.name, desc: m.desc, hash: m.hash, cost: p ? minerCost(m, (p.miners || {})[m.id] || 0) : m.price })),
+        cfg: Object.fromEntries(Object.keys(API_SET_KEYS).map(k => [k, state.settings[k]])),
+        top, supply: supply(), playersN: Object.keys(state.players).length
+    };
+}
+
+/* Действия игрока (та же механика, что и кнопки в чате) */
+function apiRunAction(p, act) {
+    const a = act && act.a;
+    if (p.banned) return { ok: false, msg: '🚫 Забанен — действия закрыты' };
+    switch (a) {
+        case 'noop': return { ok: true };
+        case 'bonus': {
+            const today = new Date().toDateString();
+            if (p.bonusDay === today) return { ok: false, msg: '❄️ Бонус уже получен сегодня' };
+            p.bonusDay = today;
+            giveTo(p, 'usd', S('bonusDailyUsd'));
+            giveTo(p, 'fi', S('bonusDailyFi'));
+            adminSay(`🎁 ${fname(p)} получил дневной бонус (mini app)`);
+            return { ok: true, msg: `🎁 +$${fmt(S('bonusDailyUsd'))} и +${fmt(S('bonusDailyFi'))} ${S('coinName')}` };
+        }
+        case 'work': {
+            const need = S('workIntervalMin') * 60000;
+            if (Date.now() < p.workAt + need) return { ok: false, msg: `💼 Смена будет через ${Math.ceil((p.workAt + need - Date.now()) / 60000)} мин` };
+            const pay = Math.round(rng(S('workPayMin'), S('workPayMax')));
+            p.usd += pay; p.workAt = Date.now();
+            adminSay(`💼 ${fname(p)} отработал смену +$${fmt(pay)} (mini app)`);
+            return { ok: true, msg: `💼 +$${fmt(pay)}` };
+        }
+        case 'buy': {
+            const M = state.market;
+            let amt = Number(act.fi);
+            if (act.all) amt = p.usd / (M.price * (1 + S('buySpreadPct') / 100));
+            if (!isFinite(amt) || amt <= 0) return { ok: false, msg: '❌ Сколько монет купить?' };
+            const cost = amt * M.price * (1 + S('buySpreadPct') / 100);
+            if (cost > p.usd + 1e-9) return { ok: false, msg: `❌ Хватает на ${fmt(p.usd / (M.price * (1 + S('buySpreadPct') / 100)))} монет — жми «ВСЁ»` };
+            p.usd -= cost; p.fi += amt; p.bought += amt;
+            adminSay(`🟢 ${fname(p)} купил ${fmt(amt)} ${S('coinName')} за $${fmt(cost)} (mini app)`);
+            return { ok: true, msg: `🟢 Куплено ${fmt(amt)} ${S('coinName')} за $${fmt(cost)}` };
+        }
+        case 'sell': {
+            const M = state.market;
+            let amt = Number(act.fi);
+            if (act.all) amt = p.fi;
+            if (!isFinite(amt) || amt <= 0) return { ok: false, msg: '❌ Сколько монет продать?' };
+            if (amt > p.fi) return { ok: false, msg: `❌ У тебя только ${fmt(p.fi)} ${S('coinName')}` };
+            const usd = amt * M.price * (1 - S('sellSpreadPct') / 100);
+            p.fi -= amt; p.usd += usd; p.sold += amt;
+            adminSay(`🔴 ${fname(p)} продал ${fmt(amt)} ${S('coinName')} за $${fmt(usd)} (mini app)`);
+            return { ok: true, msg: `🔴 Продано ${fmt(amt)} ${S('coinName')} за $${fmt(usd)}` };
+        }
+        case 'buyminer': {
+            const m = miner(String(act.id || ''));
+            if (!m) return { ok: false, msg: '❌ Нет в наличии' };
+            const cost = minerCost(m, (p.miners || {})[m.id] || 0);
+            if (p.usd < cost) return { ok: false, msg: `❌ Не хватает $${fmt(cost - p.usd)}` };
+            p.usd -= cost;
+            p.miners = p.miners || {};
+            p.miners[m.id] = (p.miners[m.id] || 0) + 1;
+            adminSay(`🏭 ${fname(p)} купил ${m.name} за $${fmt(cost)} (mini app)`);
+            return { ok: true, msg: `✅ ${m.name}: +${fmt(m.hash)} TH/s` };
+        }
+        default: return { ok: false, msg: '❌ Неизвестное действие' };
+    }
+}
+
+/* Роли без ключей: OWNER — по Telegram ID/username (initData подписан Telegram, подделать нельзя).
+   Остальные — кастомные роли, которые создаёт и раздаёт владелец. Чат-стафф → базовый ADMIN. */
+const OWNER_DEF = () => ({ kind: 'owner', name: 'OWNER', color: '#f7b32b', perms: API_ALL_PERMS.slice() });
+const CHAT_ADMIN_DEF = () => ({ kind: 'chat', name: 'ADMIN', color: '#3390ec', perms: ['give', 'market', 'bans', 'players', 'log'] });
+/* Ролка для отображения (значок в топе/списках): по id игрока */
+function roleDefOf(pid) {
+    pid = String(pid);
+    if (state.ownerId && pid === String(state.ownerId)) return { name: 'OWNER', color: '#f7b32b' };
+    if (API_OWNER_ID && pid === API_OWNER_ID) return { name: 'OWNER', color: '#f7b32b' };
+    const rid = (state.playerRoles || {})[pid];
+    if (rid) {
+        const d = (state.customRoles || []).find(x => x && x.id === rid);
+        if (d) return { name: String(d.name || 'ROLE').slice(0, 16), color: '#' + String(d.color || '3dff8b').replace(/^#/, '') };
+    }
+    if (state.staffIds && state.staffIds.includes(Number(pid))) return { name: 'ADMIN', color: '#3390ec' };
+    return null;
+}
+function apiRole(u) {
+    if (state.ownerId && String(u.id) === String(state.ownerId)) return OWNER_DEF();
+    if (API_OWNER_ID && String(u.id) === API_OWNER_ID) return OWNER_DEF();
+    if (API_OWNER_USER && String(u.username || '').toLowerCase() === API_OWNER_USER) return OWNER_DEF();
+    const rid = (state.playerRoles || {})[String(u.id)];
+    if (rid) {
+        const d = (state.customRoles || []).find(x => x && x.id === rid);
+        if (d) return {
+            kind: 'custom', id: d.id,
+            name: String(d.name || 'ROLE').slice(0, 16),
+            color: '#' + String(d.color || '3dff8b').replace(/^#/, ''),
+            perms: (d.perms || []).filter(x => API_ALL_PERMS.includes(x))
+        };
+    }
+    if (state.staffIds && state.staffIds.includes(u.id)) return CHAT_ADMIN_DEF();
+    return null;
+}
+
+/* Действия персонала. role — объект роли (см. apiRole); владельцу можно всё. */
+function apiRunStaff(user, role, act) {
+    const a = act && act.a;
+    const isOwnerRole = role && (role.kind === 'owner');
+    const need = perm => role && (isOwnerRole || role.perms.includes(perm));
+    if (a === 'who') return { ok: true, msg: '🔑 Роль: ' + (role.name || '—'), role };
+    switch (a) {
+        /* --- управление ролями (только владелец) --- */
+        case 'roles': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            return { ok: true, roles: (state.customRoles || []).map(r => ({ id: r.id, name: r.name, color: r.color, perms: r.perms || [] })), assigned: state.playerRoles || {} };
+        }
+        case 'roleAdd': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const name = String(act.name || '').trim().slice(0, 16);
+            if (!name) return { ok: false, msg: '❌ Название роли?' };
+            let color = '#' + String(act.color || '').replace(/^#/, '');
+            if (!/^#[0-9a-f]{6}$/i.test(color)) color = '#3dff8b';
+            const perms = (Array.isArray(act.perms) ? act.perms : []).filter(x => API_ALL_PERMS.includes(x));
+            state.customRoles = state.customRoles || [];
+            const id = 'r' + Date.now().toString(36) + Math.floor(Math.random() * 999).toString(36);
+            state.customRoles.push({ id, name, color, perms });
+            adminSay(`👑 ${fname(user)} (mini) создал роль «${esc(name)}» ${color} [${perms.join(',') || 'без прав'}]`);
+            return { ok: true, msg: `✅ Роль «${name}» создана` };
+        }
+        case 'roleUpd': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const d = (state.customRoles || []).find(x => x.id === act.id);
+            if (!d) return { ok: false, msg: '❌ Роль не найдена' };
+            if (act.name != null) { const n = String(act.name).trim().slice(0, 16); if (n) d.name = n; }
+            if (act.color != null) { const c = '#' + String(act.color).replace(/^#/, ''); if (/^#[0-9a-f]{6}$/i.test(c)) d.color = c; }
+            if (Array.isArray(act.perms)) d.perms = act.perms.filter(x => API_ALL_PERMS.includes(x));
+            adminSay(`👑 ${fname(user)} (mini) изменил роль «${esc(d.name)}»`);
+            return { ok: true, msg: `✅ Роль «${d.name}» обновлена` };
+        }
+        case 'roleDel': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const d = (state.customRoles || []).find(x => x.id === act.id);
+            if (!d) return { ok: false, msg: '❌ Роль не найдена' };
+            state.customRoles = state.customRoles.filter(x => x.id !== act.id);
+            for (const pid of Object.keys(state.playerRoles || {})) if (state.playerRoles[pid] === act.id) delete state.playerRoles[pid];
+            adminSay(`👑 ${fname(user)} (mini) удалил роль «${esc(d.name)}»`);
+            return { ok: true, msg: `✅ Роль «${d.name}» удалена` };
+        }
+        case 'assign': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            state.playerRoles = state.playerRoles || {};
+            const empty = !act.roleId;
+            if (empty) {
+                if (state.playerRoles[String(tp.id)]) { delete state.playerRoles[String(tp.id)]; adminSay(`👑 ${fname(user)} (mini) снял кастомную роль с ${fname(tp)}`); return { ok: true, msg: `✅ У ${fname(tp)} роль снята` }; }
+                return { ok: false, msg: '❌ У игрока нет кастомной роли' };
+            }
+            const d = (state.customRoles || []).find(x => x.id === act.roleId);
+            if (!d) return { ok: false, msg: '❌ Роль не найдена' };
+            state.playerRoles[String(tp.id)] = d.id;
+            adminSay(`👑 ${fname(user)} (mini) выдал роль «${esc(d.name)}» → ${fname(tp)}`);
+            return { ok: true, msg: `✅ ${fname(tp)} → «${d.name}»` };
+        }
+        case 'give': {
+            if (!need('give')) return { ok: false, msg: '🔒 Недостаточно прав' };
+            const kind = act.kind === 'usd' ? 'usd' : 'fi';
+            const amt = Number(act.amount);
+            if (!isFinite(amt) || amt === 0 || Math.abs(amt) > 1e12) return { ok: false, msg: '❌ Сумма: положительное число (отрицательное — забрать)' };
+            const t = String(act.to || '').trim();
+            if (t === '*' || t.toLowerCase() === 'все' || t.toLowerCase() === 'all') {
+                const n = giveAll(kind, amt, fname(user) + ' (mini)');
+                return { ok: true, msg: `✅ Выдано ${n} игрокам: ${kind === 'usd' ? '$' + fmt(amt) : fmt(amt) + ' ' + S('coinName')}` };
+            }
+            const tp = findPlayerByNameOrId(t.replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: `❌ Игрок «${t}» не найден (пусть нажмёт /start)` };
+            giveTo(tp, kind, amt);
+            adminSay(`🤝 ${fname(user)} (mini) выдал ${fname(tp)}: ${kind === 'usd' ? '$' + fmt(amt) : fmt(amt) + ' ' + S('coinName')}`);
+            try { notifyGift(tp, amt, kind); } catch (_) { }
+            return { ok: true, msg: `✅ ${fname(tp)}: ${kind === 'usd' ? '$' + fmt(tp.usd) : fmt(tp.fi) + ' ' + S('coinName')}` };
+        }
+        case 'price': {
+            if (!need('market')) return { ok: false, msg: '🔒 Недостаточно прав' };
+            const op = String(act.op || '');
+            if (op === 'pump' || op === 'dump') {
+                const pct = Math.min(95, Math.max(0, Number(act.pct) || 0));
+                pumpDump(op, pct);
+            } else if (op === 'x2' || op === 'half') pumpDump(op, 0);
+            else if (op === 'set') { const v = Number(act.v); if (!(isFinite(v) && v > 0 && v <= 1e9)) return { ok: false, msg: '❌ Некорректная цена' }; setPrice(v); }
+            else if (op === 'freeze') state.market.frozen = true;
+            else if (op === 'unfreeze') state.market.frozen = false;
+            else if (op === 'auto') state.market = freshMarket();
+            else return { ok: false, msg: '❌ Неизвестная операция' };
+            adminSay(`📈 ${fname(user)} (mini): ${op} → $${fmt(state.market.price)}${state.market.frozen ? ' ❄️' : ''}`);
+            return { ok: true, msg: `✅ Цена: $${fmt(state.market.price)}${state.market.frozen ? ' (❄️ заморожена)' : ''}` };
+        }
+        case 'ban': case 'unban': {
+            if (!need('bans')) return { ok: false, msg: '🔒 Недостаточно прав' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            if (isOwner({ id: tp.id })) return { ok: false, msg: '❌ Владельца банить нельзя' };
+            if (a === 'ban') {
+                tp.banned = true;
+                tp.banReason = String(act.reason || 'не указана').slice(0, 100);
+                tp.bannedAt = Date.now();
+                adminSay(`🚫 ${fname(user)} (mini) забанил ${fname(tp)} — ${esc(tp.banReason)}`);
+                return { ok: true, msg: `🚫 ${fname(tp)} забанен` };
+            }
+            tp.banned = false; tp.banReason = '';
+            adminSay(`✅ ${fname(user)} (mini) разбанил ${fname(tp)}`);
+            return { ok: true, msg: `✅ ${fname(tp)} разбанен` };
+        }
+        case 'players': {
+            if (!need('players')) return { ok: false, msg: '🔒 Недостаточно прав' };
+            const list = Object.values(state.players)
+                .sort((x, y) => (y.fi * state.market.price + y.usd) - (x.fi * state.market.price + x.usd))
+                .slice(0, 40)
+                .map(x => {
+                    const rd = roleDefOf(x.id);
+                    return { id: x.id, n: fname(x), fi: x.fi, usd: x.usd, h: totalHash(x), b: !!x.banned, r: x.banReason || '', role: rd ? { name: rd.name, color: rd.color } : null };
+                });
+            return { ok: true, players: list };
+        }
+        case 'log': {
+            if (!need('log')) return { ok: false, msg: '🔒 Недостаточно прав' };
+            return { ok: true, log: state.log.slice(0, 20).map(l => [l.t, l.s]) };
+        }
+        case 'set': {
+            if (!need('config')) return { ok: false, msg: '🔒 Недостаточно прав' };
+            const key = String(act.key || '');
+            const rule = API_SET_KEYS[key];
+            if (!rule) return { ok: false, msg: '❌ Такую настройку менять нельзя' };
+            let v = act.v;
+            if (rule[0] === 's') {
+                v = String(v == null ? '' : v).slice(0, rule[1]);
+                if (!v) return { ok: false, msg: '❌ Пусто' };
+            } else {
+                v = Number(String(v == null ? '' : v).replace(',', '.'));
+                if (!isFinite(v) || v < rule[1] || v > rule[2]) return { ok: false, msg: `❌ Число от ${rule[1]} до ${rule[2]}` };
+            }
+            state.settings[key] = v;
+            adminSay(`⚙️ ${fname(user)} (mini): ${key} = ${JSON.stringify(v)}`);
+            return { ok: true, msg: `✅ ${key} = ${String(v)}` };
+        }
+        case 'reset': {
+            if (!isOwnerRole) return { ok: false, msg: '🏛 Только владелец' };
+            const what = String(act.what || '');
+            if (what === 'market') { state.market = freshMarket(); adminSay(`📉 ${fname(user)} (mini) сбросил рынок → $${fmt(state.market.price)}`); return { ok: true, msg: '✅ Рынок сброшен' }; }
+            if (what === 'balances') {
+                for (const pX of Object.values(state.players)) {
+                    if (state.staffIds.includes(pX.id)) continue;
+                    pX.usd = 0; pX.fi = 0;
+                }
+                adminSay(`🧯 ${fname(user)} (mini) обнулил балансы`);
+                return { ok: true, msg: '✅ Балансы обнулены' };
+            }
+            if (what === 'nuke') {
+                const keep = state.players[state.ownerId];
+                state.players = {};
+                if (keep) state.players[keep.id] = Object.assign({}, keep, { miners: {}, fi: S('startFi'), usd: S('startUsd'), banned: false });
+                state.market = freshMarket();
+                adminSay(`💥 ${fname(user)} (mini) удалил всё (nuke)`);
+                return { ok: true, msg: '💥 Всё удалено, ты остался' };
+            }
+            return { ok: false, msg: '❌ Что сбросить?' };
+        }
+        default: return { ok: false, msg: '❌ Неизвестное действие' };
+    }
+}
+
+async function apiRoute(pathname, method, bodyRaw) {
+    if (method === 'GET') {
+        if (pathname === '/health') return { ok: true, name: S('title'), price: state.market.price, t: Date.now() };
+        return { ok: false, err: 'not found' };
+    }
+    let body;
+    try { body = JSON.parse(bodyRaw || '{}'); } catch (e) { return { ok: false, err: 'bad json' }; }
+
+    if (pathname === '/api/sync') {
+        const u = verifyInitData(body.init || '');
+        if (!u) return { ok: false, err: 'auth' };
+        const p = ensurePlayer(u);
+        let msg = '';
+        const actions = Array.isArray(body.actions) ? body.actions.slice(0, 10) : [];
+        for (const act of actions) {
+            const r = apiRunAction(p, act);
+            if (r && r.msg) msg = r.msg;
+            if (r && r.ok === false) break;
+        }
+        saveState();
+        saveStateToGitHub(false);
+        const snap = apiSnapshot(p);
+        snap.msg = msg;
+        return snap;
+    }
+
+    if (pathname === '/api/staff') {
+        const u = verifyInitData(body.init || '');
+        if (!u) return { ok: false, err: 'auth' };
+        const role = apiRole(u);
+        if (!role) return { ok: false, err: 'forbidden' };
+        const p = ensurePlayer(u);
+        const r = apiRunStaff(u, role, body.action || {});
+        if (r && r.ok !== false) { saveState(); saveStateToGitHub(false); }
+        const out = Object.assign({ role: { kind: role.kind, name: role.name, color: role.color, perms: role.perms } }, r);
+        if (!/^(players|log|who|roles)$/.test(String((body.action || {}).a))) out.snap = apiSnapshot(p);
+        return out;
+    }
+
+    return { ok: false, err: 'not found' };
+}
+
+function startApiServer() {
+    const srv = http.createServer(async (req, res) => {
+        const cors = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '600'
+        };
+        if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
+        let bodyRaw = '';
+        req.on('data', d => { bodyRaw += d; if (bodyRaw.length > 65536) req.destroy(); });
+        req.on('end', async () => {
+            try {
+                const out = await apiRoute(String(req.url || '/').replace(/\?.*$/, ''), req.method, bodyRaw);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors });
+                res.end(JSON.stringify(out));
+            } catch (e) {
+                console.error('[api]', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json', ...cors });
+                res.end(JSON.stringify({ ok: false, err: 'server' }));
+            }
+        });
+    });
+    srv.on('error', e => console.error('[api] порт занят?', e.message));
+    srv.listen(API_PORT, '0.0.0.0', () => console.log(`🌐 API онлайн: http://127.0.0.1:${API_PORT} (health: /health)`));
 }
 
 /* ------------------------- ЦИКЛ ОПРОСА ------------------------- */
@@ -672,7 +1158,7 @@ async function onCallback(q) {
                     [{ text: c === 'up' ? '📈✖2' : '📉÷2', callback_data: `st:${c === 'up' ? 'x2' : 'half'}:0` },
                      { text: '🎯 Установить цену', callback_data: 'dlg:price' },
                      { text: state.market.frozen ? '▶️ Отпустить' : '❄️ Заморозить', callback_data: 'st:freeze' }],
-                    [{ text: '⬅️ Назад', callback_data: 'tab:staff' }]
+                    [{ text: '🤖 Авто-рынок', callback_data: 'st:auto' }, { text: '⬅️ Назад', callback_data: 'tab:staff' }],
                 ];
                 await answer(q);
                 const screen = {
@@ -696,6 +1182,14 @@ async function onCallback(q) {
                 adminSay(`${state.market.frozen ? '❄️' : '▶️'} ${fname(user)} ${state.market.frozen ? 'заморозил' : 'отпустил'} цену`);
                 saveState();
                 await answer(q, state.market.frozen ? '❄️ Цена заморожена' : '▶️ Цена плавает');
+                return reOpenStaff(chat, mid);
+            }
+            if (b === 'auto') {
+                /* 🤖 вернуть рынок в авто-режим: стартовая цена, тренд сброшен, заморозка снята */
+                state.market = freshMarket();
+                adminSay(`🤖 ${fname(user)} вернул рынок на АВТО — цена $${fmt(state.market.price)}, курс сам плавает`);
+                saveState();
+                await answer(q, `🤖 Авто-рынок: $${fmt(state.market.price)}`);
                 return reOpenStaff(chat, mid);
             }
             if (b === 'give') {
@@ -1225,6 +1719,11 @@ function helpCmd(chat) {
     loadState();
     saveState();
 
+    /* ☁ если есть GH_TOKEN — состояние игры живёт в GitHub (работает даже с выключенным ПК) */
+    if (GH.token) await loadStateFromGitHub();
+    startApiServer();
+    await pushApiJson();
+
     /* расписание тиков рынка: перечитываем эту переменную каждый раз */
     let tickTimer = null;
     const startTicker = () => {
@@ -1240,7 +1739,7 @@ function helpCmd(chat) {
     console.log(`👥 Игроков в базе: ${Object.keys(state.players).length}. Стафф: ${state.staffIds.length}. Цена FI: $${fmt(state.market.price)}`);
     console.log(`🛠 Пароль staff: ${CFG.staffPassword} (config.json)`);
 
-    process.on('SIGINT', () => { saveState(); console.log('💾 Сохранено. Выход.'); process.exit(0); });
+    process.on('SIGINT', () => { saveState(); saveStateToGitHub(true); console.log('💾 Сохранено. Выход.'); process.exit(0); });
     process.on('uncaughtException', e => console.error('[x]', e.message));
     process.on('unhandledRejection', e => console.error('[x]', e && e.message));
 
