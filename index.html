@@ -6,7 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>FI Coin — Mini App · серверная</title>
+<title>FI Coin — Mini App · Ultimate Edition</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-400-normal.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.1.0/latin-700-normal.css">
@@ -17,8 +17,9 @@
 :root{
   --tg-bg:#0e1621; --tg-panel:#17212b; --tg-panel2:#1e2c3a; --tg-border:#243447;
   --tg-blue:#3390ec; --tg-text:#e9f0f7; --tg-sub:#7d8b99;
-  --fi-gold:#f7b32b; --fi-green:#2fd46a; --fi-red:#ff5c5c; --fi-cyan:#37c8ee;
-  --em:#17dd62;
+  --fi-gold:#f7b32b; --fi-orange:#ff7a1a; --fi-green:#2fd46a; --fi-red:#ff5c5c; --fi-cyan:#37c8ee;
+  --em:#17dd62; --em-dark:#0a9c3e;
+  --dv-green:#3dff8b; --dv-bg:#050a08;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -27,13 +28,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:ra
 body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;background-image:linear-gradient(rgba(23,221,98,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(23,221,98,.04) 1px,transparent 1px);background-size:44px 44px;mask-image:radial-gradient(ellipse at center,black 30%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 75%)}
 .num{font-variant-numeric:tabular-nums}
 
-#phone{position:relative;width:100%;max-width:430px;height:100dvh;max-height:920px;background:var(--tg-bg);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.07),0 40px 100px rgba(0,0,0,.7)}
+#phone{position:relative;width:100%;max-width:430px;height:100dvh;max-height:920px;background:var(--tg-bg);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.07),0 40px 100px rgba(0,0,0,.7),0 0 120px rgba(23,221,98,.06)}
 @media(min-width:500px) and (min-height:700px){#phone{border-radius:38px;height:min(920px,96dvh)}#phone::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#000;border-radius:14px;z-index:60}}
 
 #tgHeader{flex:0 0 auto;background:linear-gradient(180deg,#1c2a3a,#17212b);border-bottom:1px solid var(--tg-border);padding:14px 14px 10px;z-index:40;position:relative}
 @media(min-width:500px) and (min-height:700px){#tgHeader{padding-top:34px}}
 .tgRow{display:flex;align-items:center;gap:10px}
-.tgAvatar{width:40px;height:40px;border-radius:9px;overflow:hidden;flex-shrink:0;box-shadow:0 0 0 2px rgba(23,221,98,.45),0 0 14px rgba(23,221,98,.25)}
+.tgBack{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--tg-blue);font-size:20px;cursor:pointer;flex-shrink:0}
+.tgAvatar{width:40px;height:40px;border-radius:9px;overflow:hidden;flex-shrink:0;box-shadow:0 0 0 2px rgba(23,221,98,.45),0 0 14px rgba(23,221,98,.25);cursor:pointer}
 .tgAvatar svg{width:100%;height:100%;display:block}
 .tgInfo{flex:1;min-width:0}
 .tgName{display:flex;align-items:center;gap:4px;font-weight:700;font-size:15px;white-space:nowrap}
@@ -42,8 +44,20 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .tgStatus{font-size:11.5px;color:var(--tg-sub);display:flex;align-items:center;gap:5px}
 .dotOnline{width:7px;height:7px;border-radius:50%;background:var(--fi-green);box-shadow:0 0 6px var(--fi-green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
-.dotOffline{width:7px;height:7px;border-radius:50%;background:var(--fi-red);box-shadow:0 0 6px var(--fi-red)}
-.rBadge{font-size:8.5px;font-weight:800;letter-spacing:.6px;border-radius:6px;padding:2px 6px;font-family:'JetBrains Mono',monospace;border:1px solid;flex-shrink:0}
+.dotOffline{width:7px;height:7px;border-radius:50%;background:var(--fi-red);box-shadow:0 0 6px var(--fi-red);display:none}
+.tgMenu{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tg-sub);font-size:18px;letter-spacing:1px;flex-shrink:0}
+.tgMenu:hover{background:rgba(255,255,255,.06)}
+.devBtn{font-size:9px;font-weight:800;color:var(--dv-green);border:1px solid rgba(61,255,139,.35);border-radius:7px;padding:4px 7px;cursor:pointer;opacity:.5;letter-spacing:1.5px;flex-shrink:0;transition:.15s;background:rgba(61,255,139,.05);font-family:'JetBrains Mono',monospace}
+.devBtn:hover,.devBtn.on{opacity:1;box-shadow:0 0 12px rgba(61,255,139,.35)}
+#menuDrop{position:absolute;right:10px;top:64px;background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:12px;padding:6px;min-width:210px;z-index:70;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#menuDrop.open{display:block;animation:dropIn .16s ease-out}
+@keyframes dropIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.menuItem{padding:9px 12px;border-radius:8px;font-size:13.5px;cursor:pointer;display:flex;gap:9px;align-items:center;color:var(--tg-text)}
+.menuItem:hover{background:rgba(51,144,236,.15)}
+.menuItem.danger{color:var(--fi-red)}
+.menuItem.danger:hover{background:rgba(255,92,92,.12)}
+.menuItem.staff{color:var(--dv-green)}
+.menuItem.staff:hover{background:rgba(61,255,139,.12)}
 
 #balanceStrip{flex:0 0 auto;background:linear-gradient(135deg,#1b2836 0%,#1d3328 60%,#153a24 100%);border-bottom:1px solid var(--tg-border);padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:30}
 .balCell{flex:1;min-width:0}
@@ -52,15 +66,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .balVal.usd{color:var(--fi-green)}
 .balVal.fi{color:var(--em)}
 .priceChip{background:rgba(0,0,0,.28);border:1px solid var(--tg-border);border-radius:10px;padding:5px 10px;text-align:right;flex-shrink:0;cursor:pointer}
-.priceChip .p{font-size:13.5px;font-weight:800;color:var(--fi-cyan);font-family:'JetBrains Mono',monospace}
+.priceChip .p{font-size:13.5px;font-weight:800;color:var(--fi-cyan)}
 .priceChip .chg{font-size:10.5px;font-weight:700}
 .chg.up{color:var(--fi-green)}.chg.dn{color:var(--fi-red)}
 
 #screen{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 14px 20px;scrollbar-width:none}
 #screen::-webkit-scrollbar{display:none}
 #tabBar{flex:0 0 auto;display:flex;background:#131c26;border-top:1px solid var(--tg-border);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:40;gap:2px}
-.tabBtn{flex:1;background:none;border:none;color:var(--tg-sub);font-family:inherit;font-size:9.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 1px 3px;cursor:pointer;border-radius:8px;transition:.15s}
-.tabBtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabBtn{flex:1;background:none;border:none;color:var(--tg-sub);font-family:inherit;font-size:9px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 1px 3px;cursor:pointer;border-radius:8px;transition:.15s}
+.tabBtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabBtn.active{color:var(--em)}
 .tabBtn.active svg{filter:drop-shadow(0 0 6px rgba(23,221,98,.6))}
 .tabBtn:active{transform:scale(.92)}
@@ -71,11 +85,12 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .card{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:14px;margin-bottom:10px}
 .btn{border:none;font-family:inherit;font-weight:800;border-radius:12px;cursor:pointer;transition:.13s;display:inline-flex;align-items:center;justify-content:center;gap:7px}
 .btn:active{transform:scale(.96)}
-.btn-em{background:linear-gradient(135deg,#3cf07e,#0ea24a);color:#03230f;box-shadow:0 4px 14px rgba(23,221,98,.35)}
-.btn-red{background:rgba(255,92,92,.15);color:var(--fi-red);border:1px solid rgba(255,92,92,.3)}
 .btn-blue{background:linear-gradient(135deg,#3d9df3,#2278d4);color:#fff;box-shadow:0 4px 14px rgba(51,144,236,.35)}
 .btn-gold{background:linear-gradient(135deg,#ffc94d,#f2921d);color:#3a2600;box-shadow:0 4px 14px rgba(247,179,43,.3)}
+.btn-green{background:linear-gradient(135deg,#37e077,#1db954);color:#04240f;box-shadow:0 4px 14px rgba(47,212,106,.3)}
+.btn-em{background:linear-gradient(135deg,#3cf07e,#0ea24a);color:#03230f;box-shadow:0 4px 14px rgba(23,221,98,.35)}
 .btn-ghost{background:rgba(255,255,255,.05);color:var(--tg-text);border:1px solid var(--tg-border)}
+.btn-red{background:rgba(255,92,92,.15);color:var(--fi-red);border:1px solid rgba(255,92,92,.3)}
 .btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none!important}
 .btn-sm{padding:8px 14px;font-size:12.5px}
 .btn-lg{padding:13px 18px;font-size:14.5px;width:100%}
@@ -83,701 +98,1154 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .statBox{background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:12px;padding:10px 12px}
 .statBox .l{font-size:10px;color:var(--tg-sub);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
 .statBox .v{font-size:15px;font-weight:800}
-.inp{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--tg-border);color:var(--tg-text);font-family:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:10px 12px;outline:none;margin-bottom:8px}
-.inp:focus{border-color:var(--em)}
-.lbl{font-size:10px;color:var(--tg-sub);font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin:8px 0 5px;display:block}
-.inpColor{width:100%;height:44px;background:rgba(0,0,0,.3);border:1px solid var(--tg-border);border-radius:10px;padding:4px 6px;margin-bottom:8px;cursor:pointer}
+.bar{height:7px;background:rgba(0,0,0,.35);border-radius:5px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:5px;transition:width .6s ease,background .4s}
 
-.bigPrice{font-size:34px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--em);text-align:center;margin-top:4px}
-.priceSub{font-size:11.5px;color:var(--tg-sub);text-align:center;font-weight:700}
-#spark{width:100%;height:96px;display:block;margin-top:10px}
-.spread{display:flex;gap:8px;margin-top:10px}
-.spread>div{flex:1;background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:12px;padding:8px;text-align:center}
-.spread .l{font-size:9.5px;color:var(--tg-sub);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
-.spread .v{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:800;margin-top:2px}
-.segRow{display:flex;background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:12px;padding:4px;gap:4px;margin-bottom:10px}
-.segRow button{flex:1;border:none;background:transparent;color:var(--tg-sub);font-family:inherit;font-weight:800;font-size:12.5px;padding:9px;border-radius:9px;cursor:pointer}
-.segRow button.on{background:linear-gradient(135deg,#0ea24a,#0a913e);color:#fff}
-.banner{background:rgba(55,200,238,.12);border:1px solid rgba(55,200,238,.4);color:#7fdcf5;border-radius:12px;padding:9px 12px;font-size:12px;font-weight:700;margin-bottom:10px;text-align:center}
-.banner.red{background:rgba(255,92,92,.12);border-color:rgba(255,92,92,.4);color:#ff9d9d}
+.questCard{display:flex;gap:11px;align-items:center;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:13px;padding:10px 12px;margin-bottom:7px}
+.questCard.done{border-color:rgba(23,221,98,.5);background:linear-gradient(135deg,rgba(23,221,98,.07),var(--tg-panel))}
+.qIco{width:34px;height:34px;border-radius:10px;background:var(--tg-panel2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.qInfo{flex:1;min-width:0}
+.qDesc{font-size:12px;font-weight:700;margin-bottom:4px}
+.qBar{height:6px;background:rgba(0,0,0,.35);border-radius:4px;overflow:hidden}
+.qBar>i{display:block;height:100%;background:linear-gradient(90deg,#17dd62,#3cf07e);border-radius:4px;transition:width .5s}
+.qProg{font-size:9.5px;color:var(--tg-sub);margin-top:3px}
+.qRew{font-size:10px;color:var(--fi-gold);font-weight:800;margin-top:2px}
 
 .minerCard{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:12px;margin-bottom:10px;display:flex;gap:12px;position:relative;overflow:hidden}
 .minerCard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mc,#3390ec);opacity:.85}
-.rigArt{width:66px;height:66px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--tg-panel2);border-radius:12px;font-size:30px}
+.rigArt{width:92px;height:92px;flex-shrink:0;position:relative}
+.rigArt.sm{width:80px;height:80px}
+.rigArt svg{width:100%;height:100%;display:block}
+.fanSpin{transform-box:fill-box;transform-origin:center;animation:spin var(--fanSpd,2s) linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.led{animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 .minerInfo{flex:1;min-width:0}
-.minerName{font-weight:800;font-size:14px}
-.minerDesc{font-size:10.5px;color:var(--tg-sub);margin-top:2px;line-height:1.35}
-.minerMeta{display:flex;gap:10px;margin-top:6px;font-size:11px;font-weight:700;color:var(--tg-sub)}
-.minerMeta b{color:var(--em)}
-.minerBuy{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:5px;align-items:flex-end}
-.minerPrice{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:800;color:var(--fi-gold)}
+.minerName{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+.minerQty{background:rgba(23,221,98,.15);color:var(--em);font-size:10.5px;font-weight:800;border-radius:7px;padding:1px 7px}
+.minerSpecs{display:flex;flex-wrap:wrap;gap:4px 12px;margin:6px 0 4px;font-size:11.5px;color:var(--tg-sub)}
+.minerSpecs b{color:var(--tg-text);font-weight:700}
+.statusChip{position:absolute;right:10px;top:10px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px}
+.st-ok{background:rgba(47,212,106,.15);color:var(--fi-green)}
 
-.ldb{display:flex;align-items:center;gap:8px;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:12px;padding:10px 12px;margin-bottom:6px}
-.ldb .rank{width:28px;height:28px;border-radius:50%;background:var(--tg-panel2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
-.ldb.top1 .rank{background:linear-gradient(135deg,#ffd76e,#c07808);color:#3a2600}
-.ldb.top2 .rank{background:linear-gradient(135deg,#dfe8f2,#9fb2c5);color:#22313f}
-.ldb.top3 .rank{background:linear-gradient(135deg,#f0b490,#b0713f);color:#33160a}
-.ldb .n{flex:1;min-width:0;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
-.ldb .w{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:800;color:var(--em)}
+.shopCard,.labCard{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:13px;margin-bottom:10px;position:relative;overflow:hidden}
+.labCard{display:flex;gap:12px;align-items:center}
+.shopTop{display:flex;gap:12px}
+.labIcon{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;background:var(--tg-panel2);border:1px solid var(--tg-border)}
+.shopInfo{flex:1;min-width:0}
+.shopName{font-size:14px;font-weight:800}
+.shopDesc{font-size:11px;color:var(--tg-sub);margin:3px 0 6px;line-height:1.4}
+.specPills{display:flex;flex-wrap:wrap;gap:5px}
+.pill{font-size:10.5px;font-weight:700;background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:7px;padding:2.5px 8px;color:var(--tg-sub)}
+.pill b{color:var(--tg-text)}
+.shopBuy{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;padding-top:11px;border-top:1px dashed var(--tg-border)}
+.priceTag{font-size:15px;font-weight:800;color:var(--fi-gold)}
+.priceTag small{display:block;font-size:10px;color:var(--tg-sub);font-weight:600}
+.ownedTag{font-size:10px;font-weight:800;color:var(--em);background:rgba(23,221,98,.12);border:1px solid rgba(23,221,98,.35);border-radius:8px;padding:4px 10px}
+.lvlDots{display:flex;gap:3px}
+.lvlDots i{width:6px;height:6px;border-radius:50%;background:var(--tg-border)}
+.lvlDots i.on{background:var(--em);box-shadow:0 0 5px rgba(23,221,98,.7)}
+.upCard{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:14px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
+.upIcon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;background:var(--tg-panel2);border:1px solid var(--tg-border)}
+.upInfo{flex:1;min-width:0}
+.upName{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:7px}
+.upDesc{font-size:11px;color:var(--tg-sub);margin-top:3px;line-height:1.4}
 
-.stTabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.stTab{border:1px solid var(--tg-border);background:var(--tg-panel);color:var(--tg-sub);font-family:inherit;font-weight:800;font-size:11.5px;padding:8px 12px;border-radius:10px;cursor:pointer}
-.stTab.on{color:var(--em);border-color:rgba(23,221,98,.5);background:linear-gradient(135deg,rgba(23,221,98,.08),var(--tg-panel))}
-.pctGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
-.pctBtn{border:1px solid var(--tg-border);background:var(--tg-panel2);font-family:inherit;font-weight:800;font-size:12.5px;padding:10px 2px;border-radius:10px;cursor:pointer}
-.pctBtn.up{color:var(--fi-green)}
-.pctBtn.dn{color:var(--fi-red)}
-.row2{display:flex;gap:8px}
-.row2>*{flex:1}
-.plRow{display:flex;align-items:center;gap:8px;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:12px;padding:10px 12px;margin-bottom:6px}
-.plRow .n{flex:1;min-width:0;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.plRow .w{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--tg-sub);font-weight:700}
-.logItem{font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:10px;padding:8px 10px;margin-bottom:5px;color:#b9c6d2;word-break:break-word}
-.permChip{font-size:9px;font-weight:800;letter-spacing:.5px;border-radius:5px;padding:2px 5px;font-family:'JetBrains Mono',monospace;background:rgba(61,255,139,.1);color:#a9f5c8;border:1px solid rgba(61,255,139,.3)}
-.roleRow{display:flex;align-items:center;gap:8px;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:12px;padding:10px 12px;margin-bottom:6px;flex-wrap:wrap}
-.roleRow .nm{font-weight:800;font-size:13px}
-.checkRow{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.checkRow label{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--tg-sub);background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:8px;padding:6px 9px;cursor:pointer}
-.checkRow input{accent-color:#17dd62}
+.bigPrice{font-size:34px;font-weight:800;color:var(--em);letter-spacing:-1px}
+#chartWrap{position:relative;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:10px;margin-bottom:12px}
+#chart{width:100%;height:190px;display:block}
+.tradeBox{background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:12px;padding:11px;margin-bottom:10px}
+.tradeLabel{font-size:10.5px;font-weight:700;color:var(--tg-sub);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;display:flex;justify-content:space-between}
+.sellRow{display:flex;gap:7px}
+.sellRow .btn{flex:1;padding:10px 4px;font-size:12.5px}
+.inp{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--tg-border);color:var(--tg-text);font-family:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:10px 12px;outline:none;margin-bottom:8px}
+.inp:focus{border-color:var(--em)}
 
-#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom));z-index:99;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
-.toast{background:rgba(14,22,33,.96);border:1px solid var(--tg-border);border-radius:12px;padding:10px 14px;font-size:12.5px;font-weight:700;color:var(--tg-text);display:flex;gap:8px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:tIn .2s ease-out;max-width:88vw}
-.toast.out{opacity:0;transform:translateY(6px);transition:.3s}
-.toast.success{border-color:rgba(47,212,106,.45)}
-.toast.error{border-color:rgba(255,92,92,.45);color:#ffb1b1}
-@keyframes tIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
-.offlineBox{padding:26px 16px;text-align:center}
-.offlineBox .ico{font-size:44px}
-.offlineBox h3{margin:10px 0 6px}
-.offlineBox p{font-size:12.5px;color:var(--tg-sub);line-height:1.55}
+.upgraderBox{background:linear-gradient(135deg,rgba(168,85,247,.12),rgba(124,58,237,.08));border:1px solid rgba(168,85,247,.4);border-radius:16px;padding:16px;margin-bottom:12px;text-align:center}
+.upgraderTitle{font-size:18px;font-weight:800;margin-bottom:12px;color:#c084fc}
+.upgWheelWrap{position:relative;width:216px;height:216px;margin:14px auto 2px}
+.upgWheel{width:100%;height:100%;border-radius:50%;box-shadow:0 0 0 6px var(--tg-panel2),0 0 0 8px rgba(168,85,247,.45),0 0 30px rgba(168,85,247,.3),inset 0 0 26px rgba(0,0,0,.55)}
+.upgSpin .upgWheel{box-shadow:0 0 0 6px var(--tg-panel2),0 0 0 8px rgba(168,85,247,.8),0 0 55px rgba(168,85,247,.55),inset 0 0 26px rgba(0,0,0,.55)}
+.upgPointer{position:absolute;left:50%;top:-12px;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:19px solid #ffe08a;filter:drop-shadow(0 3px 6px rgba(0,0,0,.65));z-index:4;animation:ptrShake .13s infinite}
+@keyframes ptrShake{0%,100%{transform:translateX(-50%) rotate(-5deg)}50%{transform:translateX(-50%) rotate(5deg)}}
+.upgLegend{font-size:11px;font-weight:700;color:var(--tg-sub);margin-top:8px}
+.upgBtn{width:100%;padding:14px;font-size:14px;font-weight:800;border-radius:12px;border:none;cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 4px 16px rgba(168,85,247,.4);transition:.2s}
+.upgBtn:disabled{opacity:.4;cursor:not-allowed}
+.upgResult{font-size:14px;font-weight:800;margin-top:12px;padding:12px;border-radius:10px;display:none;animation:resultPulse .5s ease-out}
+.upgResult.show{display:block}
+.upgResult.success{background:rgba(47,212,106,.15);color:var(--fi-green);border:1px solid rgba(47,212,106,.4)}
+.upgResult.fail{background:rgba(255,92,92,.15);color:var(--fi-red);border:1px solid rgba(255,92,92,.4)}
+@keyframes resultPulse{0%{transform:scale(0.8);opacity:0}100%{transform:scale(1);opacity:1}}
+
+.transferBox{background:linear-gradient(135deg,rgba(51,144,236,.08),rgba(51,144,236,.03));border:1px solid rgba(51,144,236,.3);border-radius:14px;padding:14px;margin-bottom:10px}
+.duelBox{background:linear-gradient(135deg,rgba(255,122,26,.12),rgba(255,92,92,.06));border:1px solid rgba(255,122,26,.4);border-radius:14px;padding:14px;margin-bottom:10px}
+.rouletteBox{background:linear-gradient(135deg,rgba(236,72,153,.12),rgba(190,24,93,.06));border:1px solid rgba(236,72,153,.4);border-radius:14px;padding:14px;margin-bottom:10px}
+.rBox{font-size:15px;font-weight:800;margin-bottom:8px}
+.rActions{display:flex;gap:7px}
+.rActions button{padding:11px 4px;font-size:12.5px}
+
+.leaderboardItem{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:12px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.leaderboardItem .rank{width:28px;height:28px;border-radius:50%;background:var(--tg-panel2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.leaderboardItem.top1 .rank{background:linear-gradient(135deg,#ffd76e,#c07808);color:#3a2600}
+.leaderboardItem.top2 .rank{background:linear-gradient(135deg,#c8d0dc,#7d8b99);color:#1a2531}
+.leaderboardItem.top3 .rank{background:linear-gradient(135deg,#d98b5a,#8a4a28);color:#2a1406}
+.leaderboardItem .uname{flex:1;font-weight:700;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.leaderboardItem .cap{font-weight:800;color:var(--fi-gold);font-size:12px;flex-shrink:0}
+.rBadge{font-size:8.5px;font-weight:800;letter-spacing:.6px;border-radius:6px;padding:2px 6px;font-family:'JetBrains Mono',monospace;border:1px solid;flex-shrink:0}
+
+.rankBadge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,rgba(23,221,98,.18),rgba(10,156,62,.12));border:1px solid rgba(23,221,98,.4);color:var(--em);font-weight:800;font-size:12px;border-radius:10px;padding:5px 12px}
+.achv{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(36,52,71,.5)}
+.achv:last-child{border:none}
+.achvIco{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--tg-panel2)}
+.achv.done .achvIco{background:linear-gradient(135deg,#3cf07e,#0ea24a);box-shadow:0 3px 12px rgba(23,221,98,.35)}
+.achv:not(.done){opacity:.45;filter:grayscale(.8)}
+.achvT{font-size:12.5px;font-weight:700}
+.achvD{font-size:10.5px;color:var(--tg-sub)}
+.emptyState{text-align:center;padding:44px 20px;color:var(--tg-sub)}
+.emptyState .ico{font-size:52px;opacity:.35;margin-bottom:10px}
+.emptyState p{font-size:13px;line-height:1.5;margin-bottom:16px}
+.hintBox{background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.25);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#a8cef5;line-height:1.5;margin-bottom:12px}
+.hintBox.em{background:rgba(23,221,98,.07);border-color:rgba(23,221,98,.28);color:#9df0bc}
+.hintBox.gold{background:rgba(247,179,43,.08);border-color:rgba(247,179,43,.3);color:#ffd98a}
+
+#toasts{position:absolute;left:10px;right:10px;bottom:76px;z-index:80;display:flex;flex-direction:column;gap:7px;pointer-events:none}
+.toast{background:rgba(23,33,43,.96);border:1px solid var(--tg-border);border-left:4px solid var(--tg-blue);border-radius:12px;padding:10px 13px;font-size:12.5px;font-weight:600;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.55);animation:toastIn .3s cubic-bezier(.2,1.4,.4,1);backdrop-filter:blur(8px);display:flex;gap:9px;align-items:flex-start}
+.toast .ico{font-size:15px;line-height:1.2}
+.toast.gold{border-left-color:var(--fi-gold)}
+.toast.green{border-left-color:var(--fi-green)}
+.toast.red{border-left-color:var(--fi-red)}
+.toast.em{border-left-color:var(--em)}
+.toast.purple{border-left-color:#a855f7}
+.toast.out{animation:toastOut .3s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(10px) scale(.96)}}
+
+#modalWrap{position:absolute;inset:0;background:rgba(4,8,14,.75);backdrop-filter:blur(5px);z-index:90;display:none;align-items:center;justify-content:center;padding:22px}
+#modalWrap.open{display:flex}
+.modal{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:20px;padding:22px;max-width:330px;width:100%;text-align:center;animation:dropIn .25s ease-out;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h3{font-size:17px;font-weight:800;margin-bottom:8px}
+.modal p{font-size:13px;color:var(--tg-sub);line-height:1.5;margin-bottom:16px;white-space:pre-line}
+.modal .mRow{display:flex;gap:8px}
+.modal .mRow .btn{flex:1;padding:11px}
+
+#intro{position:absolute;inset:0;z-index:100;background:linear-gradient(160deg,#0e1621,#10241c 55%,#0a1a10);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;transition:opacity .5s}
+#intro.hide{opacity:0;pointer-events:none}
+.introCoin{width:120px;height:120px;animation:coinFloat 3s ease-in-out infinite;filter:drop-shadow(0 12px 34px rgba(23,221,98,.45))}
+@keyframes coinFloat{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-14px) rotate(4deg)}}
+#intro h1{font-size:26px;font-weight:800;margin:20px 0 4px;background:linear-gradient(90deg,#7dffa8,#17dd62);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+#intro .sub{color:var(--tg-sub);font-size:13px;margin-bottom:24px;max-width:280px;line-height:1.5}
+#startBtn{margin-top:6px;padding:15px 44px;font-size:15px;border-radius:14px;animation:glowPulse 2s infinite;margin-bottom:14px}
+@keyframes glowPulse{0%,100%{box-shadow:0 4px 20px rgba(23,221,98,.35)}50%{box-shadow:0 4px 34px rgba(23,221,98,.65)}}
+#banned{position:absolute;inset:0;z-index:101;background:#120a0c;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
+#banned.show{display:flex}
+#banned h1{color:var(--fi-red);font-size:26px;margin:16px 0 8px}
+#banned p{color:var(--tg-sub);font-size:13px;line-height:1.6;max-width:280px}
+
+/* --- Консоль персонала (STAFF), вермишели-терминал --- */
+#devPanel{position:absolute;inset:0;z-index:96;background:var(--dv-bg);display:none;flex-direction:column;font-family:'JetBrains Mono',monospace;animation:devIn .2s ease-out}
+#devPanel.open{display:flex}
+@keyframes devIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#devPanel::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(61,255,139,.025) 0 1px,transparent 1px 3px)}
+.dvHead{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:12px 12px 8px;border-bottom:1px solid rgba(61,255,139,.2)}
+.dvHead .t{flex:1;font-size:11.5px;font-weight:700;color:var(--dv-green);letter-spacing:1px;text-shadow:0 0 8px rgba(61,255,139,.5)}
+.dvHead .t small{display:block;color:rgba(61,255,139,.45);font-size:9px;font-weight:400;letter-spacing:0}
+.dvRoleTag{font-size:9px;font-weight:700;border-radius:6px;padding:3px 8px;letter-spacing:1px}
+.dvRoleTag.owner{background:rgba(247,179,43,.2);color:var(--fi-gold);border:1px solid rgba(247,179,43,.5)}
+.dvRoleTag.custom,.dvRoleTag.chat{background:rgba(51,144,236,.2);color:#5cabff;border:1px solid rgba(51,144,236,.5)}
+.dvClose{background:none;border:1px solid rgba(255,92,92,.4);color:#ff5c5c;font-family:inherit;font-size:11px;font-weight:700;border-radius:7px;padding:5px 10px;cursor:pointer}
+.dvClose:hover{background:rgba(255,92,92,.15)}
+.dvTabs{flex:0 0 auto;display:flex;gap:5px;padding:9px 10px;overflow-x:auto;border-bottom:1px solid rgba(61,255,139,.15);scrollbar-width:none}
+.dvTabs::-webkit-scrollbar{display:none}
+.dvTab{background:rgba(61,255,139,.06);border:1px solid rgba(61,255,139,.2);color:rgba(61,255,139,.65);font-family:inherit;font-size:10px;font-weight:700;border-radius:7px;padding:6px 10px;cursor:pointer;white-space:nowrap;transition:.13s}
+.dvTab.active{background:rgba(61,255,139,.18);color:var(--dv-green);border-color:var(--dv-green);box-shadow:0 0 10px rgba(61,255,139,.25)}
+#dvContent{flex:1;overflow-y:auto;padding:12px;scrollbar-width:thin;scrollbar-color:rgba(61,255,139,.3) transparent}
+.dvSec{font-size:9.5px;font-weight:700;color:rgba(61,255,139,.5);letter-spacing:2px;text-transform:uppercase;margin:14px 0 8px;display:flex;gap:8px;align-items:center}
+.dvSec:first-child{margin-top:0}
+.dvSec::after{content:'';flex:1;height:1px;background:rgba(61,255,139,.15)}
+.dvRow{display:flex;gap:6px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
+.dvLabel{font-size:10.5px;color:rgba(61,255,139,.75);min-width:82px}
+.din{background:#0a120d;border:1px solid rgba(61,255,139,.3);color:var(--dv-green);font-family:inherit;font-size:11.5px;border-radius:7px;padding:7px 9px;width:110px;outline:none;font-weight:700}
+.din:focus{border-color:var(--dv-green);box-shadow:0 0 8px rgba(61,255,139,.3)}
+.din.wide{width:100%;flex:1}
+.dbtn{background:rgba(61,255,139,.1);border:1px solid rgba(61,255,139,.35);color:var(--dv-green);font-family:inherit;font-size:10.5px;font-weight:700;border-radius:7px;padding:7px 10px;cursor:pointer;transition:.12s;white-space:nowrap}
+.dbtn:hover{background:rgba(61,255,139,.22)}
+.dbtn:active{transform:scale(.95)}
+.dbtn.gold{border-color:rgba(247,179,43,.4);color:#ffc94d;background:rgba(247,179,43,.08)}
+.dbtn.dgr{border-color:rgba(255,92,92,.4);color:#ff7b7b;background:rgba(255,92,92,.08)}
+.dvItem{display:flex;gap:8px;align-items:center;background:rgba(61,255,139,.05);border:1px solid rgba(61,255,139,.15);border-radius:9px;padding:8px 10px;margin-bottom:6px;font-size:11px;flex-wrap:wrap}
+.dvItem .nm{color:#fff;font-weight:700}
+.dvItem .sub{color:rgba(61,255,139,.55);font-size:9.5px}
+.dvGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.dvBox{background:rgba(61,255,139,.04);border:1px solid rgba(61,255,139,.12);border-radius:9px;padding:10px;margin-bottom:8px;font-size:10.5px;color:#fff;line-height:1.5}
+.dvLogin{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:30px;text-align:center}
+.dvLogin .lockIco{font-size:44px;margin-bottom:14px;filter:drop-shadow(0 0 18px rgba(61,255,139,.5))}
+.dvLogin h3{color:var(--dv-green);font-size:14px;letter-spacing:2px;margin-bottom:6px}
+.dvLogin p{color:rgba(61,255,139,.45);font-size:10px;line-height:1.6;max-width:270px;margin-bottom:8px}
+.dvFoot{flex:0 0 auto;border-top:1px solid rgba(61,255,139,.2);padding:8px 12px;display:flex;gap:10px;align-items:center;font-size:9.5px;color:rgba(61,255,139,.55)}
+.dvFoot b{color:var(--dv-green)}
+.dvCB{display:flex;flex-wrap:wrap;gap:5px}
+.dvCB label{display:flex;gap:4px;align-items:center;font-size:9.5px;color:rgba(61,255,139,.7);background:rgba(61,255,139,.06);border:1px solid rgba(61,255,139,.2);border-radius:6px;padding:4px 7px;cursor:pointer}
+.dvCB input{accent-color:#3dff8b}
+
+.offlineBox{padding:40px 16px;text-align:center}
+.offlineBox .ico{font-size:46px}
+.offlineBox h3{margin:10px 0 6px;font-size:18px}
+.offlineBox p{font-size:12.5px;color:var(--tg-sub);line-height:1.55;white-space:pre-line}
 </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position:absolute">
+<defs>
+  <linearGradient id="emG" x1="0" y1="0" x2="0.6" y2="1">
+    <stop offset="0%" stop-color="#8dffbb"/><stop offset="40%" stop-color="#17dd62"/><stop offset="100%" stop-color="#0a8f3c"/>
+  </linearGradient>
+  <linearGradient id="bodyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3a4a5e"/><stop offset="100%" stop-color="#1c2836"/></linearGradient>
+</defs>
+</svg>
+
 <div id="phone">
+
   <div id="tgHeader">
     <div class="tgRow">
-      <div class="tgAvatar"><svg viewBox="0 0 64 64"><path d="M32 2 L54 15 L54 49 L32 62 L10 49 L10 15 Z" fill="url(#emG)" stroke="#065c26" stroke-width="2.6" stroke-linejoin="round"/><path d="M32 25 L54 15 M32 25 L10 15 M32 25 L32 62" stroke="#065c26" stroke-width="1.4" opacity=".5" fill="none"/><text x="32" y="48" text-anchor="middle" font-family="Manrope,sans-serif" font-size="19" font-weight="800" fill="#eafff1">FI</text><defs><linearGradient id="emG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7bff9e"/><stop offset="1" stop-color="#0fa948"/></linearGradient></defs></svg></div>
+      <div class="tgAvatar" id="botAvatar" title="Консоль персонала"></div>
       <div class="tgInfo">
-        <div class="tgName">FI Mining Bot <span class="roleBadge" id="roleBadge"></span></div>
-        <div class="tgStatus" id="netStatus"><span class="dotOnline"></span> подключение…</div>
+        <div class="tgName">FI Mining Bot
+          <span class="roleBadge" id="roleBadge"></span>
+        </div>
+        <div class="tgStatus"><span class="dotOffline" id="dotOffline"></span><span class="dotOnline" id="dotOnline"></span><span id="statusText">подключение…</span></div>
       </div>
+      <div class="devBtn" id="devToggle" title="Консоль персонала">STAFF</div>
+      <div class="tgMenu" id="menuBtn">•••</div>
+    </div>
+    <div id="menuDrop">
+      <div class="menuItem" data-menu="about">ℹ️ Отношение фонда FI к игре</div>
+      <div class="menuItem staff" data-menu="dev">🛠 Консоль персонала</div>
     </div>
   </div>
+
   <div id="balanceStrip">
-    <div class="balCell">
-      <div class="balLabel" id="fiLabel">монеты</div>
-      <div class="balVal fi num" id="fiBal">—</div>
-    </div>
-    <div class="balCell">
-      <div class="balLabel">доллары</div>
-      <div class="balVal usd num" id="usdBal">—</div>
-    </div>
-    <div class="priceChip" id="priceChip">
-      <div class="p num" id="priceVal">—</div>
-      <div class="chg up" id="priceChg">—</div>
+    <div class="balCell"><div class="balLabel">Баланс USD</div><div class="balVal usd num" id="hUsd">$0.00</div></div>
+    <div class="balCell"><div class="balLabel">Кошелёк FI</div><div class="balVal fi num" id="hFi">0.00 FI</div></div>
+    <div class="priceChip" id="priceChip" title="Перейти на биржу">
+      <div class="p num" id="hPrice">$2.40</div>
+      <div class="chg up num" id="hChg">+0.0%</div>
     </div>
   </div>
-  <div id="screen"><div class="offlineBox"><div class="ico">🛰</div><h3>Подключаюсь к серверу…</h3><p>Ищу игровой API. Это занимает пару секунд.</p></div></div>
+
+  <div id="screen"><div class="offlineBox"><div class="ico">🛰</div><h3>Подключаюсь…</h3><p>Ищу игровой сервер.</p></div></div>
+  <div id="toasts"></div>
+
   <div id="tabBar">
-    <button class="tabBtn" data-tab="market"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Рынок</button>
-    <button class="tabBtn" data-tab="shop"><svg viewBox="0 0 24 24"><path d="M4 8h16l-1.5 12h-13z"/><path d="M9 8V6a3 3 0 016 0v2"/></svg>Магазин</button>
-    <button class="tabBtn" data-tab="top"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 4h4v2a4 4 0 01-4 4M7 4H3v2a4 4 0 004 4"/><path d="M7 4h10v5a5 5 0 01-10 0z"/></svg>Топ</button>
-    <button class="tabBtn" data-tab="staff"><svg viewBox="0 0 24 24"><path d="M14.5 4a4 4 0 000 8M2 21v-2a6 6 0 016-6h4a6 6 0 016 6v2M18 8l2 2 3-3"/></svg>STAFF</button>
-    <button class="tabBtn" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg>Я</button>
+    <button class="tabBtn active" data-tab="farm"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="12" rx="2"/><circle cx="8" cy="13" r="2.6"/><circle cx="16" cy="13" r="2.6"/><path d="M5 7V5h14v2"/></svg>Ферма</button>
+    <button class="tabBtn" data-tab="market"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Биржа</button>
+    <button class="tabBtn" data-tab="shop"><svg viewBox="0 0 24 24"><path d="M6 7h12l1.5 13h-15z"/><path d="M9 10V6a3 3 0 016 0v4"/></svg>Магазин</button>
+    <button class="tabBtn" data-tab="lab"><svg viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6.2L4.6 18a2.4 2.4 0 002.1 3.5h10.6a2.4 2.4 0 002.1-3.5L14 9.2V3"/><path d="M7.5 14.5h9"/></svg>Лаба</button>
+    <button class="tabBtn" data-tab="upgrader"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Апгрейд</button>
+    <button class="tabBtn" data-tab="social"><svg viewBox="0 0 24 24"><path d="M7 11l5-5 5 5M7 17l5-5 5 5"/></svg>Соц</button>
+    <button class="tabBtn" data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Профиль</button>
+  </div>
+
+  <div id="modalWrap"><div class="modal" id="modalBox"></div></div>
+
+  <div id="devPanel">
+    <div class="dvHead">
+      <div class="t">🛠 STAFF CONSOLE<small>роли выдаёт владелец · ключей нет</small></div>
+      <span class="dvRoleTag" id="dvRoleTag" style="display:none"></span>
+      <button class="dvClose" id="devClose">✕</button>
+    </div>
+    <div class="dvTabs" id="dvTabs"></div>
+    <div id="dvContent"></div>
+    <div class="dvFoot">
+      <span>price: <b id="dvFootPrice">—</b></span>
+      <span class="num" style="margin-left:auto">плayers sync 2.5s</span>
+    </div>
+  </div>
+
+  <div id="banned">
+    <div style="font-size:64px">🚫</div>
+    <h1>ВЫ ЗАБАНЕНЫ</h1>
+    <p id="banReason">Администрация ограничила ваш доступ к FI Mining Bot.</p>
+    <p style="margin-top:14px;font-size:11px;font-family:'JetBrains Mono',monospace;color:#5a4a4e">Обжалуйте у @timofey_u</p>
+  </div>
+
+  <div id="intro">
+    <div class="introCoin" id="introCoin"></div>
+    <h1>FI Mining Bot</h1>
+    <div class="sub">Изумрудная криптовалюта <b style="color:var(--em)">FI coin</b> — майнинг, биржа, лаборатория, колесо удачи и PvP-дуэли!</div>
+    <button class="btn btn-em" id="startBtn">▶ НАЧАТЬ МАЙНИНГ</button>
   </div>
 </div>
-<div id="toasts"></div>
 
 <script>
 'use strict';
-const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-try{ if(tg){ tg.ready(); tg.expand(); if(tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } }catch(e){}
+/* Telegram Mini App: разворачиваем на весь экран */
+try{const t=window.Telegram&&window.Telegram.WebApp;if(t){t.ready();t.expand();if(t.disableVerticalSwipes)try{t.disableVerticalSwipes();}catch(_){}}}catch(e){}
 
-/* ---------- состояние клиента ---------- */
-const INIT = tg ? (tg.initData || '') : '';
-let S = null;             // снапшот с сервера
-let role = null;          // {kind,name,color,perms}
-let tab = localStorage.getItem('fiTabSrv') || 'market';
-let stTab = 'give';
-let tradeSide = 'buy';
-let busy = false;
-let apiBase = '';
-let stRolesCache = [];
+/* ---------- клиентские константы (зеркало сервера) ---------- */
+const LAB_ITEMS={
+  chips1:{name:'Эффективность чипов I',ico:'🔬',max:5,base:500,mult:2.1,desc:'+10% хешрейт за уровень'},
+  chips2:{name:'Эффективность чипов II',ico:'🧪',max:3,base:3000,mult:2.4,desc:'+15% хешрейт за уровень'},
+  cryo:{name:'Крио-паста',ico:'❄️',max:3,base:800,mult:2.0,desc:'+5% хешрейт за уровень'},
+  broker:{name:'Биржевой брокер',ico:'📉',max:1,base:1200,mult:1,desc:'Комиссия биржи ×0.5'},
+  algo:{name:'Алгоритм FI-XX',ico:'📐',max:1,base:8000,mult:1,desc:'+20% хешрейта'},
+  transfer:{name:'P2P протокол',ico:'📤',max:1,base:2500,mult:1,desc:'Разблокирует переводы FI'}
+};
+const UPG_ITEMS={
+  cool:{name:'Система охлаждения',ico:'❄',max:8,base:400,mult:2.1,desc:l=>l?`+${l*3}% хешрейта`:'Обдув в комплекте.'},
+  power:{name:'Низкий тариф',ico:'⚡',max:6,base:600,mult:2.4,desc:l=>l?`+${l*2}% хешрейта`:'Энергосбережение.'},
+  oc:{name:'Оверклокинг чипов',ico:'🔥',max:5,base:1500,mult:2.6,desc:l=>l?`+${l*12}% хешрейта`:'Разгон!'}
 
-const $ = id => document.getElementById(id);
-const fmt = n => { n = Number(n) || 0; if (Math.abs(n) >= 1000) return Math.floor(Math.abs(n)).toLocaleString('ru-RU').replace(/,/g, ' ') + (n < 0 ? '-' : ''); if (Math.abs(n) < 1 && n !== 0) return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, ''); return n.toFixed(2); };
-const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+};
+const SPIN_COST=50;
+const SPIN_SEGS=[
+  {t:'мимо',c:'#2a3a4e'},{t:'+2× FI',c:'#17dd62'},{t:'мимо',c:'#1e2c3a'},{t:'+$50',c:'#2fd46a'},
+  {t:'мимо',c:'#243447'},{t:'+5× FI',c:'#f7b32b'},{t:'+$200',c:'#37c8ee'},
+  {t:'JACKPOT',c:'#a855f7'},{t:'МЕГА',c:'#ec4899'}
+];
+const RANKS=[[0,'Новичок','🌱'],[1e3,'Энтузиаст','⛏️'],[1e4,'Фермер','🚜'],[1e5,'Промышленник','🏭'],[1e6,'Кит FI','🐋'],[1e7,'Легенда майнинга','👑']];
+const PERM_LABEL={give:'💰 Выдача',market:'📈 Рынок',bans:'🚫 Баны',players:'👥 Игроки',log:'📜 Журнал',config:'🔧 Конфиг'};
 
-function toast(msg, ico = 'ℹ️', type = '') {
-  const el = document.createElement('div'); el.className = 'toast ' + type;
-  el.innerHTML = `<span>${ico}</span><span>${esc(msg)}</span>`;
+/* ---------- svg-арт ---------- */
+function coinSVG(){
+  return `<svg viewBox="0 0 64 64">
+    <path d="M32 2 L54 15 L54 49 L32 62 L10 49 L10 15 Z" fill="url(#emG)" stroke="#065c26" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M32 2 L54 15 L32 25 L10 15 Z" fill="#a4ffc6" opacity=".8"/>
+    <path d="M10 15 L32 25 L32 62 L10 49 Z" fill="#0a8f3c" opacity=".45"/>
+    <path d="M54 15 L32 25 L32 62 L54 49 Z" fill="#5ff28f" opacity=".22"/>
+    <path d="M32 25 L54 15 M32 25 L10 15 M32 25 L32 62" stroke="#065c26" stroke-width="1.4" opacity=".5" fill="none"/>
+    <text x="32" y="49" text-anchor="middle" font-family="Manrope,sans-serif" font-size="19" font-weight="800" fill="#03341a">FI</text>
+    <text x="32" y="48" text-anchor="middle" font-family="Manrope,sans-serif" font-size="19" font-weight="800" fill="#eafff1" opacity=".9">FI</text>
+  </svg>`;
+}
+function rigSVG(tier){
+  const accents=['#8fa3b8','#3390ec','#2fd46a','#f7b32b','#ff5c5c','#a855f7'];
+  const a=accents[tier]||accents[1];
+  const fans=tier>=4?3:2;let fanG='';
+  const fx=fans===2?[26,58]:[20,42,64];
+  fx.forEach(x=>{fanG+=`<g transform="translate(${x},44)"><circle r="13" fill="#0d141d" stroke="${a}" stroke-opacity=".5" stroke-width="1.4"/><g class="fanSpin" style="--fanSpd:${(2.2-tier*0.28).toFixed(2)}s"><path d="M0,-10 C4,-6 4,-2 0,0 C-4,-2 -4,-6 0,-10 Z" fill="${a}" opacity=".85"/><path d="M0,10 C-4,6 -4,2 0,0 C4,2 4,6 0,10 Z" fill="${a}" opacity=".85"/><path d="M-10,0 C-6,-4 -2,-4 0,0 C-2,4 -6,4 -10,0 Z" fill="${a}" opacity=".55"/><path d="M10,0 C6,4 2,4 0,0 C2,-4 6,-4 10,0 Z" fill="${a}" opacity=".55"/></g><circle r="3" fill="#2a3a4e"/></g>`;});
+  const leds=tier>=3?3:tier>=1?2:1;let ledG='';
+  for(let i=0;i<leds;i++)ledG+=`<circle class="led" cx="${16+i*9}" cy="76" r="2.4" fill="${i===0?'#2fd46a':(i===1?'#f7b32b':'#ff5c5c')}" style="animation-delay:${i*0.3}s"/>`;
+  let fins='';for(let i=0;i<6;i++)fins+=`<rect x="${12+i*11}" y="14" width="5" height="12" rx="1.5" fill="#0d141d" opacity=".8"/>`;
+  return `<svg viewBox="0 0 88 88"><rect x="4" y="10" width="80" height="70" rx="8" fill="url(#bodyG)" stroke="${a}" stroke-opacity=".45" stroke-width="1.5"/><rect x="8" y="13" width="72" height="14" rx="4" fill="#0d141d" opacity=".55"/>${fins}<rect x="8" y="30" width="72" height="34" rx="5" fill="#101a26"/>${fanG}<rect x="8" y="68" width="72" height="9" rx="3" fill="#0d141d" opacity=".7"/>${ledG}<rect x="70" y="70.5" width="8" height="5" rx="1.5" fill="#2a3a4e"/><rect x="2" y="80" width="10" height="5" rx="2" fill="#1a2531"/><rect x="76" y="80" width="10" height="5" rx="2" fill="#1a2531"/><rect x="4" y="10" width="80" height="4" rx="2" fill="#fff" opacity=".08"/></svg>`;
+}
+
+/* ---------- утилиты ---------- */
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function fmtUSD(n){const s=n<0?'-':'';n=Math.abs(n);
+  if(n>=1e9)return s+'$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return s+'$'+(n/1e6).toFixed(2)+'M';
+  if(n>=1e4)return s+'$'+(n/1e3).toFixed(1)+'K';
+  return s+'$'+n.toFixed(2);}
+function fmtFI(n){if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(2)+'K';return n.toFixed(Math.abs(n)<1&&n!==0?4:2);}
+function fmtHash(th){if(th>=1e6)return(th/1e6).toFixed(2)+' EH/s';if(th>=1e3)return(th/1e3).toFixed(2)+' PH/s';return Number(th||0).toFixed(1)+' TH/s';}
+function fmtMMSS(sec){sec=Math.max(0,Math.floor(sec));return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');}
+function rankOf(cap){let r=RANKS[0];for(const x of RANKS)if(cap>=x[0])r=x;return r;}
+function labCost(it,lvl){return Math.ceil(it.base*Math.pow(it.mult,lvl));}
+function res(m,k){return m&&m[k]||0;}
+function researchCnt(lab){return Object.keys(LAB_ITEMS).filter(k=>res(lab,k)>0).length;}
+function upgCnt(upg){return Object.keys(UPG_ITEMS).filter(k=>res(upg,k)>0).length;}
+
+function toast(msg,ico,type){
+  const el=document.createElement('div');el.className='toast '+(type||'');
+  el.innerHTML=`<span class="ico">${ico||'ℹ️'}</span><span>${esc(msg)}</span>`;
   $('toasts').appendChild(el);
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, 3600);
-  const tw = $('toasts'); while (tw.children.length > 4) tw.firstChild.remove();
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),320);},3800);
+  const tw=$('toasts');while(tw.children.length>4)tw.firstChild.remove();
 }
-function setNet(online) {
-  $('netStatus').innerHTML = online
-    ? '<span class="dotOnline"></span> сервер в порядке'
-    : '<span class="dotOffline"></span> нет связи с сервером';
+function modal(html){$('modalBox').innerHTML=html;$('modalWrap').classList.add('open');}
+function closeModal(){$('modalWrap').classList.remove('open');}
+$('modalWrap').onclick=e=>{if(e.target.id==='modalWrap')closeModal();};
+
+/* ---------- состояние ---------- */
+const INIT=(function(){try{const t=window.Telegram&&window.Telegram.WebApp;return t? (t.initData||''):'';}catch(e){return '';}})();
+let S=null;             // снапшот сервера
+let role=null;          // {kind,name,color,perms}
+let tab=localStorage.getItem('fiTab7')||'farm';
+let busy=false,apiBase='',spinning=false;
+
+function setNet(on){
+  $('dotOnline').style.display=on?'block':'none';
+  $('dotOffline').style.display=on?'none':'block';
+  $('statusText').textContent=on?'бот · онлайн':'нет связи с сервером';
 }
-function paintBadge(rl) {
-  const b = $('roleBadge');
-  if (rl && rl.name) {
-    b.textContent = rl.name;
-    b.className = 'roleBadge show';
-    const c = /^#[0-9a-f]{6}$/i.test(rl.color || '') ? rl.color : '#3dff8b';
-    b.style.color = c; b.style.background = c + '22'; b.style.borderColor = c + '66';
-  } else {
-    b.className = 'roleBadge'; b.textContent = ''; b.style.color = ''; b.style.background = ''; b.style.borderColor = '';
-  }
+function paintBadge(rl){
+  const b=$('roleBadge');
+  if(rl&&rl.name){
+    b.textContent=rl.name;b.className='roleBadge show';
+    const c=/^#[0-9a-f]{6}$/i.test(rl.color||'')?rl.color:'#3dff8b';
+    b.style.color=c;b.style.background=c+'22';b.style.borderColor=c+'66';
+  }else{b.className='roleBadge';b.textContent='';}
 }
-function setRole(r) {
-  role = r;
-  paintBadge(r ? { name: r.name, color: r.color } : null);
-}
-function roleChipHTML(rl) {
-  if (!rl) return '';
-  const c = /^#[0-9a-f]{6}$/i.test(rl.color || '') ? rl.color : '#3dff8b';
+function setRole(r){role=r;paintBadge(r?{name:r.name,color:r.color}:null);updateDevTag();}
+function roleChipHTML(rl){
+  if(!rl)return '';
+  const c=/^#[0-9a-f]{6}$/i.test(rl.color||'')?rl.color:'#3dff8b';
   return `<span class="rBadge" style="color:${c};background:${c}22;border-color:${c}66">${esc(rl.name)}</span>`;
 }
 
 /* ---------- сеть ---------- */
-async function findApi() {
-  try {
-    const r = await fetch('api.json?ts=' + Date.now(), { cache: 'no-store' });
-    if (r.ok) {
-      const j = await r.json();
-      if (j && j.api) return String(j.api).replace(/\/+$/, '');
-    }
-  } catch (e) {}
+async function findApi(){
+  try{const r=await fetch('api.json?ts='+Date.now(),{cache:'no-store'});
+    if(r.ok){const j=await r.json();if(j&&j.api)return String(j.api).replace(/\/+$/,'');}
+  }catch(e){}
   return '';
 }
-async function sync(actions) {
-  const res = await fetch(apiBase + '/api/sync', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ init: INIT, actions: actions || [] })
+async function sync(actions){
+  const res=await fetch(apiBase+'/api/sync',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({init:INIT,actions:actions||[]})
   });
-  if (!res.ok) throw new Error('http ' + res.status);
-  const j = await res.json();
-  if (j.err === 'auth') throw new Error('auth');
+  if(!res.ok)throw new Error('http '+res.status);
+  const j=await res.json();
+  if(j.err==='auth'){const e=new Error('auth');e.auth=true;throw e;}
   return j;
 }
-async function apiStaff(action) {
-  const res = await fetch(apiBase + '/api/staff', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ init: INIT, action })
+async function apiStaff(action){
+  const res=await fetch(apiBase+'/api/staff',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({init:INIT,action})
   });
-  if (!res.ok) throw new Error('http ' + res.status);
+  if(!res.ok)throw new Error('http '+res.status);
   return res.json();
 }
-async function refresh() {
-  if (!apiBase) return;
-  try {
-    const j = await sync([]);
-    S = j; setNet(true); render();
-  } catch (e) { setNet(false); if (!S) renderOffline(e); }
-}
-async function doAction(act) {
-  if (busy) return; busy = true;
-  try {
-    const j = await sync([act]);
-    S = j; setNet(true); render();
-    if (j.msg) toast(j.msg, j.ok ? '✅' : '❌', j.ok ? 'success' : 'error');
-  } catch (e) { toast('Сервер не отвечает', '📡', 'error'); }
-  busy = false;
-}
-async function doStaff(action, ico) {
-  if (busy) return; busy = true;
-  try {
-    const j = await apiStaff(action);
-    if (j.err === 'forbidden') toast('Нет доступа', '🔒', 'error');
-    else if (j.ok === false) toast(j.msg || '❌ Отказано', '🔒', 'error');
-    else if (j.msg) toast(j.msg, ico || '🛠', 'success');
-    if (j.role) setRole(j.role);
-    if (j.snap) { S = j.snap; render(); }
+async function doAction(act){
+  if(busy)return null;busy=true;
+  try{const j=await sync([act]);S=j;setNet(true);updateHUD();
+    if(j.msg)toast(j.msg,j.ok?'✅':'❌',j.ok?'green':'red');
     return j;
-  } catch (e) { toast('Сервер не отвечает', '📡', 'error'); }
-  busy = false;
+  }catch(e){toast('Сервер не отвечает','📡','red');return null;}
+  finally{busy=false;}
 }
-
-/* ---------- общий каркас ---------- */
-function render() {
-  if (!S) return;
-  const M = S.market, me = S.me;
-  $('priceVal').textContent = '$' + fmt(M.price);
-  const chg = $('priceChg');
-  chg.textContent = (M.d24 > 0 ? '+' : '') + M.d24.toFixed(1) + '% за 48т';
-  chg.className = 'chg ' + (M.d24 >= 0 ? 'up' : 'dn');
-  $('priceChip').onclick = () => switchTab('market');
-  if (me) {
-    $('fiLabel').textContent = (S.skin.coin || 'FI') + ' монеты';
-    $('fiBal').textContent = fmt(me.fi);
-    $('usdBal').textContent = '$' + fmt(me.usd);
-    if (me.role !== undefined) paintBadge(me.role);
-  }
-  const pages = { market: rMarket, shop: rShop, top: rTop, staff: rStaff, me: rMe };
-  (pages[tab] || rMarket)();
-}
-function renderOffline(e) {
-  $('screen').innerHTML = `<div class="offlineBox"><div class="ico">${e && e.message === 'auth' ? '🔒' : '🛰'}</div><h3>${e && e.message === 'auth' ? 'Открой через Telegram' : 'Сервер не отвечает'}</h3>
-  <p>${e && e.message === 'auth'
-    ? 'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram сам расскажет серверу, кто ты.'
-    : 'Если сервер на Render — он мог уснуть. Открой чат @FI_CoinBot (нажми любую кнопку) или подожди минуту и обнови игру.</p>'}</div>`;
-}
-
-/* ---------- РЫНОК ---------- */
-function rMarket() {
-  const M = S.market, me = S.me;
-  let html = `<div class="bigPrice">$${fmt(M.price)}</div>
-    <div class="priceSub">${(M.d24 > 0 ? '📈 +' : '📉 ') + M.d24.toFixed(1)}% за последние 48 тиков</div>
-    <canvas id="spark"></canvas>
-    <div class="spread">
-      <div><div class="l">🟢 покупка</div><div class="v num">$${fmt(M.buy)}</div></div>
-      <div><div class="l">🔴 продажа</div><div class="v num">$${fmt(M.sell)}</div></div>
-    </div>`;
-  if (M.frozen) html = `<div class="banner">❄️ Рынок заморожен администратором</div>` + html;
-  if (me && me.banned) html = `<div class="banner red">🚫 Аккаунт заблокирован — торговля закрыта. Причина: ${esc(me.banReason || 'не указана')}</div>`;
-  if (me && !me.banned) {
-    html += `<div class="sectionTitle">Торговля</div>
-      <div class="card">
-        <div class="segRow">
-          <button id="segBuy" class="${tradeSide === 'buy' ? 'on' : ''}">🟢 Купить</button>
-          <button id="segSell" class="${tradeSide === 'sell' ? 'on' : ''}">🔴 Продать</button>
-        </div>
-        <input class="inp num" id="tradeAmt" inputmode="decimal" placeholder="${tradeSide === 'buy' ? 'Сколько ' + (S.skin.coin || 'FI') + ' купить' : 'Сколько ' + (S.skin.coin || 'FI') + ' продать'}">
-        <div class="row2" style="margin-bottom:8px">
-          <button class="btn btn-ghost btn-sm" data-share="25">25%</button>
-          <button class="btn btn-ghost btn-sm" data-share="50">50%</button>
-          <button class="btn btn-em btn-sm" data-share="100">ВСЁ</button>
-        </div>
-        <button class="btn ${tradeSide === 'buy' ? 'btn-em' : 'btn-red'} btn-lg" id="tradeGo">${tradeSide === 'buy' ? '🟢 Купить' : '🔴 Продать'}</button>
-      </div>`;
-  }
-  html += `<div class="sectionTitle">О рынке</div>
-    <div class="card" style="font-size:12px;color:var(--tg-sub);line-height:1.6">
-      Цена одна на всех: её двигает центральный сервер (случайные ходы + новости + персонал).
-      Всего ${esc(S.skin.emoji)}${fmt(S.supply)} ${esc(S.skin.coin)} у ${S.playersN} игроков.
-    </div>`;
-  $('screen').innerHTML = html;
-  drawSpark(M.hist);
-  const segB = $('segBuy');
-  if (segB) {
-    $('segBuy').onclick = () => { tradeSide = 'buy'; rMarket(); };
-    $('segSell').onclick = () => { tradeSide = 'sell'; rMarket(); };
-    document.querySelectorAll('[data-share]').forEach(b => b.onclick = () => {
-      const share = Number(b.dataset.share) / 100;
-      if (!me) return;
-      $('tradeAmt').value = (tradeSide === 'sell' ? me.fi * share : me.usd / M.buy * share).toFixed(4);
-    });
-    $('tradeGo').onclick = () => {
-      const v = parseFloat(($('tradeAmt').value + '').replace(',', '.'));
-      if (!(v > 0)) return toast('Пришли число', '✏️');
-      doAction({ a: tradeSide, fi: v });
-    };
-  }
-}
-function drawSpark(hist) {
-  const cv = $('spark'); if (!cv || !hist || hist.length < 2) return;
-  const dpr = window.devicePixelRatio || 1;
-  const W = cv.clientWidth || 300, H = 96;
-  cv.width = W * dpr; cv.height = H * dpr;
-  const g = cv.getContext('2d'); g.scale(dpr, dpr);
-  const ps = hist.map(h => h[1]);
-  const min = Math.min(...ps), max = Math.max(...ps), rng = (max - min) || 1;
-  const up = ps[ps.length - 1] >= ps[0];
-  const col = up ? '#17dd62' : '#ff5c5c';
-  const grd = g.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, up ? 'rgba(23,221,98,.28)' : 'rgba(255,92,92,.28)');
-  grd.addColorStop(1, 'rgba(0,0,0,0)');
-  const X = i => 2 + i * (W - 4) / (ps.length - 1);
-  const Y = v => 6 + (1 - (v - min) / rng) * (H - 12);
-  g.beginPath();
-  ps.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)));
-  g.strokeStyle = col; g.lineWidth = 2; g.stroke();
-  g.lineTo(X(ps.length - 1), H); g.lineTo(X(0), H); g.closePath();
-  g.fillStyle = grd; g.fill();
-  g.fillStyle = col;
-  g.beginPath(); g.arc(X(ps.length - 1), Y(ps[ps.length - 1]), 3, 0, 7); g.fill();
-}
-
-/* ---------- МАГАЗИН ---------- */
-function rShop() {
-  const me = S.me;
-  let html = `<div class="sectionTitle">Магазин майнеров</div>
-  <div class="card" style="font-size:11.5px;color:var(--tg-sub);margin-bottom:10px">⚡ Мощность: <b style="color:var(--em)">${fmt(me ? me.hash : 0)} TH/s</b> → +${fmt((S.cfg && S.cfg.fiPerThHour || 1.26) * (me ? me.hash : 0))} ${esc(S.skin.coin || 'FI')}/час. Каждый следующий тот же майнер дороже на 18%.</div>`;
-  const ico = { usb: '🔌', s9: '⛏', m50: '🏗', avx: '🚂', hyd: '🌊', imm: '🏭' };
-  S.miners.forEach(m => {
-    const can = me && me.usd >= m.cost;
-    html += `<div class="minerCard" style="--mc:#3390ec">
-      <div class="rigArt">${ico[m.id] || '⛏'}</div>
-      <div class="minerInfo">
-        <div class="minerName">${esc(m.name)}</div>
-        <div class="minerDesc">${esc(m.desc || '')}</div>
-        <div class="minerMeta">⚡ <b>${fmt(m.hash)} TH/s</b> · у тебя: <b>${fmt((me && me.owned && me.owned[m.id]) || 0)}</b></div>
-      </div>
-      <div class="minerBuy">
-        <div class="minerPrice">${fmt(m.cost)} $</div>
-        <button class="btn btn-em btn-sm" data-buy="${m.id}" ${can ? '' : 'disabled'}>Купить</button>
-      </div>
-    </div>`;
-  });
-  $('screen').innerHTML = html;
-  document.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => doAction({ a: 'buyminer', id: b.dataset.buy }));
-}
-
-/* ---------- ТОП ---------- */
-function rTop() {
-  let html = `<div class="sectionTitle">Топ игроков по акции</div>`;
-  S.top.forEach((t, i) => {
-    const wealth = t.fi * S.market.price + t.usd;
-    html += `<div class="ldb ${i < 3 ? 'top' + (i + 1) : ''}">
-      <div class="rank">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>
-      <div class="n">${esc(t.n)} ${roleChipHTML(t.role)}</div>
-      <div class="w num">${fmt(wealth)}</div>
-    </div>`;
-  });
-  $('screen').innerHTML = html;
-}
-
-/* ---------- ПРОФИЛЬ ---------- */
-function coinLabel2(n) { return fmt(n) + ' ' + (S.skin.coin || 'FI'); }
-function rMe() {
-  const me = S.me;
-  if (!me) return void ($('screen').innerHTML = '<div class="offlineBox"><div class="ico">👤</div><h3>Нет профиля</h3><p>Открой игру через кнопку «Играть 🪙» в Telegram.</p></div>');
-  if (me.banned) return void ($('screen').innerHTML = `<div class="offlineBox"><div class="ico">🚫</div><h3>Аккаунт заблокирован</h3><p>Причина: ${esc(me.banReason || 'не указана')}<br>Напиши админу в чат бота.</p></div>`);
-  $('screen').innerHTML = `
-    <div class="sectionTitle">Профиль ${esc(me.name)} ${me.role ? roleChipHTML(me.role) : ''}</div>
-    <div class="card">
-      <div class="statGrid">
-        <div class="statBox"><div class="l">монеты</div><div class="v num" style="color:var(--em)">${coinLabel2(me.fi)}</div></div>
-        <div class="statBox"><div class="l">доллары</div><div class="v num" style="color:var(--fi-green)">$${fmt(me.usd)}</div></div>
-        <div class="statBox"><div class="l">мощность</div><div class="v num">${fmt(me.hash)} TH/s</div></div>
-        <div class="statBox"><div class="l">доход/час</div><div class="v num" style="color:var(--em)">${coinLabel2(me.perHour)}</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="statGrid">
-        <div class="statBox"><div class="l">всего добыто</div><div class="v num">${coinLabel2(me.totalMined)}</div></div>
-        <div class="statBox"><div class="l">куплено/продано</div><div class="v num">${fmt(me.bought)} / ${fmt(me.sold)}</div></div>
-      </div>
-      <div style="font-size:11px;color:var(--tg-sub);margin-top:10px">📅 В игре с ${new Date(me.joined).toLocaleDateString('ru-RU')}</div>
-    </div>
-    <div class="sectionTitle">Ежедневное</div>
-    <div class="card">
-      <button class="btn ${me.bonusReady ? 'btn-gold' : 'btn-ghost'} btn-lg" id="btnBonus" ${me.bonusReady ? '' : 'disabled'}>🎁 Получить бонус дня</button>
-      <button class="btn ${me.workReady ? 'btn-blue' : 'btn-ghost'} btn-lg" id="btnWork" style="margin-top:8px" ${me.workReady ? '' : 'disabled'}>💼 ${me.workReady ? 'Отработать смену' : 'Смена через ' + me.workLeftMin + ' мин'}</button>
-    </div>`;
-  $('btnBonus').onclick = () => doAction({ a: 'bonus' });
-  $('btnWork').onclick = () => doAction({ a: 'work' });
-}
-
-/* ---------- STAFF ---------- */
-const isO = () => role && role.kind === 'owner';
-const can = p => role && (isO() || (role.perms || []).includes(p));
-const PERM_LABEL = { give: '💰 Выдача', market: '📈 Рынок', bans: '🚫 Баны', players: '👥 Игроки', log: '📜 Журнал', config: '⚙️ Экономика' };
-
-function rStaff() {
-  if (!role) {
-    $('screen').innerHTML = `<div class="offlineBox"><div class="ico">🛠</div><h3>Консоль персонала</h3>
-      <p>Ключей больше нет. Роли раздаёт только владелец.<br>Твой доступ откроется автоматически, если владелец<br>выдал тебе роль или ты вошёл через чат-консоль.</p></div>`;
-    return;
-  }
-  const tabs = [];
-  if (can('give')) tabs.push({ id: 'give', t: '💰 Выдача' });
-  if (can('market')) tabs.push({ id: 'market', t: '📈 Рынок' });
-  if (can('players')) tabs.push({ id: 'players', t: '👥 Игроки' });
-  if (isO()) tabs.push({ id: 'roles', t: '👑 Роли' });
-  if (isO()) tabs.push({ id: 'settings', t: '⚙️ Экономика' });
-  if (can('log')) tabs.push({ id: 'log', t: '📜 Журнал' });
-  if (isO()) tabs.push({ id: 'reset', t: '🧯 Сбросы' });
-  const haveIds = tabs.map(x => x.id);
-  if (!haveIds.includes(stTab)) stTab = haveIds[0];
-  let html = `<div class="stTabs">`;
-  tabs.forEach(x => html += `<button class="stTab ${stTab === x.id ? 'on' : ''}" data-st="${x.id}">${x.t}</button>`);
-  html += `</div><div id="stBody"></div>`;
-  $('screen').innerHTML = html;
-  document.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { stTab = b.dataset.st; rStaff(); });
-  const body = $('stBody');
-  if (stTab === 'give') body.innerHTML = givePanel();
-  else if (stTab === 'market') body.innerHTML = marketPanel();
-  else if (stTab === 'players') loadPlayers(body);
-  else if (stTab === 'roles') loadRoles(body);
-  else if (stTab === 'settings') settingsPanel(body);
-  else if (stTab === 'log') loadLog(body);
-  else if (stTab === 'reset') body.innerHTML = resetPanel(isO());
-  bindStaff();
-}
-
-function givePanel() {
-  return `<div class="card">
-    <label class="lbl">кому</label>
-    <input class="inp" id="gTarget" placeholder="@ник, id или * (всем)">
-    <label class="lbl">сколько</label>
-    <input class="inp num" id="gAmount" inputmode="decimal" placeholder="Положительное число">
-    <div class="row2">
-      <button class="btn btn-em btn-sm" id="gFi">🪙 Дать монеты</button>
-      <button class="btn btn-blue btn-sm" id="gUsd">💵 Дать USD</button>
-    </div>
-    <div style="font-size:10.5px;color:var(--tg-sub);margin-top:8px">Забрать можно в разделе «Игроки».</div>
-  </div>`;
-}
-function marketPanel() {
-  const mm = S.market;
-  return `<div class="card">
-    <div style="text-align:center;font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--fi-cyan)">$${fmt(mm.price)}${mm.frozen ? ' ❄️' : ''}</div>
-    <div class="pctGrid">
-      <button class="pctBtn up" data-op="pump" data-pct="1">+1%</button>
-      <button class="pctBtn up" data-op="pump" data-pct="5">+5%</button>
-      <button class="pctBtn up" data-op="pump" data-pct="10">+10%</button>
-      <button class="pctBtn up" data-op="pump" data-pct="25">+25%</button>
-      <button class="pctBtn dn" data-op="dump" data-pct="1">−1%</button>
-      <button class="pctBtn dn" data-op="dump" data-pct="5">−5%</button>
-      <button class="pctBtn dn" data-op="dump" data-pct="10">−10%</button>
-      <button class="pctBtn dn" data-op="dump" data-pct="25">−25%</button>
-      <button class="pctBtn up" data-op="x2">×2</button>
-      <button class="pctBtn dn" data-op="half">÷2</button>
-      <button class="pctBtn" data-op="freeze">${mm.frozen ? '▶️ Пустить' : '❄️ Мороз'}</button>
-      <button class="pctBtn" style="color:#3dff8b" data-op="auto">🤖 Авто</button>
-    </div>
-    <label class="lbl">задать точную цену $</label>
-    <input class="inp num" id="setPriceInp" inputmode="decimal" placeholder="Например 2.40">
-    <button class="btn btn-gold btn-lg" id="setPriceGo">🎯 Установить цену</button>
-  </div>`;
-}
-function resetPanel(isOwner) {
-  return `<div class="card">
-    ${isOwner ? `
-    <button class="btn btn-ghost btn-lg" data-reset="market">📉 Сбросить рынок на старт</button>
-    <button class="btn btn-ghost btn-lg" style="margin-top:8px" data-reset="balances">🧯 Обнулить балансы всем</button>
-    <button class="btn btn-red btn-lg" style="margin-top:8px" data-reset="nuke">💥 Удалить ВСЁ (кроме меня)</button>
-    <div style="font-size:10.5px;color:var(--tg-sub);margin-top:10px">Сбросы применяются мгновенно.</div>`
-      : `<div style="font-size:12.5px;color:var(--tg-sub);text-align:center;padding:10px">Сбросы доступны только владельцу.</div>`}
-  </div>`;
-}
-
-/* --- роли --- */
-async function loadRoles(body) {
-  body.innerHTML = '<div class="card" style="text-align:center;color:var(--tg-sub);font-size:12px">⏳ Загрузка…</div>';
-  const j = await doStaff({ a: 'roles' });
-  if (!j || !j.ok) { body.innerHTML = ''; return; }
-  if (!body.isConnected) return;
-  stRolesCache = j.roles || [];
-  const assignedBy = j.assigned || {};
-  let html = `<div class="sectionTitle">Создать роль</div>
-    <div class="card">
-      <label class="lbl">название (до 16 символов)</label>
-      <input class="inp" id="rName" placeholder="Например: Модератор" maxlength="16">
-      <label class="lbl">цвет</label>
-      <input type="color" class="inpColor" id="rColor" value="#3dff8b">
-      <label class="lbl">права</label>
-      <div class="checkRow" id="rPerms">
-        ${Object.entries(PERM_LABEL).map(([k, v]) => `<label><input type="checkbox" data-perm="${k}">${v}</label>`).join('')}
-      </div>
-      <button class="btn btn-em btn-lg" id="rAdd">➕ Создать роль</button>
-    </div>
-    <div class="sectionTitle">Существующие (${stRolesCache.length})</div>`;
-  if (!stRolesCache.length) html += `<div class="card" style="text-align:center;color:var(--tg-sub);font-size:12px">Пока нет ролей. Создай первую!</div>`;
-  stRolesCache.forEach(r => {
-    const who = Object.entries(assignedBy).filter(([pid, rid]) => rid === r.id).map(([pid]) => pid);
-    html += `<div class="roleRow">
-      <span class="rBadge" style="color:${r.color};background:${r.color}22;border-color:${r.color}66">${esc(r.name)}</span>
-      <span style="flex:1;font-size:10px;color:var(--tg-sub);font-family:'JetBrains Mono',monospace">${(r.perms || []).join('·') || 'без прав'}${who.length ? ' · у ' + who.length : ''}</span>
-      <button class="btn btn-ghost btn-sm" data-redit="${r.id}">✏️</button>
-      <button class="btn btn-red btn-sm" data-rdel="${r.id}">🗑</button>
-    </div>`;
-  });
-  html += `<div class="card" style="font-size:11px;color:var(--tg-sub);line-height:1.55">Роли выдаются в разделе «👥 Игроки»: нажми на игрока → «6 — назначить роль». Значок роли виден в топе и профилях.</div>`;
-  body.innerHTML = html;
-  $('rAdd').onclick = () => {
-    const name = ($('rName').value || '').trim();
-    if (!name) return toast('Название роли?', '✏️');
-    const perms = Array.from(document.querySelectorAll('#rPerms input:checked')).map(x => x.dataset.perm);
-    doStaff({ a: 'roleAdd', name, color: $('rColor').value, perms }, '👑').then(j => { if (j && j.ok && body.isConnected) loadRoles(body); });
-  };
-  body.querySelectorAll('[data-rdel]').forEach(b => b.onclick = () => {
-    const r = stRolesCache.find(x => x.id === b.dataset.rdel);
-    if (!r) return;
-    if (!confirm('Удалить роль «' + r.name + '»? У всех, кто её носил, значок пропадёт.')) return;
-    doStaff({ a: 'roleDel', id: r.id }, '🗑').then(j => { if (j && j.ok && body.isConnected) loadRoles(body); });
-  });
-  body.querySelectorAll('[data-redit]').forEach(b => b.onclick = () => {
-    const r = stRolesCache.find(x => x.id === b.dataset.redit);
-    if (!r) return;
-    const name = prompt('Новое название (пусто — не менять):', r.name);
-    if (name === null) return;
-    const color = prompt('Новый цвет (hex, например #ff5c5c):', r.color);
-    if (color === null) return;
-    const order = Object.keys(PERM_LABEL);
-    const cur = r.perms || [];
-    const inp = prompt('Права (номера через запятую):\n' + order.map((k, i) => (i + 1) + ' — ' + PERM_LABEL[k]).join('\n') + '\nТекущие: ' + (order.map((k, i) => cur.includes(k) ? (i + 1) : null).filter(x => x).join(',') || '—'), cur.map(k => order.indexOf(k) + 1).join(',') || '');
-    if (inp === null) return;
-    const perms = String(inp).split(',').map(x => order[Number(x.trim()) - 1]).filter(Boolean);
-    const body2 = { a: 'roleUpd', id: r.id };
-    if (name.trim()) body2.name = name.trim();
-    if (color.trim()) body2.color = color.trim();
-    body2.perms = perms;
-    doStaff(body2, '✏️').then(j => { if (j && j.ok && body.isConnected) loadRoles(body); });
-  });
-}
-
-/* --- игроки --- */
-const stPlayersCache = [];
-async function loadPlayers(body) {
-  body.innerHTML = '<div class="card" style="text-align:center;color:var(--tg-sub);font-size:12px">⏳ Загрузка игроков…</div>';
-  const j = await doStaff({ a: 'players' });
-  if (!j || !j.ok || !j.players) { if (body.isConnected) body.innerHTML = '<div class="card" style="text-align:center;color:var(--tg-sub);font-size:12px">Не удалось загрузить.</div>'; return; }
-  if (!body.isConnected) return;
-  stPlayersCache.length = 0; stPlayersCache.push(...j.players);
-  body.innerHTML = `<div class="sectionTitle">Игроки (${j.players.length}). Нажми, чтобы управлять.</div>` + j.players.map((pl, i) => `
-    <div class="plRow" data-idx="${i}">
-      <div class="n">${pl.b ? '🚫 ' : ''}${esc(pl.n)} ${roleChipHTML(pl.role)}</div>
-      <div class="w num">${fmt(pl.fi)} ${esc(S.skin.coin || 'FI')} · $${fmt(pl.usd)}${pl.b ? ' · ' + esc(pl.r || 'бан') : ''}</div>
-    </div>`).join('');
-  body.querySelectorAll('[data-idx]').forEach(row => row.onclick = () => playerActions(stPlayersCache[Number(row.dataset.idx)]));
-}
-async function playerActions(pl) {
-  const key = prompt('Действие для ' + pl.n + ':\n1 — выдать монеты\n2 — выдать USD\n3 — забрать монеты\n4 — забанить\n5 — разбанить' + (isO() ? '\n6 — назначить/снять роль' : ''), '1');
-  if (!key) return;
-  if (key === '1' || key === '2') {
-    const amt = parseFloat(prompt('Сколько выдать?', '100') || '');
-    if (!(amt > 0)) return;
-    await doStaff({ a: 'give', kind: key === '1' ? 'fi' : 'usd', to: String(pl.id), amount: amt }, '🤝');
-  } else if (key === '3') {
-    const amt = parseFloat(prompt('Сколько монет забрать?', '100') || '');
-    if (!(amt > 0)) return;
-    await doStaff({ a: 'give', kind: 'fi', to: String(pl.id), amount: -amt }, '🤝');
-  } else if (key === '4') {
-    const r = prompt('Причина бана:', 'нарушение правил') || '';
-    await doStaff({ a: 'ban', to: String(pl.id), reason: r }, '🚫');
-  } else if (key === '5') await doStaff({ a: 'unban', to: String(pl.id) }, '✅');
-  else if (key === '6' && isO()) await roleAssign(pl);
-  if ($('stBody') && stTab === 'players') loadPlayers($('stBody'));
-}
-async function roleAssign(pl) {
-  let j = await apiStaff({ a: 'roles' }).catch(() => null);
-  if (!j || !j.ok) return;
-  stRolesCache = j.roles || [];
-  if (!stRolesCache.length) return toast('Сначала создай роль в «👑 Роли»', '👑', 'error');
-  const cur = (j.assigned || {})[String(pl.id)];
-  const lines = stRolesCache.map((r, i) => `${i + 1} — ${r.name} (${r.color})`).join('\n');
-  const inp = prompt('Роль для ' + pl.n + (cur ? '\n(у него уже есть роль — введи 0 чтобы снять)' : '') + ':\n' + lines, cur ? '0' : '1');
-  if (inp === null) return;
-  const n = Number(inp.trim());
-  if (n === 0) return void (await doStaff({ a: 'assign', to: String(pl.id), roleId: '' }, '👑'));
-  const r = stRolesCache[n - 1];
-  if (!r) return toast('Нет такой роли', '❌', 'error');
-  await doStaff({ a: 'assign', to: String(pl.id), roleId: r.id }, '👑');
-}
-
-/* --- экономика (настройки) --- */
-const CFG_FIELDS = [
-  { k: 'startPrice', t: 'стартовая цена $', n: 1 },
-  { k: 'buySpreadPct', t: 'спред покупки %', n: 1 },
-  { k: 'sellSpreadPct', t: 'спред продажи %', n: 1 },
-  { k: 'fiPerThHour', t: 'FI за 1 TH/час', n: 1 },
-  { k: 'volatilityPct', t: 'волатильность %', n: 1 },
-  { k: 'eventChancePct', t: 'шанс новости %', n: 1 },
-  { k: 'bonusDailyUsd', t: 'бонус дня USD', n: 1 },
-  { k: 'bonusDailyFi', t: 'бонус дня монет', n: 1 },
-  { k: 'workIntervalMin', t: 'интервал работы, мин', n: 1 },
-  { k: 'workPayMin', t: 'оплата от $', n: 1 },
-  { k: 'workPayMax', t: 'оплата до $', n: 1 },
-  { k: 'coinName', t: 'имя монеты', n: 0, max: 12 },
-  { k: 'coinEmoji', t: 'эмодзи монеты', n: 0, max: 4 },
-  { k: 'title', t: 'название бота', n: 0, max: 40 },
-  { k: 'welcome', t: 'приветствие', n: 0, max: 300 }
-];
-async function settingsPanel(body) {
-  const cfg = S.cfg || {};
-  body.innerHTML = `<div class="card">
-    ${CFG_FIELDS.map(f => `
-      <label class="lbl">${f.t}</label>
-      <input class="inp num" id="set_${f.k}" value="${esc(cfg[f.k] != null ? cfg[f.k] : '')}" ${f.n ? 'inputmode="decimal"' : ''}>
-    `).join('')}
-    <button class="btn btn-gold btn-lg" id="cfgSave">💾 Сохранить всё</button>
-  </div>`;
-  $('cfgSave').onclick = async () => {
-    let ch = 0;
-    for (const f of CFG_FIELDS) {
-      const el = $('set_' + f.k);
-      if (!el) continue;
-      const raw = el.value.trim();
-      if (!raw || String(raw) === String(cfg[f.k] != null ? cfg[f.k] : '')) continue;
-      const j = await doStaff({ a: 'set', key: f.k, v: raw }, '⚙️');
-      if (j && j.ok !== false) {
-        ch++;
-        cfg[f.k] = j.snap ? j.snap.cfg ? j.snap.cfg[f.k] : cfg[f.k] : cfg[f.k];
-      }
-    }
-    toast(ch ? `💾 Сохранено (${ch})` : 'Нечего сохранять', '⚙️', 'success');
-    if (body.isConnected) settingsPanel(body);
-  };
-}
-
-/* --- журнал --- */
-async function loadLog(body) {
-  body.innerHTML = '<div class="card" style="text-align:center;color:var(--tg-sub);font-size:12px">⏳ Читаю журнал…</div>';
-  const j = await doStaff({ a: 'log' });
-  if (!j || !j.ok) { if (body.isConnected) body.innerHTML = ''; return; }
-  if (!body.isConnected) return;
-  body.innerHTML = (j.log || []).map(l => `<div class="logItem">${new Date(l[0]).toLocaleString('ru-RU')} — ${esc(l[1])}</div>`).join('') || '<div class="card" style="text-align:center;color:var(--tg-sub);font-size:12px">Журнал пуст.</div>';
-}
-
-/* --- биндинги staff-панелей --- */
-function bindStaff() {
-  const gFi = $('gFi');
-  if (gFi) {
-    gFi.onclick = () => staffGive('fi');
-    $('gUsd').onclick = () => staffGive('usd');
-  }
-  document.querySelectorAll('.pctBtn[data-op]').forEach(b => b.onclick = () => {
-    const op = b.dataset.op;
-    const body = { a: 'price', op };
-    if (b.dataset.pct) body.pct = Number(b.dataset.pct);
-    doStaff(body, op === 'freeze' ? '❄️' : op === 'auto' ? '🤖' : '📈');
-  });
-  const sp = $('setPriceGo');
-  if (sp) sp.onclick = () => {
-    const v = parseFloat(($('setPriceInp').value + '').replace(',', '.'));
-    if (!(v > 0)) return toast('Пришли число', '✏️');
-    doStaff({ a: 'price', op: 'set', v }, '🎯');
-  };
-  document.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => {
-    const w = b.dataset.reset;
-    if (w === 'nuke' && !confirm('Удалить ВСЕХ игроков и историю? Ты останешься один.')) return;
-    if (w === 'nuke' && !confirm('Точно? Отменить нельзя.')) return;
-    doStaff({ a: 'reset', what: w }, '🧯');
-  });
-}
-async function staffGive(kind) {
-  const to = ($('gTarget').value || '').trim().replace(/^@/, '');
-  const amount = parseFloat(($('gAmount').value + '').replace(',', '.'));
-  if (!to) return toast('Кому? @ник / id / * для всех', '✏️');
-  if (!(amount > 0)) return toast('Сколько выдать?', '✏️');
-  const j = await doStaff({ a: 'give', kind, to, amount }, kind === 'usd' ? '💵' : '🪙');
-  if (j && j.ok) $('gAmount').value = '';
-}
-
-/* ---------- вкладки и цикл ---------- */
-function switchTab(t) { tab = t; localStorage.setItem('fiTabSrv', t); document.querySelectorAll('.tabBtn').forEach(b => b.classList.toggle('active', b.dataset.tab === t)); render(); }
-document.querySelectorAll('.tabBtn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
-
-(async () => {
-  apiBase = await findApi();
-  document.querySelectorAll('.tabBtn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (!apiBase) {
+async function refresh(light){
+  if(!apiBase)return;
+  const keepFocus=!light&&(document.activeElement&&document.activeElement.tagName==='INPUT');
+  try{
+    const j=await sync([]);S=j;setNet(true);updateHUD();
+    if(S.me&&S.me.banned){$('banned').classList.add('show');$('banReason').textContent='Причина: '+(S.me.banReason||'не указана');return;}
+    if(!keepFocus&&!spinning)render();
+  }catch(e){
     setNet(false);
-    $('screen').innerHTML = `<div class="offlineBox"><div class="ico">☁️</div><h3>Игровой сервер не найден</h3><p>Файл api.json ещё не заполнен.<br>Когда облачный сервер (Render) подключат — полностью закрой и заново открой мини-приложение.</p></div>`;
+    if(!S)renderOffline(e);
+  }
+}
+function renderOffline(e){
+  $('screen').innerHTML=`<div class="offlineBox"><div class="ico">${e&&e.auth?'🔒':'🛰'}</div>
+  <h3>${e&&e.auth?'Открой через Telegram':'Сервер не отвечает'}</h3>
+  <p>${e&&e.auth?'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram расскажет серверу, кто ты.':'Если сервер на Render — он мог уснуть. Подожди минуту и обнови игру.'}</p></div>`;
+}
+
+/* ---------- HUD ---------- */
+const buyPrice=()=>S.market.price*(1+S.cfg.buySpreadPct*(S.me?S.me.fee:1)/100);
+const sellPrice=()=>S.market.price*(1-S.cfg.sellSpreadPct*(S.me?S.me.fee:1)/100);
+function updateHUD(){
+  if(!S)return;const M=S.market,me=S.me;
+  $('hPrice').textContent='$'+M.price.toFixed(2);
+  const chg=$('hChg');
+  chg.textContent=(M.d24>0?'+':'')+M.d24.toFixed(1)+'%';
+  chg.className='chg '+(M.d24>=0?'up':'dn')+' num';
+  if(me){$('hUsd').textContent=fmtUSD(me.usd);$('hFi').textContent=fmtFI(me.fi)+' FI';}
+  const fp=$('dvFootPrice');if(fp)fp.textContent='$'+M.price.toFixed(2);
+}
+
+/* =================================================== ФЕРМА =================================================== */
+function renderFarm(){
+  const me=S.me,cfg=S.cfg;
+  let html='';
+  /* приветствие */
+  html+=`<div class="hintBox em">${esc(S.skin.welcome||'Добро пожаловать в мир FI Coin!')}</div>`;
+  /* бонус дня */
+  html+=`<div class="card" style="display:flex;gap:12px;align-items:center">
+    <div style="font-size:34px;filter:drop-shadow(0 4px 14px rgba(247,179,43,.45))">🎁</div>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:14px">Бонус дня</div>
+      <div style="font-size:11px;color:var(--tg-sub)">Одно раздача каждый день: ${fmtUSD(cfg.bonusDailyUsd)} + ${fmtFI(cfg.bonusDailyFi)} FI</div>
+    </div>
+    <button class="btn ${me.bonusReady?'btn-gold':'btn-ghost'} btn-sm" id="btnBonus" ${me.bonusReady?'':'disabled'}>${me.bonusReady?'Забрать':'✅'}</button>
+  </div>`;
+  /* работа */
+  html+=`<div class="card" style="display:flex;gap:12px;align-items:center">
+    <div style="font-size:34px">💼</div>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:14px">Смена на складе</div>
+      <div style="font-size:11px;color:var(--tg-sub)">Работодатель платит ${fmtUSD(cfg.workPayMin)}–${fmtUSD(cfg.workPayMax)} каждые ${cfg.workIntervalMin} мин</div>
+    </div>
+    <button class="btn ${me.workReady?'btn-blue':'btn-ghost'} btn-sm" id="btnWork" ${me.workReady?'':'disabled'}>${me.workReady?'В путь!':'через '+me.workLeftMin+' мин'}</button>
+  </div>`;
+  /* статы */
+  html+=`<div class="statGrid">
+    <div class="statBox"><div class="l">мощность</div><div class="v num">${fmtHash(me.hash)}</div></div>
+    <div class="statBox"><div class="l">доход/час</div><div class="v num" style="color:var(--em)">${fmtFI(me.perHour)} FI</div></div>
+  </div>`;
+  /* задания дня */
+  html+=`<div class="sectionTitle">Задания дня</div>`;
+  (me.quests||[]).forEach(q=>{
+    const done=q.v>=q.t;const pct=clamp(q.v/q.t*100,0,100);
+    html+=`<div class="questCard ${done&&q.claimed?'done':''}">
+      <div class="qIco">${q.ico}</div>
+      <div class="qInfo">
+        <div class="qDesc">${esc(q.d)}</div>
+        <div class="qBar"><i style="width:${pct}%"></i></div>
+        <div class="qProg num">${fmtFI(q.v)} / ${fmtFI(q.t)}</div>
+        <div class="qRew">✦ ${q.r&&q.r.usd?'+$'+fmtFI(q.r.usd):'+'+fmtFI(q.r.fi)+' FI'}</div>
+      </div>
+      <button class="btn btn-em btn-sm qBtn" data-qc="${q.i}" ${done&&!q.claimed?'':'disabled'}>${q.claimed?'✅':'Забрать'}</button>
+    </div>`;
+  });
+  /* риги */
+  html+=`<div class="sectionTitle">Мои риги (${Object.values(me.owned||{}).reduce((a,b)=>a+b,0)})</div>`;
+  const owned=S.miners.filter(m=>(me.owned||{})[m.id]>0);
+  if(!owned.length){
+    html+=`<div class="emptyState"><div class="ico">⛏️</div><p>Пока пусто. Купи первый РИГ в магазине — и пошла добыча!</p>
+    <button class="btn btn-em" id="goShop">🛒 В магазин</button></div>`;
+  }else{
+    owned.forEach(m=>{
+      const n=(me.owned||{})[m.id];const tier=shopIdx(m.id);
+      html+=`<div class="minerCard" style="--mc:${RANKS_IL[tier]}">
+        <div class="rigArt">${rigSVG(tier)}</div>
+        <div class="minerInfo">
+          <div class="minerName">${m.name} <span class="minerQty">×${n}</span></div>
+          <div class="minerSpecs">⚡ <b>${fmtHash(m.hash*n)}</b> · доход <b>~${fmtFI(m.hash*n*S.cfg.fiPerThHour)} FI/ч</b></div>
+        </div>
+        <span class="statusChip st-ok">Роботает</span>
+      </div>`;
+    });
+  }
+  $('screen').innerHTML=html;
+  $('btnBonus').onclick=()=>doAction({a:'bonus'});
+  $('btnWork').onclick=()=>doAction({a:'work'});
+  $('goShop').onclick=()=>switchTab('shop');
+  document.querySelectorAll('[data-qc]').forEach(b=>b.onclick=()=>doAction({a:'questClaim',i:Number(b.dataset.qc)}));
+}
+const shopIdx=id=>({usb:0,s9:1,m50:2,avx:3,hyd:4,imm:5})[id]||0;
+const RANKS_IL=['#8fa3b8','#3390ec','#2fd46a','#f7b32b','#ff5c5c','#a855f7'];
+const workTimer=null;
+function updateFarmLive(){}
+
+/* =================================================== БИРЖА =================================================== */
+function renderMarket(){
+  const M=S.market,me=S.me;
+  const feeMul=me?me.fee:1;
+  let html=`<div class="card" style="text-align:center;padding:12px 14px 8px">
+    <div class="bigPrice num" id="mPrice">$${M.price.toFixed(2)}</div>
+    <div class="num" id="mChg" style="color:${M.d24>=0?'var(--fi-green)':'var(--fi-red)'};font-weight:800;font-size:13px">${M.d24>0?'📈 +':'📉 '}${M.d24.toFixed(1)}% за 48 тиков</div>
+    ${M.frozen?'<div style="color:var(--fi-cyan);font-size:11px;margin-top:3px">❄️ Рынок заморожен</div>':''}
+  </div>
+  <div id="chartWrap"><canvas id="chart"></canvas></div>`;
+  if(me&&!me.banned){
+    html+=`<div class="tradeBox">
+      <div class="tradeLabel"><span>🟢 Купить FI</span><span class="num">по $${buyPrice().toFixed(2)}</span></div>
+      <input class="inp num" id="buyAmt" inputmode="decimal" placeholder="Сколько монет (USD есть: ${fmtUSD(me.usd)})">
+      <div class="sellRow">
+        <button class="btn btn-ghost" data-fill="25">25%</button>
+        <button class="btn btn-ghost" data-fill="50">50%</button>
+        <button class="btn btn-ghost" data-fill="100">ВСЁ</button>
+        <button class="btn btn-green" data-fill="buy">Купить</button>
+      </div>
+    </div>
+    <div class="tradeBox">
+      <div class="tradeLabel"><span>🔴 Продать FI</span><span class="num">по $${sellPrice().toFixed(2)}</span></div>
+      <input class="inp num" id="sellAmt" inputmode="decimal" placeholder="Сколько FI (есть: ${fmtFI(me.fi)})">
+      <div class="sellRow">
+        <button class="btn btn-ghost" data-fill="sall">ВСЁ</button>
+        <button class="btn btn-red" data-fill="sell">Продать</button>
+      </div>
+    </div>
+    <div class="hintBox">Брокер скидки: ${feeMul<1?'🔬 страховка ×0.5 — ты платишь половину спреда':'комиссия уже в цене. Исследуй «Биржевого брокера» в Лабе'}</div>`;
+  }
+  if(me&&me.banned)html+=`<div class="hintBox" style="border-color:rgba(255,92,92,.3);color:#ffb1b1;background:rgba(255,92,92,.08)">🚫 Торговля закрыта — аккаунт заблокирован.</div>`;
+  $('screen').innerHTML=html;
+  document.querySelectorAll('[data-fill]').forEach(b=>{
+    b.onclick=()=>{
+      const k=b.dataset.fill;
+      const inpB=$('buyAmt');
+      if(k==='25'||k==='50'||k==='100'){if(inpB)inpB.value=(me.usd/(buyPrice())*Number(k)/100).toFixed(4).replace(/\.?0+$/,'');}
+      else if(k==='buy'){
+        const v=parseFloat((inpB.value||'').replace(',', '.'));
+        if(!(v>0))return toast('Пришли число','✏️');
+        doAction({a:'buy',fi:v});
+      }else if(k==='sall'){const inpB2=$('sellAmt');if(inpB2)inpB2.value=me.fi.toFixed(4).replace(/\.?0+$/,'');}
+      else if(k==='sell'){
+        const v=parseFloat(($('sellAmt').value||'').replace(',', '.'));
+        if(!(v>0))return toast('Пришли число','✏️');
+        doAction({a:'sell',fi:v});
+      }
+    };
+  });
+  drawChart(S.market.hist,S.market.d24);
+}
+function updateMarketLive(){
+  const M=S.market;
+  const p=$('mPrice'),c=$('mChg');
+  if(p)p.textContent='$'+M.price.toFixed(2);
+  if(c){c.textContent=(M.d24>0?'+':'')+M.d24.toFixed(1)+'% за 48 тиков';c.style.color=M.d24>=0?'var(--fi-green)':'var(--fi-red)';}
+  if($('chart'))drawChart(M.hist,M.d24);
+}
+/* --- ГОРЫ: красивый график цены --- */
+function drawChart(hist,d24){
+  const cv=$('chart');if(!cv)return;
+  const up=(d24||0)>=0;
+  const col=up?'#17dd62':'#ff5c5c';
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth||320,H=190;
+  cv.width=W*dpr;cv.height=H*dpr;
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,W,H);
+  if(!hist||hist.length<2){
+    g.fillStyle='rgba(125,139,153,.6)';g.font='700 11px Manrope';g.textAlign='center';
+    g.fillText('Собираем рыночную историю…',W/2,H/2);return;
+  }
+  const pts=hist.map(x=>x[1]);
+  const padL=6,padR=58,padT=14,padB=16;
+  let mn=Math.min(...pts),mx=Math.max(...pts);
+  const pad=(mx-mn)*0.15||mx*0.05||0.1;mn-=pad;mx+=pad;
+  const X=i=>padL+i*(W-padL-padR)/(pts.length-1);
+  const Y=v=>padT+(1-(v-mn)/(mx-mn))*(H-padT-padB);
+  /* сетка */
+  g.strokeStyle='rgba(36,52,71,.65)';g.lineWidth=1;g.setLineDash([3,4]);
+  for(let i=0;i<=2;i++){
+    const yy=padT+(H-padT-padB)*i/2;
+    g.beginPath();g.moveTo(padL,yy);g.lineTo(W-padR+4,yy);g.stroke();
+    const val=mx-(mx-mn)*i/2;
+    g.setLineDash([]);
+    g.fillStyle='rgba(125,139,153,.75)';g.font='600 8.5px "JetBrains Mono",monospace';g.textAlign='left';
+    g.fillText('$'+val.toFixed(2),W-padR+8,yy+3);
+    g.setLineDash([3,4]);
+  }
+  g.setLineDash([]);
+  /* сглаженный путь (quadratic midpoints) */
+  const path=()=>{
+    g.beginPath();g.moveTo(X(0),Y(pts[0]));
+    for(let i=1;i<pts.length;i++){
+      const xc=(X(i-1)+X(i))/2,yc=(Y(pts[i-1])+Y(pts[i]))/2;
+      g.quadraticCurveTo(X(i-1),Y(pts[i-1]),xc,yc);
+    }
+    g.lineTo(X(pts.length-1),Y(pts[pts.length-1]));
+  };
+  /* горы */
+  path();
+  g.lineTo(X(pts.length-1),H-padB);g.lineTo(X(0),H-padB);g.closePath();
+  const grd=g.createLinearGradient(0,padT,0,H-padB);
+  grd.addColorStop(0,up?'rgba(23,221,98,.34)':'rgba(255,92,92,.34)');
+  grd.addColorStop(.7,up?'rgba(23,221,98,.10)':'rgba(255,92,92,.10)');
+  grd.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=grd;g.fill();
+  /* линия со свечением */
+  g.save();
+  g.shadowColor=col;g.shadowBlur=13;
+  path();
+  g.strokeStyle=col;g.lineWidth=2.4;g.lineJoin='round';g.stroke();
+  g.restore();
+  /* min/max маркеры */
+  const iMn=pts.indexOf(mn+pad)==-1?pts.indexOf(Math.min(...pts)):0;
+  const iMx=pts.indexOf(Math.max(...pts));
+  const mark=(i,txt)=>{
+    g.fillStyle='rgba(6,10,16,.9)';g.strokeStyle='rgba(125,139,153,.6)';
+    g.beginPath();g.arc(X(i),Y(pts[i]),3,0,7);g.fill();g.stroke();
+    g.fillStyle='rgba(233,240,247,.85)';g.font='700 8.5px "JetBrains Mono",monospace';g.textAlign='center';
+    g.fillText(txt,X(i),Y(pts[i])+(i===iMx?-8:13));
+  };
+  mark(iMn,'min');mark(iMx,'max');
+  /* текущая цена — бирка справа */
+  const ly=Y(pts[pts.length-1]);
+  g.save();
+  g.shadowColor=col;g.shadowBlur=9;
+  g.beginPath();g.arc(X(pts.length-1),ly,3.4,0,7);
+  g.fillStyle=col;g.fill();
+  g.restore();
+  const pill=' $'+pts[pts.length-1].toFixed(2);
+  g.font='800 10px "JetBrains Mono",monospace';
+  const pw=g.measureText(pill).width+10;
+  const py=clamp(ly-9,2,H-18);
+  g.beginPath();
+  const px=X(pts.length-1)+8;
+  g.moveTo(px,py);g.lineTo(px+pw,py);g.lineTo(px+pw,py+15);g.lineTo(px+pw-5,py+15);g.lineTo(px+pw-9,py+15+6);g.lineTo(px+pw-9,py+15);g.lineTo(px,py+15);g.closePath();
+  g.fillStyle=col;g.fill();
+  g.fillStyle='#04130a';g.font='800 10px "JetBrains Mono",monospace';g.textAlign='left';
+  g.fillText(pill,px+5,py+11);
+}
+
+/* =================================================== МАГАЗИН =================================================== */
+function renderShop(){
+  const me=S.me;
+  let html=`<div class="sectionTitle">Магазин майнеров</div>
+  <div class="hintBox em">Каждый следующий такой же майнер дороже на 18%. Мощность копит FI автоматически — даже ночью.</div>`;
+  S.miners.forEach((m,ix)=>{
+    const can=me.usd>=m.cost;const n=(me.owned||{})[m.id]||0;
+    html+=`<div class="shopCard">
+      <div class="shopTop">
+        <div class="rigArt sm">${rigSVG(ix)}</div>
+        <div class="shopInfo">
+          <div class="shopName">${esc(m.name)}${n?` <span class="minerQty">×${n}</span>`:''}</div>
+          <div class="shopDesc">${esc(m.desc||'')}</div>
+          <div class="specPills"><span class="pill">⚡ <b>${fmtHash(m.hash)}</b></span><span class="pill">💵 <b>~${fmtFI(m.hash*S.cfg.fiPerThHour)}/ч</b></span></div>
+        </div>
+      </div>
+      <div class="shopBuy">
+        <div class="priceTag num">${fmtUSD(m.cost)}<small>${can?'Хватит':'не хватает '+fmtUSD(m.cost-me.usd)}</small></div>
+        <button class="btn ${can?'btn-em':'btn-ghost'}" data-buy="${m.id}" ${can?'':'disabled'}>Купить</button>
+      </div>
+    </div>`;
+  });
+  $('screen').innerHTML=html;
+  document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>doAction({a:'buyminer',id:b.dataset.buy}));
+}
+
+/* =================================================== ЛАБА =================================================== */
+function renderLab(){
+  const me=S.me;
+  let html=`<div class="sectionTitle">🔬 Лаборатория</div>
+  <div class="hintBox">Исследования навсегда усиливают твою добычу и торговлю. Все эффекты считает сервер — они честно применяются к твоим ригам.</div>`;
+  Object.entries(LAB_ITEMS).forEach(([id,it])=>{
+    const lvl=res(me.lab,id);const maxed=lvl>=it.max;const cost=labCost(it,lvl);
+    let dots='';for(let i=0;i<it.max;i++)dots+=`<i ${i<lvl?'class="on"':''}></i>`;
+    html+=`<div class="labCard">
+      <div class="labIcon">${it.ico}</div>
+      <div class="upInfo" style="flex:1;min-width:0">
+        <div class="upName">${it.name} ${it.max>1?`<span class="lvlDots">${dots}</span>`:''}</div>
+        <div class="upDesc">${it.desc}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="priceTag num" style="font-size:13px">${maxed?'MAX':fmtUSD(cost)}</div>
+        <button class="btn ${maxed?'btn-ghost':'btn-em'} btn-sm" data-lab="${id}" style="margin-top:5px" ${maxed||me.usd<cost?'disabled':''}>${maxed?'✅':'Купить'}</button>
+      </div>
+    </div>`;
+  });
+  $('screen').innerHTML=html;
+  document.querySelectorAll('[data-lab]').forEach(b=>b.onclick=()=>doAction({a:'labBuy',id:b.dataset.lab}));
+}
+
+/* =================================================== АПГРЕЙД + КОЛЕСО =================================================== */
+function renderUpgrader(){
+  const me=S.me;
+  let html=`<div class="upgraderBox">
+    <div class="upgraderTitle">🎰 КОЛЕСО УДАЧИ</div>
+    <div class="upgWheelWrap" id="upgWheelWrap">
+      <canvas class="upgWheel" id="upgWheel" width="216" height="216"></canvas>
+      <div class="upgPointer"></div>
+    </div>
+    <div class="upgLegend" id="upgLegend">9 секторов · джекпоты до 💎 $2500 · крути за ${fmtFI(SPIN_COST)} FI</div>
+    <button class="upgBtn num" id="spinBtn" style="margin-top:12px" ${(me.fi||0)>=SPIN_COST&&!spinning?'':'disabled'}>${spinning?'КРУТИТСЯ…':'🎰 КРУТИТЬ — '+fmtFI(SPIN_COST)+' FI'}</button>
+    <div class="upgResult num" id="spinResult"></div>
+    <div class="upgLegend" style="font-size:10px;opacity:.7;margin-top:8px">Всего спинов: ${(me.stats&&me.stats.spins)||0} · лучший выигрыш: ${fmtUSD((me.stats&&me.stats.spinBest)||0)}</div>
+  </div>`;
+  html+=`<div class="sectionTitle">🔧 Улучшения фермы</div>`;
+  Object.entries(UPG_ITEMS).forEach(([id,it])=>{
+    const lvl=res(me.upg,id);const maxed=lvl>=it.max;const cost=labCost(it,lvl);
+    let dots='';for(let i=0;i<it.max;i++)dots+=`<i ${i<lvl?'class="on"':''}></i>`;
+    html+=`<div class="upCard">
+      <div class="upIcon">${it.ico}</div>
+      <div class="upInfo">
+        <div class="upName">${esc(it.name)} ${it.max>1?`<span class="lvlDots">${dots}</span>`:''}</div>
+        <div class="upDesc">${it.desc(lvl)}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="priceTag num" style="font-size:13px">${maxed?'MAX':fmtUSD(cost)}</div>
+        <button class="btn ${maxed?'btn-ghost':'btn-gold'} btn-sm" data-upg="${id}" style="margin-top:5px" ${maxed||me.usd<cost?'disabled':''}>${maxed?'✅':'Купить'}</button>
+      </div>
+    </div>`;
+  });
+  $('screen').innerHTML=html;
+  paintWheel(0);
+  $('spinBtn').onclick=doSpin;
+  document.querySelectorAll('[data-upg]').forEach(b=>b.onclick=()=>doAction({a:'upgBuy',id:b.dataset.upg}));
+}
+function paintWheel(deg){
+  const cv=$('upgWheel');if(!cv)return;
+  const ctx=cv.getContext('2d');const N=SPIN_SEGS.length;
+  const cx=108,cy=108,R=102;
+  ctx.clearRect(0,0,216,216);
+  ctx.save();ctx.translate(cx,cy);ctx.rotate((deg||0)*Math.PI/180);
+  for(let i=0;i<N;i++){
+    const a0=i*2*Math.PI/N-Math.PI/2,a1=(i+1)*2*Math.PI/N-Math.PI/2;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,a0,a1);ctx.closePath();
+    ctx.fillStyle=SPIN_SEGS[i].c;ctx.fill();
+    ctx.strokeStyle='rgba(5,10,8,.85)';ctx.lineWidth=2;ctx.stroke();
+    /* подпись */
+    ctx.save();ctx.rotate(a0+Math.PI/N);
+    ctx.fillStyle='rgba(255,255,255,.92)';
+    ctx.font='800 9px Manrope';ctx.textAlign='right';
+    ctx.fillText(SPIN_SEGS[i].t,R-12,3.5);
+    ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(0,0,R,0,7);ctx.strokeStyle='rgba(168,85,247,.55)';ctx.lineWidth=3;ctx.stroke();
+  ctx.restore();
+  /* хаб в центре */
+  ctx.beginPath();ctx.arc(cx,cy,24,0,7);ctx.fillStyle='#1a0f26';ctx.fill();
+  ctx.strokeStyle='rgba(168,85,247,.6)';ctx.lineWidth=2.5;ctx.stroke();
+  ctx.font='22px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🎰',cx,cy+1);
+}
+let spinFrom=0,spinTo=0,spinAt=0;
+function doSpin(){
+  if(spinning)return;
+  spinning=true;
+  doAction({a:'spin'}).then(j=>{
+    if(!j||!j.ok){spinning=false;renderUpgrader();return;}
+    const N=SPIN_SEGS.length,per=360/N;
+    spinFrom=0;spinTo=360*5+(360-(j.seg+0.5)*per);spinAt=Date.now();
+    const cont=document.querySelector('.upgraderBox');if(cont)cont.classList.add('upgSpin');
+    const dur=4200;
+    const anim=()=>{
+      const t=clamp((Date.now()-spinAt)/dur,0,1);
+      const e=1-Math.pow(1-t,3);
+      paintWheel(spinFrom+(spinTo-spinFrom)*e);
+      if(t<1)requestAnimationFrame(anim);
+      else{
+        spinning=false;
+        const rb=$('spinResult');
+        if(rb){rb.className='upgResult show '+(j.win>0?'success':'fail');
+          rb.textContent=j.win>0?('🏆 '+j.msg):'😞 '+j.msg;}
+        const c2=document.querySelector('.upgraderBox');if(c2)c2.classList.remove('upgSpin');
+        setTimeout(()=>{if(tab==='upgrader')render();},2200);
+      }
+    };
+    requestAnimationFrame(anim);
+  });
+}
+
+/* =================================================== СОЦ =================================================== */
+function renderSocial(){
+  const me=S.me;
+  const hasTransfer=me.lab&&me.lab.transfer>0;
+  let html=`<div class="sectionTitle">📤 P2P переводы FI</div>
+  ${hasTransfer?`<div class="transferBox">
+    <div class="rBox">Отправить другу</div>
+    <input class="inp num" id="trAmount" inputmode="decimal" placeholder="Сколько FI (есть ${fmtFI(me.fi)})">
+    <input class="inp" id="trTo" placeholder="Кому: @username или название из списка выше">
+    <button class="btn btn-blue btn-lg" id="trGo">📤 Отправить</button>
+  </div>`:`<div class="hintBox">🔒 Переводы монет между игроками закрыты. Открой «P2P протокол» в Лабе за $2500 — и здесь появится форма.</div>`}`;
+  html+=`<div class="sectionTitle">⚔️ Дуэли (PvP)</div>
+  <div class="duelBox">
+    <div class="rBox">1×1 со случайным соперником</div>
+    <div style="font-size:11.5px;color:var(--tg-sub);margin-bottom:9px">50 на 50, победитель забирает ставку. Рандом крутит сервер — никому не спрятать затычки.</div>
+    <input class="inp num" id="duelAmt" inputmode="decimal" placeholder="Ставка $ (от $10)">
+    <button class="btn btn-red btn-lg" id="duelGo">⚔️ ВЫЗВАТЬ НА ДУЭЛЬ</button>
+    <div class="upgLegend" style="margin-top:8px;font-size:10px">Побед в дуэлях: ${(me.stats&&me.stats.duelWins)||0}</div>
+  </div>
+  <div class="sectionTitle">🎰 Рулетка</div>
+  <div class="rouletteBox">
+    <div class="rBox">Красное/чёрное ×2 · зелёное ×14</div>
+    <input class="inp num" id="roulAmt" inputmode="decimal" placeholder="Ставка $ (от $10)">
+    <div class="rActions">
+      <button class="btn btn-red rA" data-c="red">🔴 ×2</button>
+      <button class="btn btn-ghost rA" data-c="black">⚫ ×2</button>
+      <button class="btn btn-green rA" data-c="green">🟢 ×14</button>
+    </div>
+  </div>`;
+  $('screen').innerHTML=html;
+  if(hasTransfer)$('trGo').onclick=()=>{
+    const amt=parseFloat(($('trAmount').value||'').replace(',','.'));const to=$('trTo').value.trim();
+    if(!(amt>0))return toast('Сколько отправить?','✏️');
+    if(!to)return toast('Кому отправить?','✏️');
+    doAction({a:'transfer',fi:amt,to:to.replace('@','')});
+  };
+  $('duelGo').onclick=()=>{
+    const amt=parseFloat(($('duelAmt').value||'').replace(',','.'));
+    if(!(amt>=10))return toast('Ставка от $10','✏️');
+    doAction({a:'duel',amount:amt});
+  };
+  document.querySelectorAll('.rA').forEach(b=>b.onclick=()=>{
+    const amt=parseFloat(($('roulAmt').value||'').replace(',','.'));
+    if(!(amt>=10))return toast('Ставка от $10','✏️');
+    doAction({a:'roulette',amount:amt,color:b.dataset.c});
+  });
+}
+
+/* =================================================== ПРОФИЛЬ =================================================== */
+function renderProfile(){
+  const me=S.me;
+  const cap=me.cap||0;const r=rankOf(cap);
+  let html=`<div class="sectionTitle">Профиль</div>
+  <div class="card" style="text-align:center">
+    <div style="width:64px;height:64px;margin:0 auto 8px">${coinSVG()}</div>
+    <div style="font-weight:800;font-size:16px">${esc(me.name)} ${me.role?roleChipHTML(me.role):''}</div>
+    <div style="margin-top:8px"><span class="rankBadge">${r[2]} ${r[1]}</span></div>
+    <div class="num" style="margin-top:8px;font-size:11px;color:var(--tg-sub)">Капитал ${fmtUSD(cap)} · в игре с ${new Date(me.joined).toLocaleDateString('ru-RU')}</div>
+  </div>
+  <div class="statGrid" style="margin-bottom:10px">
+    <div class="statBox"><div class="l">всего добыто</div><div class="v num" style="color:var(--em)">${fmtFI(me.totalMined)} FI</div></div>
+    <div class="statBox"><div class="l">куплено / продано</div><div class="v num">${fmtFI(me.bought)} / ${fmtFI(me.sold)}</div></div>
+    <div class="statBox"><div class="l">исследований</div><div class="v num">${researchCnt(me.lab)}/${Object.keys(LAB_ITEMS).length}</div></div>
+    <div class="statBox"><div class="l">апгрейдов</div><div class="v num">${upgCnt(me.upg)}/${Object.keys(UPG_ITEMS).length}</div></div>
+  </div>
+  <div class="sectionTitle">🏆 Топ игроков</div>`;
+  S.top.forEach((t,i)=>{const wealth=t.fi*S.market.price+t.usd;
+    html+=`<div class="leaderboardItem ${i<3?'top'+(i+1):''} ${t.n===me.name?'':''}">
+      <div class="rank">${i<3?['🥇','🥈','🥉'][i]:i+1}</div>
+      <div class="uname">${esc(t.n)} ${roleChipHTML(t.role)}</div>
+      <div class="cap num">${fmtUSD(wealth)}</div>
+    </div>`;});
+  html+=`<div class="sectionTitle">🎖 Достижения</div><div class="card" style="padding-top:6px;padding-bottom:6px">`;
+  const uCnt=Object.values(me.owned||{}).reduce((a,b)=>a+b,0);
+  const ACHVS=[
+    {ico:'⛏️',t:'Первый майнер',d:'Купи первое устройство',ok:uCnt>0},
+    {ico:'💱',t:'Трейдер',d:'Продай FI',ok:me.sold>0},
+    {ico:'💵',t:'Капитал $1K',d:'Общая стоимость $1000',ok:cap>=1e3},
+    {ico:'🔟',t:'Парк из 10',d:'10 майнеров',ok:uCnt>=10},
+    {ico:'🔬',t:'Учёный',d:'3 исследования в Лабе',ok:researchCnt(me.lab)>=3},
+    {ico:'📋',t:'Исполнитель',d:'5 выполненных заданий',ok:(me.stats&&me.stats.questsDone||0)>=5},
+    {ico:'⚡',t:'Апгрейдер',d:'Любой апгрейд фермы',ok:upgCnt(me.upg)>=1},
+    {ico:'⚔️',t:'Гладиатор',d:'Победа в дуэли',ok:(me.stats&&me.stats.duelWins||0)>=1},
+    {ico:'📤',t:'Щедрый',d:'Отправь FI другу',ok:(me.stats&&me.stats.transfersSent||0)>=1},
+    {ico:'🏦',t:'Сто тысяч',d:'Капитал $100K',ok:cap>=1e5},
+    {ico:'🎰',t:'Везунчик',d:'Выигрыш $1000+ в колесе',ok:(me.stats&&me.stats.spinBest||0)>=1000},
+    {ico:'🏭',t:'Империя',d:'50 устройств',ok:uCnt>=50},
+    {ico:'🚀',t:'Миллионер',d:'Капитал $1M',ok:cap>=1e6},
+    {ico:'👑',t:'Легенда майнинга',d:'Капитал $10M',ok:cap>=1e7}
+  ];
+  ACHVS.forEach(a=>{
+    html+=`<div class="achv ${a.ok?'done':''}">
+      <div class="achvIco">${a.ico}</div>
+      <div style="flex:1;min-width:0"><div class="achvT">${a.t}</div><div class="achvD">${a.d}</div></div>
+      ${a.ok?'<div style="color:var(--em);font-weight:800">✓</div>':''}
+    </div>`;
+  });
+  html+='</div>';
+  $('screen').innerHTML=html;
+}
+
+/* ---------- вкладки ---------- */
+const RENDER={farm:renderFarm,market:renderMarket,shop:renderShop,lab:renderLab,upgrader:renderUpgrader,social:renderSocial,profile:renderProfile};
+const UPDATER={market:updateMarketLive,farm:()=>{}};
+function switchTab(t){
+  tab=t;localStorage.setItem('fiTab7',t);
+  document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+  render();
+}
+document.querySelectorAll('.tabBtn').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+function render(){
+  if(!S)return;
+  if(S.me&&S.me.banned){$('banned').classList.add('show');return;}
+  paintBadge(S.me&&S.me.role?S.me.role:(role?{name:role.name,color:role.color}:null));
+  (RENDER[tab]||renderFarm)();
+}
+
+/* ---------- STAFF (v6 терминал, без ключей) ---------- */
+const isO=()=>role&&role.kind==='owner';
+const can=p=>role&&(isO()||(role.perms||[]).includes(p));
+let dvTab='give';
+const dvCaches={roles:[],players:[]};
+function updateDevTag(){
+  const tag=$('dvRoleTag');if(!tag)return;
+  if(role){tag.style.display='';tag.textContent=role.name;tag.className='dvRoleTag '+(role.kind||'chat');}
+  else tag.style.display='none';
+}
+function toggleDev(force){
+  const p=$('devPanel');
+  const open=force!=null?force:!p.classList.contains('open');
+  p.classList.toggle('open',open);
+  $('devToggle')&&$('devToggle').classList.toggle('on',open);
+  if(open)renderDev();
+}
+$('devToggle').onclick=()=>toggleDev();
+$('devClose').onclick=()=>toggleDev(false);
+$('botAvatar').onclick=()=>toggleDev();
+function renderDev(){
+  const content=$('dvContent');
+  if(!role){
+    $('dvTabs').innerHTML='';
+    content.innerHTML=`<div class="dvLogin">
+      <div class="lockIco">🔒</div><h3>ДОСТУП ТОЛЬКО ДЛЯ ПЕРСОНАЛА</h3>
+      <p>Ключей больше нет. Роли раздаёт владелец (Тимофей) прямо из этой же консоли.<br>Твой вход откроется автоматически, когда владелец выдаст тебе роль.</p>
+    </div>`;
     return;
   }
-  await refresh();
-  /* узнаём свою роль сразу (без ключей — по Telegram-подписи) */
-  const j0 = await apiStaff({ a: 'who' }).catch(() => null);
-  if (j0 && j0.ok && j0.role) { setRole(j0.role); if (tab === 'staff') render(); }
-})().catch(e => console.error(e));
+  const tabs=[];
+  if(can('give'))tabs.push(['give','💰']);
+  if(can('market'))tabs.push(['market','📈']);
+  if(can('players'))tabs.push(['players','👥']);
+  if(isO())tabs.push(['roles','👑']);
+  if(can('log'))tabs.push(['log','📜']);
+  if(isO())tabs.push(['reset','🧯']);
+  if(!tabs.some(x=>x[0]===dvTab))dvTab=tabs[0]?tabs[0][0]:'give';
+  $('dvTabs').innerHTML=tabs.map(x=>`<button class="dvTab ${dvTab===x[0]?'active':''}" data-dt="${x[0]}">${x[1]}</button>`).join('');
+  $('dvTabs').querySelectorAll('[data-dt]').forEach(b=>b.onclick=()=>{dvTab=b.dataset.dt;renderDev();});
+  if(dvTab==='give')dvGive();
+  else if(dvTab==='market')dvMarket();
+  else if(dvTab==='players')dvPlayers();
+  else if(dvTab==='roles')dvRoles();
+  else if(dvTab==='log')dvLog();
+  else if(dvTab==='reset')dvReset();
+}
+function dvHead(t){return `<div class="dvSec">${t}</div>`;}
+function dvGive(){
+  $('dvContent').innerHTML=dvHead(`ВЫДАЧА БАЛАНСОВ  ${ '— всем или одному'}  `)+
+  `<div class="dvRow"><span class="dvLabel">кому</span><input class="din wide" id="gvTo" placeholder="@ник / id / * (всем)"></div>
+  <div class="dvRow"><span class="dvLabel">сумма</span><input class="din" id="gvAmt" placeholder="напр. 500"></div>
+  <div class="dvRow"><button class="dbtn" id="gvFI">+ FI</button><button class="dbtn gold" id="gvUSD">+ USD</button></div>
+  <div class="dvHint" style="font-size:9.5px;color:rgba(61,255,139,.4);line-height:1.5;margin-top:6px">Отрицательные суммы — изъятие (через получение игрока: поставь −500 и забрать).</div>`;
+  $('gvFI').onclick=()=>dvGiveSend('fi');
+  $('gvUSD').onclick=()=>dvGiveSend('usd');
+}
+async function dvGiveSend(kind){
+  const to=($('gvTo').value||'').trim().replace(/^@/,'');
+  const amount=parseFloat(($('gvAmt').value||'').replace(',','.'));
+  if(!to)return toast('Кому?','✏️');
+  if(!(amount!==0&&isFinite(amount)))return toast('Сколько?','✏️');
+  const j=await apiStaff({a:'give',kind,to,amount});
+  if(j.ok==false)toast(j.msg||'Отказано','🔒','red');
+  else{toast(j.msg,'🤝','green');$('gvAmt').value='';}
+}
+function dvMarket(){
+  const pr=S.market;
+  const btns=[[1,'+1%'],[5,'+5%'],[10,'+10%'],[25,'+25%'],[-1,'−1%'],[-5,'−5%'],[-10,'−10%'],[-25,'−25%']];
+  $('dvContent').innerHTML=dvHead(`РЫНОК · $${pr.price.toFixed(2)} ${pr.frozen?'❄️':''}`)+
+  `<div class="dvGrid">${btns.map(b=>`<button class="dbtn ${b[0]>0?'':'dgr'}" data-pp="${b[0]}">${b[1]}</button>`).join('')}</div>
+  <div class="dvRow" style="margin-top:8px"><button class="dbtn" data-op="x2">×2</button><button class="dbtn dgr" data-op="half">÷2</button><button class="dbtn ${pr.frozen?'':'cyan'}" data-op="freeze">${pr.frozen?'▶️ unfreeze':'❄️ freeze'}</button><button class="dbtn" data-op="auto">🤖 auto</button></div>
+  <div class="dvRow"><span class="dvLabel">точная цена</span><input class="din" id="mPriceInp" placeholder="$2.40"><button class="dbtn gold" id="mPriceGo">🎯 set</button></div>`;
+  $('dvContent').querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>apiStaff({a:'price',op:Number(b.dataset.pp)>0?'pump':'dump',pct:Number(b.dataset.pp)<0?-Number(b.dataset.pp):Number(b.dataset.pp)}).then(j=>{if(j.ok==false)toast(j.msg,'❌','red');}));
+  $('dvContent').querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>apiStaff({a:'price',op:b.dataset.op}).then(j=>{if(j.ok==false)toast(j.msg,'❌','red');}));
+  $('mPriceGo').onclick=()=>{
+    const v=parseFloat(($('mPriceInp').value||'').replace(',','.'));
+    if(!(v>0))return toast('Число?','✏️');
+    apiStaff({a:'price',op:'set',v});
+  };
+}
+async function dvPlayers(){
+  $('dvContent').innerHTML=dvHead('ИГРОКИ')+'<div style="color:rgba(61,255,139,.5)">⏳ загрузка…</div>';
+  const j=await apiStaff({a:'players'});
+  if(!j||!j.ok){$('dvContent').innerHTML=dvHead('ИГРОКИ')+'<div style="color:rgba(61,255,139,.5)">нет доступа</div>';return;}
+  dvCaches.players=j.players||[];
+  $('dvContent').innerHTML=dvHead(`ИГРОКИ (${dvCaches.players.length}) — тап = действия`)+
+  dvCaches.players.map((p,i)=>`<div class="dvItem" data-pi="${i}">
+    <span class="nm">${p.b?'🚫 ':''}${esc(p.n)}</span>
+    ${roleChipHTML(p.role)}
+    <span class="sub num" style="margin-left:auto">${fmtFI(p.fi)} FI · ${fmtUSD(p.usd)}</span>
+  </div>`).join('');
+  $('dvContent').querySelectorAll('[data-pi]').forEach(el=>el.onclick=()=>dvPlayerMenu(dvCaches.players[Number(el.dataset.pi)]));
+}
+async function dvPlayerMenu(pl){
+  const opt=['give — выдать/забрать монеты','ban — забанить','unban — разбанить'];
+  if(isO())opt.push('role — назначить/снять роль');
+  const pick=prompt('Действие для '+pl.n+':\n'+opt.map((o,i)=>(i+1)+' — '+o).join('\n'),'1');
+  if(!pick)return;
+  const k=Number(pick.trim());
+  if(k===1){
+    const amt=parseFloat(prompt('Сумма (отрицательная — забрать)', '+100')||'');
+    if(!isFinite(amt)||amt===0)return;
+    const kind=prompt('Валюта: fi / usd','fi')||'';
+    await apiStaff({a:'give',kind:kind==='usd'?'usd':'fi',to:String(pl.id),amount:amt}).then(j=>toast(j.msg||'',j.ok?'🤝':'🔒',j.ok?'green':'red'));
+  }else if(k===2){
+    const r=prompt('Причина бана','нарушение правил')||'';
+    await apiStaff({a:'ban',to:String(pl.id),reason:r}).then(j=>toast(j.msg||'',j.ok?'🚫':'🔒',j.ok?'green':'red'));
+  }else if(k===3)await apiStaff({a:'unban',to:String(pl.id)}).then(j=>toast(j.msg||'',j.ok?'✅':'🔒',j.ok?'green':'red'));
+  else if(k===4&&isO())await dvAssign(pl);
+  if($('devPanel').classList.contains('open')&&dvTab==='players')dvPlayers();
+}
+async function dvAssign(pl){
+  const j=await apiStaff({a:'roles'});
+  if(!j||!j.ok)return;
+  const roles=j.roles||[];
+  if(!roles.length)return toast('Сначала создай роль в 👑 Роли','👑','red');
+  const cur=(j.assigned||{})[String(pl.id)];
+  const inp=prompt('Роль для '+pl.n+(cur?'\n(0 — снять текущую)':'')+':\n'+roles.map((r,i)=>(i+1)+' — '+r.name).join('\n'),cur?'0':'1');
+  if(inp===null)return;
+  const n=Number(inp.trim());
+  if(n===0)return void (await apiStaff({a:'assign',to:String(pl.id),roleId:''}).then(x=>toast(x.msg,'👑','green')));
+  const r=roles[n-1];if(!r)return toast('Нет такой роли','❌','red');
+  await apiStaff({a:'assign',to:String(pl.id),roleId:r.id}).then(x=>toast(x.msg,'👑','green'));
+}
+let rolesCacheHTML=null;
+async function dvRoles(){
+  $('dvContent').innerHTML=dvHead('РОЛИ')+'<div style="color:rgba(61,255,139,.5)">⏳…</div>';
+  const j=await apiStaff({a:'roles'});
+  if(!j||!j.ok){$('dvContent').innerHTML=dvHead('РОЛИ')+'<div style="color:rgba(61,255,139,.5)">только владелец</div>';return;}
+  const roles=j.roles||[];
+  const assigned=j.assigned||{};
+  let html=dvHead('СОЗДАТЬ РОЛЬ (владелец)')+
+  `<div class="dvRow"><input class="din wide" id="rName" placeholder="Название (до 16 симв)"></div>
+  <div class="dvRow"><span class="dvLabel">цвет</span><input type="color" id="rColor" value="#3dff8b" style="width:60px;height:30px;background:none;border:none;cursor:pointer"></div>
+  <div class="dvCB">${Object.entries(PERM_LABEL).map(([k,v])=>`<label><input type="checkbox" value="${k}">${v}</label>`).join('')}</div>
+  <div class="dvRow" style="margin-top:6px"><button class="dbtn gold" id="rAdd">➕ создать</button></div>`+
+  dvHead(`СУЩЕСТВУЮЩИЕ (${roles.length})`);
+  if(!roles.length)html+='<div style="color:rgba(61,255,139,.5)">пока пусто — значки с цветом появятся в топе после выдачи</div>';
+  roles.forEach(r=>{
+    const who=Object.entries(assigned).filter(([,rid])=>rid===r.id).map(([pid])=>pid);
+    html+=`<div class="dvItem">
+      ${roleChipHTML({name:r.name,color:r.color})}
+      <span class="sub">${(r.perms||[]).join('·')||'no perms'}</span>
+      <span style="margin-left:auto;display:flex;gap:5px">
+        <button class="dbtn" data-redit="${r.id}">✏️</button>
+        <button class="dbtn dgr" data-rdel="${r.id}">🗑</button>
+      </span>
+    </div>`;
+  });
+  $('dvContent').innerHTML=html;
+  $('rAdd').onclick=()=>{
+    const name=($('rName').value||'').trim();
+    if(!name)return toast('Название?','✏️');
+    const perms=Array.from($('dvContent').querySelectorAll('.dvCB input:checked')).map(x=>x.value);
+    apiStaff({a:'roleAdd',name,color:$('rColor').value,perms}).then(x=>{toast(x.msg,'👑','green');if(x.ok!==false)dvRoles();});
+  };
+  $('dvContent').querySelectorAll('[data-rdel]').forEach(b=>b.onclick=()=>{
+    const r=roles.find(x=>x.id===b.dataset.rdel);
+    if(!r||!confirm('Удалить роль «'+r.name+'»?'))return;
+    apiStaff({a:'roleDel',id:r.id}).then(x=>{toast(x.msg,'🗑','green');dvRoles();});
+  });
+  $('dvContent').querySelectorAll('[data-redit]').forEach(b=>b.onclick=()=>{
+    const r=roles.find(x=>x.id===b.dataset.redit);
+    if(!r)return;
+    const name=prompt('Новое название:',r.name);if(name===null)return;
+    const color=prompt('Новый цвет (hex):',r.color);if(color===null)return;
+    const order=Object.keys(PERM_LABEL);
+    const inp=prompt('Права (номера через запятую):\n'+order.map((k,i)=>(i+1)+' — '+PERM_LABEL[k]).join('\n'),(r.perms||[]).map(k=>order.indexOf(k)+1).join(','));
+    if(inp===null)return;
+    const perms=inp.split(',').map(x=>order[Number(x.trim())-1]).filter(Boolean);
+    const body={a:'roleUpd',id:r.id,perms};
+    if(name.trim())body.name=name.trim();
+    if(color.trim())body.color=color.trim();
+    apiStaff(body).then(x=>{toast(x.msg,'✏️','green');dvRoles();});
+  });
+}
+async function dvLog(){
+  $('dvContent').innerHTML=dvHead('ЖУРНАЛ ДЕЙСТВИЙ')+'<div style="color:rgba(61,255,139,.5)">⏳…</div>';
+  const j=await apiStaff({a:'log'});
+  if(!j||!j.ok){$('dvContent').innerHTML=dvHead('ЖУРНАЛ')+'<div style="color:rgba(61,255,139,.5)">нет доступа</div>';return;}
+  $('dvContent').innerHTML=dvHead(`ЖУРНАЛ (${(j.log||[]).length})`)+
+  (j.log||[]).map(l=>`<div class="dvBox" style="font-size:9.5px">${new Date(l[0]).toLocaleString('ru-RU')} — ${esc(l[1])}</div>`).join('')||'пусто';
+}
+function dvReset(){
+  $('dvContent').innerHTML=dvHead('СБРОСЫ (только владелец)')+
+  `<div class="dvRow"><button class="dbtn" data-r="market">📉 рынок на старт</button><button class="dbtn gold" data-r="balances">🧯 балансы в 0</button><button class="dbtn dgr" data-r="nuke">💥 ВСЁ</button></div>
+  <div class="dvBox" style="margin-top:8px">Сбросы мгновенные. «ВСЁ» удаляет игроков средствами (кроме тебя) и историю рынка.</div>`;
+  $('dvContent').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{
+    const w=b.dataset.r;
+    if(w==='nuke'&&!confirm('Удалить ВСЕХ игроков и историю? Остонешься один.'))return;
+    if(w==='nuke'&&!confirm('Точно? Отмена невозможна.'))return;
+    apiStaff({a:'reset',what:w}).then(j=>toast(j.msg,'🧯','green'));
+  });
+}
 
-setInterval(() => { if (!document.hidden && S && apiBase) refresh().catch(() => {}); }, 2500);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && apiBase) refresh().catch(() => {}); });
+/* ---------- меню ---------- */
+$('menuBtn').onclick=e=>{e.stopPropagation();$('menuDrop').classList.toggle('open');};
+document.addEventListener('click',e=>{if(!e.target.closest('#menuDrop')&&e.target.id!=='menuBtn')$('menuDrop').classList.remove('open');});
+$('menuDrop').onclick=e=>{
+  const m=e.target.closest('.menuItem');if(!m)return;
+  $('menuDrop').classList.remove('open');
+  if(m.dataset.menu==='about')modal(`<h3>🪙 FI coin — что это?</h3><p>Единая цена на всех. Сервер считает рынок, доходы и рандом честно.\n\n⛏ Майни ригами\n📈 Торигуй на бирже\n🔬 Усилься в Лабе\n🎰 Крутани колесо\n⚔️ Дерись в дуэлях\n👑 Роли выдает владелец через STAFF</p><button class="btn btn-em" onclick="closeModal()">Понял</button>`);
+  if(m.dataset.menu==='dev'){if(role)toggleDev(true);else toast('Нет roleId — напиши владельцу','🔒','red');}
+};
+
+/* ---------- старт ---------- */
+$('introCoin').innerHTML=coinSVG();
+$('botAvatar').innerHTML=coinSVG();
+$('startBtn').onclick=()=>{$('intro').classList.add('hide');localStorage.setItem('fiIntroSeen7','1');};
+if(localStorage.getItem('fiIntroSeen7')==='1')$('intro').classList.add('hide');
+
+(async()=>{
+  document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  apiBase=await findApi();
+  if(!apiBase){setNet(false);renderOffline(null);return;}
+  const j0=await apiStaff({a:'who'}).catch(()=>null);
+  if(j0&&j0.ok&&j0.role)setRole(j0.role);
+  await refresh();
+  if(S&&S.me&&S.me.banned)$('banned').classList.add('show');
+})().catch(()=>renderOffline(null));
+
+setInterval(()=>{if(!document.hidden&&S&&apiBase&&!spinning)refresh().catch(()=>{});},2500);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&apiBase)refresh().catch(()=>{});});
 </script>
 </body>
 </html>
