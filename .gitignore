@@ -1,0 +1,6 @@
+config.json
+data/
+archive/
+node_modules/
+*.log
+*.tmp
