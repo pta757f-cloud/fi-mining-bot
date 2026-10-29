@@ -95,7 +95,10 @@ function loadState() {
     if (!state.playerRoles || typeof state.playerRoles !== 'object' || Array.isArray(state.playerRoles)) state.playerRoles = {};
     if (!Array.isArray(state.log)) state.log = [];
     if (!Array.isArray(state.duels)) state.duels = [];
+    if (!state.deviceVault || typeof state.deviceVault !== 'object' || Array.isArray(state.deviceVault)) state.deviceVault = {};
+    if (!Array.isArray(state.linkCodes)) state.linkCodes = [];
     if (!state.dialogs || typeof state.dialogs !== 'object') state.dialogs = {};
+    if (!Number.isFinite(state.savedAt)) state.savedAt = 0;
     if (!Number.isFinite(state.lastTick)) state.lastTick = 0;
     for (const p of Object.values(state.players)) {
         if (!p.lab || typeof p.lab !== 'object' || Array.isArray(p.lab)) p.lab = {};
@@ -107,6 +110,12 @@ function loadState() {
 function saveState() {
     try {
         fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
+        /* страховка: раз в минуту копия предыдущего состояния (откат после рестартов) */
+        const now = Date.now();
+        if (now - lastRotate > 60000 && fs.existsSync(DATA_PATH)) {
+            try { fs.copyFileSync(DATA_PATH, path.join(__dirname, 'data', 'state.prev.json')); lastRotate = now; } catch (_) { }
+        }
+        state.savedAt = now;
         const tmp = DATA_PATH + '.tmp';
         fs.writeFileSync(tmp, JSON.stringify(state), 'utf8');
         fs.renameSync(tmp, DATA_PATH);
@@ -114,6 +123,7 @@ function saveState() {
 }
 /* быстрый доступ к настройкам */
 const S = key => state.settings[key];
+let lastRotate = 0;
 
 /* ------------------------- ЛОГ ------------------------- */
 function logLine(str) {
@@ -207,7 +217,9 @@ function findPlayer(user) {
     return Object.values(state.players).find(p => p.username === u) || null;
 }
 function findPlayerByNameOrId(str) {
-    const s = String(str).replace(/^@/, '').trim().toLowerCase();
+    const raw = String(str).replace(/^@/, '').trim();
+    if (raw && state.players[raw]) return state.players[raw]; // точный ID (и телефонный uid тоже)
+    const s = raw.toLowerCase();
     if (!s) return null;
     if (/^\d+$/.test(s)) return state.players[s] || null;
     return Object.values(state.players).find(p => (p.username || '') === s || (p.first_name || '').toLowerCase() === s) || null;
@@ -631,6 +643,14 @@ async function loadStateFromGitHub() {
     if (!j || !j.content) { console.log('☁️ GitHub: state.json не найден — начинаем с пустого.'); return false; }
     try {
         const obj = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'));
+        /* защита от отката: если локальная копия на диске СВЕЖЕЕ облачной — играем её */
+        const diskAt = (() => { try { return JSON.parse(fs.readFileSync(DATA_PATH, 'utf8')).savedAt || 0; } catch (_) { return 0; } })();
+        const cloudAt = obj.savedAt || 0;
+        if (diskAt > cloudAt + 5000) {
+            state._gitSha = j.sha; /* следующий пуш просто обновит облачный файл */
+            console.log(`☁️ GitHub отстаёт (облако ${new Date(cloudAt).toLocaleString('ru-RU')} < диск ${new Date(diskAt).toLocaleString('ru-RU')}) — играем локальную копию.`);
+            return true;
+        }
         Object.assign(state, obj);
         state._gitSha = j.sha;
         console.log(`☁️ Состояние загружено из GitHub (${Object.keys(state.players || {}).length} игроков, цена $${fmt(state.market ? state.market.price : 0)})`);
@@ -710,7 +730,67 @@ function verifyInitData(raw) {
     } catch (e) { return null; }
 }
 
-/* Полный срез мира для клиента */
+/* ------------------------- ТЕЛЕФОНЫ (PWA-приложение) -------------------------
+   Устройство = uid 'W' + 13 цифр (14 символов — длиннее Telegram-ID, перепутать нельзя)
+   + секрет в памяти телефона (localStorage). Вместе они играют тем же профилем,
+   что и Telegram (через одноразовый код связки). Секреты лежат в state.deviceVault
+   ЗАШИФРОВАННО (ключ из BOT_TOKEN) — в публичном зеркале state.json они бесполезны. */
+let DEV_CACHE = null;
+function devKey() { return crypto.createHash('sha256').update(CFG.token + '|fi-device-vault').digest(); }
+function devicesMap() {
+    if (DEV_CACHE) return DEV_CACHE;
+    DEV_CACHE = {};
+    try {
+        for (const [uid, blob] of Object.entries(state.deviceVault || {})) {
+            const raw = Buffer.from(blob, 'base64');
+            if (raw.length < 29) continue;
+            try {
+                const iv = raw.slice(0, 12), tag = raw.slice(12, 28), ct = raw.slice(28);
+                const dc = crypto.createDecipheriv('aes-256-gcm', devKey(), iv);
+                dc.setAuthTag(tag);
+                const j = JSON.parse(Buffer.concat([dc.update(ct), dc.final()]).toString());
+                if (j && j.s && j.p) DEV_CACHE[uid] = j;
+            } catch (_) { }
+        }
+    } catch (_) { }
+    return DEV_CACHE;
+}
+function putDevice(uid, rec) {
+    const iv = crypto.randomBytes(12);
+    const c = crypto.createCipheriv('aes-256-gcm', devKey(), iv);
+    const ct = Buffer.concat([c.update(JSON.stringify(rec)), c.final()]);
+    state.deviceVault = state.deviceVault || {};
+    state.deviceVault[uid] = Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
+    devicesMap()[uid] = rec;
+    saveState();
+}
+function genUid() { let s = 'W'; for (let i = 0; i < 13; i++) s += Math.floor(Math.random() * 10); return s; }
+const LINK_CODE_AB = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function genCode() {
+    let s = '';
+    for (let i = 0; i < 8; i++) s += LINK_CODE_AB[Math.floor(Math.random() * LINK_CODE_AB.length)];
+    return s.slice(0, 4) + '-' + s.slice(4);
+}
+/* аутентификация запроса: Telegram initData (приоритет) ЛИБО подпись устройства */
+function deviceVerify(body) {
+    try {
+        const a = body.device || {};
+        const uid = String(a.uid || ''), ts = Number(a.ts), sig = String(a.sig || '');
+        if (!/^W\d{13}$/.test(uid) || !isFinite(ts) || !/^[0-9a-f]{64}$/.test(sig.toLowerCase())) return null;
+        if (Math.abs(Date.now() - ts) > 10 * 60000) return null;
+        const rec = devicesMap()[uid];
+        if (!rec) return null;
+        const calc = crypto.createHmac('sha256', String(rec.s)).update(uid + ':' + ts).digest('hex');
+        return calc === sig.toLowerCase() ? (state.players[rec.p] || null) : null;
+    } catch (_) { return null; }
+}
+function authPlayer(body) {
+    const u = verifyInitData(body.init || '');
+    if (u) return { p: ensurePlayer(u), tg: u };
+    const p = deviceVerify(body);
+    if (p) return { p, tg: p };
+    return null;
+}
 function apiSnapshot(p) {
     const M = state.market;
     const price = M.price;
@@ -746,6 +826,8 @@ function apiSnapshot(p) {
                 const v = q.k === 'sell' ? d.sell : q.k === 'buy' ? d.buy : d.mine;
                 return { i, ico: q.ico, d: q.d, t: q.t, v: Math.round(v * 100) / 100, claimed: !!(d.claimed || {})[i], done: v >= q.t };
             }),
+            via: p.via === 'phone' ? 'phone' : 'tg',
+            linked: !!p.uid,
             stats: {
                 transfersSent: p.transfersSent || 0, duelWins: p.duelWins || 0,
                 spins: p.spinDone || 0, spinBest: p.spinBest || 0, questsDone: p.questsDone || 0
@@ -1209,10 +1291,83 @@ async function apiRoute(pathname, method, bodyRaw) {
     let body;
     try { body = JSON.parse(bodyRaw || '{}'); } catch (e) { return { ok: false, err: 'bad json' }; }
 
+    /* Устройства: регистрация телефона, коды связки с Telegram */
+    if (pathname === '/api/device') {
+        try {
+            const mode = String(body.mode || '');
+            /* мини-игра (Telegram) делает код привязки */
+            if (mode === 'linkcode') {
+                const u = verifyInitData(body.init || '');
+                if (!u) return { ok: false, err: 'auth' };
+                const p = ensurePlayer(u);
+                state.linkCodes = state.linkCodes || [];
+                state.linkCodes = state.linkCodes.filter(c => c.to !== String(p.id) && Date.now() - c.at < 10 * 60000);
+                const code = genCode();
+                state.linkCodes.push({ code, to: String(p.id), at: Date.now() });
+                saveState();
+                return { ok: true, code, msg: 'Код живёт 10 минут' };
+            }
+            /* телефон: отдельный профиль (нужен ник) */
+            if (mode === 'register') {
+                const uid = String(body.uid || ''), secret = String(body.secret || ''), nick = String(body.nick || '').trim();
+                if (!/^W\d{13}$/.test(uid)) return { ok: false, msg: '❌ Некорректный UID устройства' };
+                if (!/^[0-9a-f]{64}$/.test(secret)) return { ok: false, msg: '❌ Некорректный секрет устройства' };
+                if (devicesMap()[uid]) return { ok: false, msg: '💭 Это устройство уже зарегистрировано — просто открой игру' };
+                if (!/^[-A-Za-zА-Яа-яЁё0-9_ ]{2,16}$/.test(nick)) return { ok: false, msg: '❌ Ник: 2–16 символов (буквы, цифры, пробел, _)' };
+                const nl = nick.toLowerCase();
+                const taken = Object.values(state.players).some(x =>
+                    (x.username || '').toLowerCase() === nl || (x.first_name || '').toLowerCase() === nl);
+                if (taken) return { ok: false, msg: `❌ Ник «${nick}» уже занят — придумай другой` };
+                const p = newPlayer({ id: uid, first_name: nick.slice(0, 16), username: '' });
+                p.via = 'phone';
+                state.players[uid] = p;
+                putDevice(uid, { s: secret, p: uid });
+                adminSay(`📱 Новый телефонный игрок «${fname(p)}» (${uid})`);
+                return { ok: true, msg: '✅ Профиль создан', nick: fname(p) };
+            }
+            /* телефон + код из мини-игры → играем тем же профилем, что в Telegram */
+            if (mode === 'link') {
+                const uid = String(body.uid || ''), secret = String(body.secret || '');
+                const code = String(body.code || '').trim().toUpperCase();
+                if (!/^W\d{13}$/.test(uid) || !/^[0-9a-f]{64}$/.test(secret)) return { ok: false, msg: '❌ Некорректные данные устройства' };
+                state.linkCodes = state.linkCodes || [];
+                state.linkCodes = state.linkCodes.filter(c => Date.now() - c.at < 10 * 60000);
+                const lc = state.linkCodes.find(c => c.code === code);
+                if (!lc) return { ok: false, msg: '❌ Код не найден или истёк (10 минут) — возьми новый в мини-игре' };
+                const tp = state.players[lc.to];
+                if (!tp) return { ok: false, msg: '❌ Профиль Telegram не найден' };
+                /* если телефон раньше играл отдельно — переносим его прогресс в Telegram-профиль */
+                const old = state.players[uid];
+                if (old) {
+                    tp.usd = (tp.usd || 0) + (old.usd || 0);
+                    tp.fi = (tp.fi || 0) + (old.fi || 0);
+                    tp.totalMined = (tp.totalMined || 0) + (old.totalMined || 0);
+                    tp.bought = (tp.bought || 0) + (old.bought || 0);
+                    tp.sold = (tp.sold || 0) + (old.sold || 0);
+                    tp.duelWins = (tp.duelWins || 0) + (old.duelWins || 0);
+                    tp.transfersSent = (tp.transfersSent || 0) + (old.transfersSent || 0);
+                    tp.lab = tp.lab || {}; tp.upg = tp.upg || {};
+                    for (const k of Object.keys(old.lab || {})) tp.lab[k] = Math.max(tp.lab[k] || 0, old.lab[k]);
+                    for (const k of Object.keys(old.upg || {})) tp.upg[k] = Math.max(tp.upg[k] || 0, old.upg[k]);
+                    for (const k of Object.keys(old.miners || {})) tp.miners[k] = (tp.miners[k] || 0) + (old.miners[k] || 0);
+                    delete state.players[uid];
+                    adminSay(`🔗 ${fname(tp)} привязал телефон: отдельный профиль (${uid}) переехал в основной`);
+                }
+                tp.uid = uid;
+                putDevice(uid, { s: secret, p: String(tp.id) });
+                state.linkCodes = state.linkCodes.filter(c => c.code !== code);
+                adminSay(`🔗 ${fname(tp)} привязал телефон (${uid})`);
+                try { send(tp.id, `📱 <b>Телефон привязан!</b>\nОткрой приложение на телефоне — тот же баланс и та же ферма, что и здесь.`); } catch (_) { }
+                return { ok: true, msg: '✅ Связано! Открывай игру на телефоне' };
+            }
+            return { ok: false, msg: '❌ Неизвестный режим' };
+        } catch (e) { return { ok: false, msg: '❌ Ошибка: ' + e.message }; }
+    }
+
     if (pathname === '/api/sync') {
-        const u = verifyInitData(body.init || '');
-        if (!u) return { ok: false, err: 'auth' };
-        const p = ensurePlayer(u);
+        const au = authPlayer(body);
+        if (!au) return { ok: false, err: 'auth' };
+        const p = au.p;
         let msg = '';
         let oneRes = null;
         cleanupDuels();
@@ -1237,11 +1392,11 @@ async function apiRoute(pathname, method, bodyRaw) {
     }
 
     if (pathname === '/api/staff') {
-        const u = verifyInitData(body.init || '');
-        if (!u) return { ok: false, err: 'auth' };
-        const role = apiRole(u);
+        const au = authPlayer(body);
+        if (!au) return { ok: false, err: 'auth' };
+        const role = apiRole(au.tg);
         if (!role) return { ok: false, err: 'forbidden' };
-        const p = ensurePlayer(u);
+        const p = au.p;
         const r = apiRunStaff(u, role, body.action || {});
         if (r && r.ok !== false) { saveState(); saveStateToGitHub(false); }
         const out = Object.assign({ role: { kind: role.kind, name: role.name, color: role.color, perms: role.perms } }, r);
