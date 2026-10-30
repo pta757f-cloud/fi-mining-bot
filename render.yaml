@@ -1,0 +1,23 @@
+# Render.com: деплой FI Coin (бот + мини-игра API).
+# В Render Dashboard → New Blueprint → выбери этот репозиторий.
+# Секреты задай в UI (Render спросит — вот эти три):
+#   BOT_TOKEN  — токен бота от @BotFather
+#   GH_TOKEN   — GitHub PAT (зеркало state.json в репозиторий)
+#   PUBLIC_URL — публичный адрес сервиса (Render подскажет сам: https://fi-coin-bot.onrender.com)
+services:
+  - type: web
+    name: fi-coin-bot
+    runtime: node
+    plan: free
+    buildCommand: "echo build: нечего собирать"
+    startCommand: "node bot.js"
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: GH_TOKEN
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: PORT
+        value: "8787"
