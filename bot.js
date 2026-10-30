@@ -658,6 +658,19 @@ function marketTick() {
     if (!CATCHING_UP) saveStateToGitHub(false);
 }
 
+/* 📈 живая цена: под-квантовый тик на каждый запрос — не чаще раза в minGapMs (обычно 5 с).
+   В отличие от catchup двигает цену микро-шагами между 30-секундными догонами. */
+function subTick(minGapMs) {
+    const now = Date.now();
+    if (now - (state.lastTick || 0) < (minGapMs || 5000)) return false;
+    try {
+        CATCHING_UP = true; /* без зеркального пуша на каждый под-тик — экономим квоту GitHub */
+        marketTick();
+    } catch (e) { console.error('[subtick]', e && e.message); }
+    finally { CATCHING_UP = false; }
+    return true;
+}
+
 /* «Догоняем» пропущенные тики (облако спит без трафика): шаг 30 с, максимум ~200 часов простоя */
 function catchupTicks(maxTicks) {
     let n = 0;
@@ -953,8 +966,10 @@ function apiSnapshot(p) {
     const now = Date.now();
     const hash = p ? totalHash(p) : 0;
     const myRole = roleDefOf(p ? p.id : '');
+    const netHash = Object.values(state.players).reduce((a, x) => a + totalHash(x), 0);
     return {
         t: now,
+        netHash,
         skin: { title: S('title'), coin: S('coinName'), emoji: S('coinEmoji'), welcome: S('welcome') },
         me: p ? {
             id: p.id, name: fname(p),
@@ -973,7 +988,7 @@ function apiSnapshot(p) {
             quests: QUEST_DEFS.map((q, i) => {
                 const d = p.day && p.day.date === new Date().toDateString() ? p.day : { sell: 0, buy: 0, mine: 0, claimed: {} };
                 const v = q.k === 'sell' ? d.sell : q.k === 'buy' ? d.buy : d.mine;
-                return { i, ico: q.ico, d: q.d, t: q.t, v: Math.round(v * 100) / 100, claimed: !!(d.claimed || {})[i], done: v >= q.t };
+                return { i, ico: q.ico, d: q.d, t: q.t, v: Math.round(v * 100) / 100, r: q.r, claimed: !!(d.claimed || {})[i], done: v >= q.t };
             }),
             via: p.via === 'phone' ? 'phone' : 'tg',
             linked: !!p.uid,
@@ -2703,10 +2718,11 @@ function helpCmd(chat) {
         module.exports.onMessage = onMessage;
         module.exports.onCallback = onCallback;
         module.exports.catchupTicks = catchupTicks;
+module.exports.subTick = subTick;
         module.exports.saveState = saveState;
         module.exports.CLOUD = CLOUD;
         /* для Cloudflare Workers (bot-worker.js читает глобал, exports из бандла может протухнуть) */
-        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, saveState, CLOUD };
+        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, subTick, saveState, CLOUD };
     } catch (e) { console.error('[exports]', e && e.message); }
 
     if (!CFG.token || CFG.token.includes('@BotFather')) {
