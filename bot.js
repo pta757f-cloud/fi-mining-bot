@@ -1447,7 +1447,7 @@ function apiRunStaff(user, role, act) {
    стирается и забывается (сессия мертва). Ввод кода в APK вместе с st = двойной
    фактор: у кого нет чата, тот не увидит код; у кого видит — нет st. */
 const LOGIN_CODE_DIGITS = 30;
-const LOGIN_CODE_TTL = 45000;
+const LOGIN_CODE_TTL = 120000; /* 2 минуты: 30 цифр надо успеть вбить/вставить */
 function loginSessions() {
     if (!Array.isArray(state.loginSessions)) state.loginSessions = [];
     return state.loginSessions;
@@ -1598,7 +1598,15 @@ async function apiRoute(pathname, method, bodyRaw) {
                 const sess = loginSessions().find(x => x.st === String(body.st || ''));
                 if (!sess) return { ok: true, phase: 'gone' };
                 let phase = sess.phase;
-                if (phase === 'code' && Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) { sess.code = null; sess.phase = 'expired'; phase = 'expired'; }
+                if (phase === 'code' && Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) {
+                    sess.code = null; sess.phase = 'expired'; phase = 'expired';
+                    /* код протух — удаляем сообщение из чата (облако может пересоздаться,
+                       setTimeout не гарантирован: чистим лениво при первом же опросе) */
+                    if (!sess.msgDel) {
+                        sess.msgDel = 1;
+                        try { tg('deleteMessage', { chat_id: sess.chatId, message_id: sess.msgId }).catch(() => { }); } catch (_) { }
+                    }
+                }
                 return { ok: true, phase, left: phase === 'code' ? Math.max(0, Math.ceil((sess.codeAt + LOGIN_CODE_TTL - Date.now()) / 1000)) : 0 };
             }
             /* 2FA-вход, шаг 3: APK вводит 30-значный код (двойной фактор) */
@@ -1606,7 +1614,7 @@ async function apiRoute(pathname, method, bodyRaw) {
                 const sess = loginSessions().find(x => x.st === String(body.st || ''));
                 if (!sess) return { ok: false, msg: '❌ Сессия истекла — начни вход заново' };
                 if (sess.phase !== 'code' || !sess.code) return { ok: false, msg: '❌ Кода нет — нажми «🔑 Да, я хочу зайти» в чате заново' };
-                if (Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) { sess.code = null; sess.phase = 'expired'; saveState(); return { ok: false, msg: '⏰ Код прожил свои 45 секунд — начни заново' }; }
+                if (Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) { sess.code = null; sess.phase = 'expired'; saveState(); return { ok: false, msg: '⏰ Код прожил свои 2 минуты — начни заново' }; }
                 sess.tries = (sess.tries || 0) + 1;
                 const code = String(body.code || '').replace(/\D/g, '');
                 if (code !== sess.code) {
@@ -2139,7 +2147,7 @@ async function onCallback(q) {
                 await answer(q, 'Ок, это ты!');
                 try {
                     await edit(chat, mid,
-                        '🔐 <b>Вход в приложение FI Coin</b>\nОк, это ты. Код входа появится в этом сообщении после подтверждения и будет жить <b>45 секунд</b>, потом удалится.',
+                        '🔐 <b>Вход в приложение FI Coin</b>\nОк, это ты. Код входа появится в этом сообщении после подтверждения и будет жить <b>2 минуты</b>, потом удалится.',
                         [[{ text: '🔑 Да, я хочу зайти', callback_data: 'lggo:' + sess.st }, { text: '✖ Нет, это ошибка', callback_data: 'lgno:' + sess.st }]]);
                 } catch (_) { }
                 return;
@@ -2150,10 +2158,10 @@ async function onCallback(q) {
                 sess.codeAt = Date.now(); sess.phase = 'code'; sess.tries = 0;
                 saveState();
                 const grouped = sess.code.match(/\d{5}/g).join(' ');
-                await answer(q, 'Код выслан! Живёт 45 секунд');
+                await answer(q, 'Код выслан! Живёт 2 минуты');
                 try {
                     await edit(chat, mid,
-                        `🔑 <b>КОД ВХОДА для приложения</b> — живёт <b>45 секунд</b>, потом удалится:\n\n<code>${grouped}</code>\n\nВведи эти 30 цифр в приложении FI Coin на телефоне ⏳`);
+                        `🔑 <b>КОД ВХОДА для приложения</b> — живёт <b>2 минуты</b>, потом удалится:\n\n<code>${grouped}</code>\n\nВведи эти 30 цифр в приложении FI Coin на телефоне ⏳`);
                 } catch (_) { }
                 setTimeout(() => {
                     try { sess.code = null; if (sess.phase === 'code') sess.phase = 'expired'; } catch (_) { }
@@ -2538,6 +2546,8 @@ function helpCmd(chat) {
         module.exports.catchupTicks = catchupTicks;
         module.exports.saveState = saveState;
         module.exports.CLOUD = CLOUD;
+        /* для Cloudflare Workers (bot-worker.js читает глобал, exports из бандла может протухнуть) */
+        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, saveState, CLOUD };
     } catch (e) { console.error('[exports]', e && e.message); }
 
     if (!CFG.token || CFG.token.includes('@BotFather')) {
@@ -2576,9 +2586,9 @@ function helpCmd(chat) {
     console.log(`👥 Игроков в базе: ${Object.keys(state.players).length}. Стафф: ${state.staffIds.length}. Цена FI: $${fmt(state.market.price)}`);
     console.log(`🛠 Пароль staff: ${CFG.staffPassword} (config.json)`);
 
-    process.on('SIGINT', () => { saveState(); saveStateToGitHub(true); console.log('💾 Сохранено. Выход.'); process.exit(0); });
-    process.on('uncaughtException', e => console.error('[x]', e.message));
-    process.on('unhandledRejection', e => console.error('[x]', e && e.message));
+    try { process.on('SIGINT', () => { saveState(); saveStateToGitHub(true); console.log('💾 Сохранено. Выход.'); process.exit(0); }); } catch (_) { }
+    try { process.on('uncaughtException', e => console.error('[x]', e.message)); } catch (_) { }
+    try { process.on('unhandledRejection', e => console.error('[x]', e && e.message)); } catch (_) { }
 
     /* облачный режим: включаем webhook и ждём входящие обновления от Telegram */
     if (CLOUD) {
@@ -2595,6 +2605,7 @@ function helpCmd(chat) {
             console.log('⚠️ PUBLIC_URL не задан — Telegram-вебхук не включён (кнопки бота не сработают).');
         }
         console.log('🌐 Облачный режим: жду webhook от Telegram.');
+        globalThis.FI_READY = true; /* обёртка (workers/deno) ждёт этот флаг — состояние прогружено */
         return; /* не запускаем бесконечный опрос */
     }
 
