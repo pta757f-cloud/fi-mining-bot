@@ -13,6 +13,14 @@ const path = require('path');
 const http = require('http');
 const crypto = require('crypto');
 
+/* ------------------------- РЕЖИМ ОБЛАКА (Deno Deploy) -------------------------
+   FI_CLOUD=1 → состояние игры живёт в GitHub-зеркале (как и на ПК),
+   сервер Telegram работает по WEBHOOK (бесконечный опрос не нужен),
+   тики рынка «догоняются» от state.lastTick при каждом входящем запросе. */
+const CLOUD = String(process.env.FI_CLOUD || '') === '1';
+const TG_WEBHOOK_SECRET = String(process.env.TG_WEBHOOK_SECRET || '');
+let CATCHING_UP = false;
+
 /* ------------------------- КОНФИГ-ФАЙЛ ------------------------- */
 const CFG_PATH = path.join(__dirname, 'config.json');
 const DATA_PATH = path.join(__dirname, 'data', 'state.json');
@@ -118,6 +126,12 @@ function loadState() {
     }
 }
 function saveState() {
+    state.savedAt = Date.now();
+    if (CLOUD) {
+        /* облако: зеркало в GitHub — значит всё состояние надёжно сохранено */
+        saveStateToGitHub(false);
+        return;
+    }
     try {
         fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
         /* страховка: раз в минуту копия предыдущего состояния (откат после рестартов) */
@@ -632,7 +646,20 @@ function marketTick() {
         }
     }
     saveState();
-    saveStateToGitHub(false);
+    if (!CATCHING_UP) saveStateToGitHub(false);
+}
+
+/* «Догоняем» пропущенные тики (облако спит без трафика): шаг 30 с, максимум ~200 часов простоя */
+function catchupTicks(maxTicks) {
+    let n = 0;
+    try {
+        CATCHING_UP = true;
+        while (Date.now() - (state.lastTick || 0) > 30000 && n < (maxTicks || 400)) { marketTick(); n++; }
+    } catch (e) { console.error('[catchup]', e && e.message); }
+    finally {
+        CATCHING_UP = false;
+        if (n > 0) { try { saveState(); saveStateToGitHub(false); } catch (_) { } }
+    }
 }
 
 /* ==================== ☁ ОБЛАКО: GitHub-хранилище состояния ==================== */
@@ -699,7 +726,8 @@ let gitSaving = false, gitLastSave = 0;
 function saveStateToGitHub(force) {
     if (!GH.token) return Promise.resolve(false);
     const now = Date.now();
-    if (!force && (gitSaving || now - gitLastSave < 140000)) return Promise.resolve(false);
+    const cooldown = CLOUD ? 20000 : 140000; /* облако: зеркало = единственное хранилище, реже нельзя */
+    if (!force && (gitSaving || now - gitLastSave < cooldown)) return Promise.resolve(false);
     gitSaving = true; gitLastSave = now;
     return (async () => {
         try {
@@ -714,6 +742,9 @@ function saveStateToGitHub(force) {
             if (state._gitSha) body.sha = state._gitSha;
             const j = await ghApi('PUT', '/contents/data/state.json', body);
             if (j && j.content && j.content.sha) { state._gitSha = j.content.sha; return true; }
+            /* sha разъехался (два инстанса) — перечитываем, следующий пуш пройдёт */
+            const g = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch);
+            if (g && g.sha) state._gitSha = g.sha;
             return false;
         } catch (e) { console.error('[gh] save', e.message); return false; }
         finally { gitSaving = false; }
@@ -1464,7 +1495,20 @@ async function apiRoute(pathname, method, bodyRaw) {
         return { ok: false, err: 'not found' };
     }
     let body;
-    try { body = JSON.parse(bodyRaw || '{}'); } catch (e) { return { ok: false, err: 'bad json' }; }
+    try { body = JSON.parse(bodyRaw || '{}'); } catch (e) { body = null; }
+
+    /* телеграм-вебхук (облачный режим): все кнопки/сообщения бота прилетают сюда */
+    if (pathname === '/tg/webhook' && method === 'POST') {
+        const u = body;
+        try {
+            if (u && u.callback_query) await onCallback(u.callback_query);
+            else if (u && u.message) await onMessage(u.message);
+            else if (u && u.my_chat_member) { /* добавление/бан бота — игнорируем */ }
+        } catch (e) { console.error('[webhook]', e && e.message); }
+        saveState();
+        return { ok: true };
+    }
+    if (body === null) return { ok: false, err: 'bad json' };
 
     /* Устройства: регистрация телефона, коды связки с Telegram */
     if (pathname === '/api/device') {
@@ -2485,6 +2529,17 @@ function helpCmd(chat) {
 
 /* ------------------------- СТАРТ ------------------------- */
 (async () => {
+    /* доступ из облачной обёртки bot-cloud.js — в самом начале, до всех awaitов
+       (мутируем существующий объект exports, чтобы ссылка из require не протухала) */
+    try {
+        module.exports.apiRoute = apiRoute;
+        module.exports.onMessage = onMessage;
+        module.exports.onCallback = onCallback;
+        module.exports.catchupTicks = catchupTicks;
+        module.exports.saveState = saveState;
+        module.exports.CLOUD = CLOUD;
+    } catch (e) { console.error('[exports]', e && e.message); }
+
     if (!CFG.token || CFG.token.includes('@BotFather')) {
         console.error('\n❌ В config.json не указан токен бота.\n' +
             '1) Открой @BotFather в Telegram\n' +
@@ -2494,21 +2549,26 @@ function helpCmd(chat) {
         process.exit(1);
     }
     loadState();
-    saveState();
+    if (!CLOUD) saveState();
 
     /* ☁ если есть GH_TOKEN — состояние игры живёт в GitHub (работает даже с выключенным ПК) */
     if (GH.token) await loadStateFromGitHub();
-    startApiServer();
-    await pushApiJson();
+    if (CLOUD) saveState(); /* теперь состояние актуально + _gitSha свежий, пуши пройдут с первого раза */
+    if (!CLOUD) startApiServer();
+    /* на облаке GH-публикацию адреса тоже делаем, но не блокируем запуск */
+    if (CLOUD) pushApiJson().catch(() => { });
+    else await pushApiJson();
 
     /* расписание тиков рынка: перечитываем эту переменную каждый раз */
-    let tickTimer = null;
-    const startTicker = () => {
-        if (tickTimer) clearInterval(tickTimer);
-        tickTimer = setInterval(marketTick, 30000);
-    };
-    startTicker();
-    marketTick();
+    if (!CLOUD) {
+        let tickTimer = null;
+        const startTicker = () => {
+            if (tickTimer) clearInterval(tickTimer);
+            tickTimer = setInterval(marketTick, 30000);
+        };
+        startTicker();
+        marketTick();
+    }
 
     const me = await tg('getMe');
     if (!me) { console.error('❌ Telegram не отвечает / неверный токен.'); process.exit(1); }
@@ -2520,5 +2580,24 @@ function helpCmd(chat) {
     process.on('uncaughtException', e => console.error('[x]', e.message));
     process.on('unhandledRejection', e => console.error('[x]', e && e.message));
 
+    /* облачный режим: включаем webhook и ждём входящие обновления от Telegram */
+    if (CLOUD) {
+        const PUBLISH = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
+        if (PUBLISH) {
+            const secret = crypto.randomBytes(16).toString('hex');
+            try { process.env.TG_WEBHOOK_SECRET = secret; } catch (_) { }
+            const ok = await tg('setWebhook', {
+                url: PUBLISH + '/tg/webhook', secret_token: secret,
+                allowed_updates: ['message', 'callback_query'], drop_pending_updates: false
+            });
+            console.log(ok ? `🔗 Webhook → ${PUBLISH}/tg/webhook` : '⚠️ setWebhook не удался (проверь PUBLIC_URL)');
+        } else {
+            console.log('⚠️ PUBLIC_URL не задан — Telegram-вебхук не включён (кнопки бота не сработают).');
+        }
+        console.log('🌐 Облачный режим: жду webhook от Telegram.');
+        return; /* не запускаем бесконечный опрос */
+    }
+
     await pollLoop();
 })();
+
