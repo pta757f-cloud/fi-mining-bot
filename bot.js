@@ -174,7 +174,7 @@ function fmt(n) {
     return n.toFixed(2);
 }
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const fname = p => esc(p && (p.first_name || p.name) || 'Игрок');
+const fname = p => esc(p && (p.nick || p.first_name || p.name) || 'Игрок'); /* nick — кастомный ник владельца, перекрывает имя из Telegram */
 /* монета с текущей темой: "🪙 12.5 FI" */
 const CI = amt => `${S('coinEmoji') || '🪙'} <b>${fmt(amt)}</b> ${S('coinName') || 'FI'}`;
 const CIn = amt => `${S('coinEmoji') || '🪙'} ${fmt(amt)} ${S('coinName') || 'FI'}`;
@@ -1348,7 +1348,7 @@ function apiRole(u) {
 }
 
 /* Действия персонала. role — объект роли (см. apiRole); владельцу можно всё. */
-function apiRunStaff(user, role, act) {
+async function apiRunStaff(user, role, act) {
     const a = act && act.a;
     const isOwnerRole = role && (role.kind === 'owner');
     const need = perm => role && (isOwnerRole || role.perms.includes(perm));
@@ -1462,7 +1462,7 @@ function apiRunStaff(user, role, act) {
                 .slice(0, 40)
                 .map(x => {
                     const rd = roleDefOf(x.id);
-                    return { id: x.id, n: fname(x), fi: x.fi, usd: x.usd, h: totalHash(x), b: !!x.banned, r: x.banReason || '', role: rd ? { name: rd.name, color: rd.color } : null };
+                    return { id: x.id, n: fname(x), fi: x.fi, usd: x.usd, h: totalHash(x), b: !!x.banned, r: x.banReason || '', ls: x.lastSeen || 0, role: rd ? { name: rd.name, color: rd.color } : null };
                 });
             return { ok: true, players: list };
         }
@@ -1508,6 +1508,108 @@ function apiRunStaff(user, role, act) {
                 return { ok: true, msg: '💥 Всё удалено, ты остался' };
             }
             return { ok: false, msg: '❌ Что сбросить?' };
+        }
+        /* --- 👑 owner-редактор: полный контроль профиля, вплоть до ника --- */
+        case 'pGet': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            const dm = devicesMap();
+            const devLinks = Object.keys(state.deviceVault || {}).filter(k => { const r0 = dm[k]; return r0 && String(r0.p) === String(tp.id); });
+            const rd = roleDefOf(tp.id);
+            return {
+                ok: true,
+                pl: {
+                    id: String(tp.id), nick: tp.nick || '', first: tp.first_name || '', username: tp.username || '',
+                    usd: tp.usd || 0, fi: tp.fi || 0, totalMined: tp.totalMined || 0, bought: tp.bought || 0, sold: tp.sold || 0,
+                    hash: totalHash(tp),
+                    miners: tp.miners || {}, lab: tp.lab || {}, upg: tp.upg || {},
+                    banned: !!tp.banned, banReason: tp.banReason || '',
+                    day: tp.day ? { sell: tp.day.sell || 0, buy: tp.day.buy || 0, mine: tp.day.mine || 0 } : null,
+                    spinDone: tp.spinDone || 0, questsDone: tp.questsDone || 0,
+                    joined: tp.joined || 0, lastSeen: tp.lastSeen || 0, workAt: tp.workAt || 0,
+                    linkUid: tp.uid || '', devices: devLinks.length,
+                    role: rd ? { id: rd.id, name: rd.name } : null
+                }
+            };
+        }
+        case 'pEdit': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            const put = [];
+            if (act.nick !== undefined) {
+                const n = String(act.nick || '').trim().slice(0, 24);
+                tp.nick = n; /* пустая строка → вернётся имя из Telegram */
+                put.push('ник ' + (n ? '→ «' + n + '»' : '— сброшен (из Telegram)'));
+            }
+            if (act.usd !== undefined) { const v = Number(act.usd); if (!isFinite(v) || v < 0 || v > 1e12) return { ok: false, msg: '❌ USD: число от 0 до 1e12' }; tp.usd = v; put.push('USD=' + fmt(v)); }
+            if (act.fi !== undefined) { const v = Number(act.fi); if (!isFinite(v) || v < 0 || v > 1e12) return { ok: false, msg: '❌ FI: число от 0 до 1e12' }; tp.fi = v; put.push('FI=' + fmt(v)); }
+            if (act.totalMined !== undefined) { const v = Number(act.totalMined); if (!isFinite(v) || v < 0) return { ok: false, msg: '❌ totalMined ≥ 0' }; tp.totalMined = v; put.push('totalMined=' + fmt(v)); }
+            if (act.banReason !== undefined) { tp.banReason = String(act.banReason || '').slice(0, 100); put.push('причина бана'); }
+            adminSay(`👑 ${fname(user)} (mini) отредактировал ${fname(tp)}: ${put.join(', ') || '—'}`);
+            if (put.length) { try { await send(tp.id, '✏️ Профиль обновлён администрацией.'); } catch (_) { } }
+            return { ok: true, msg: '✅ ' + (put.join(', ') || 'нечего менять') };
+        }
+        case 'pGrant': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            const amt = Math.round(Number(act.amt));
+            if (!isFinite(amt) || amt === 0) return { ok: false, msg: '❌ Количество: целое (минус — забрать)' };
+            const what = String(act.what || 'miner');
+            if (what === 'miner') {
+                const m = miner(String(act.key || ''));
+                if (!m) return { ok: false, msg: '❌ Нет такого рига: ' + String(act.key) };
+                tp.miners = tp.miners || {};
+                const now = Math.max(0, (tp.miners[m.id] || 0) + amt);
+                tp.miners[m.id] = now;
+                adminSay(`👑 ${fname(user)} (mini): ${fname(tp)} · ${m.name} ×${now}`);
+                return { ok: true, msg: `✅ ${m.name}: ×${now}` };
+            }
+            const def = what === 'lab' ? LAB_ITEMS[String(act.key || '')] : UPG_ITEMS[String(act.key || '')];
+            if (!def) return { ok: false, msg: '❌ Нет такого ключа: ' + String(act.key) };
+            tp[what] = tp[what] || {};
+            const now = Math.max(0, Math.min(99, (tp[what][act.key] || 0) + amt));
+            tp[what][act.key] = now;
+            adminSay(`👑 ${fname(user)} (mini): ${fname(tp)} · ${def.name || act.key} → ур. ${now}`);
+            return { ok: true, msg: `✅ ${def.name || act.key}: ур. ${now}` };
+        }
+        case 'pDayReset': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            tp.day = { date: todayStr(), sell: 0, buy: 0, mine: 0, claimed: {} };
+            tp.bonusDay = ''; tp.workAt = 0;
+            adminSay(`👑 ${fname(user)} (mini) сбросил день игрока ${fname(tp)}`);
+            return { ok: true, msg: '✅ Квесты, бонус и работа доступны заново' };
+        }
+        case 'pWipeDev': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок не найден' };
+            const n = await wipePlayerDevices(tp, 'Администратор отключил все телефонные привязки твоего профиля.');
+            return { ok: true, msg: n ? `✅ Сброшено привязок: ${n}` : '📱 Активных привязок и так не было' };
+        }
+        case 'pDelete': {
+            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
+            const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
+            if (!tp) return { ok: false, msg: '❌ Игрок уже удалён' };
+            if (isOwner({ id: tp.id })) return { ok: false, msg: '❌ Себя удалять нельзя' };
+            const nm = fname(tp), pid = String(tp.id), wasUid = tp.uid || '';
+            delete state.players[pid];
+            if (state.playerRoles) for (const k of Object.keys(state.playerRoles)) if (String(k) === pid) delete state.playerRoles[k];
+            try {
+                const vault = state.deviceVault || (state.deviceVault = {});
+                DEV_CACHE = null;
+                const dm = devicesMap();
+                let dk = 0;
+                for (const k of Object.keys(vault)) { const r0 = dm[k]; if (r0 && String(r0.p) === pid && k !== wasUid) { delete vault[k]; dk++; } }
+                if (wasUid && vault[wasUid]) { delete vault[wasUid]; dk++; }
+                if (dk) { DEV_CACHE = null; saveState(); }
+            } catch (_) { }
+            adminSay(`💥 ${fname(user)} (mini) удалил игрока ${nm} (${pid})`);
+            return { ok: true, msg: `💥 ${nm} удалён из игры` };
         }
         default: return { ok: false, msg: '❌ Неизвестное действие' };
     }
@@ -1865,7 +1967,7 @@ async function apiRoute(pathname, method, bodyRaw) {
         const role = apiRole(au.tg);
         if (!role) return { ok: false, err: 'forbidden' };
         const p = au.p;
-        const r = apiRunStaff(au.tg, role, body.action || {});
+        const r = await apiRunStaff(au.tg, role, body.action || {});
         if (r && r.ok !== false) { saveState(); saveStateToGitHub(false); }
         const out = Object.assign({ role: { kind: role.kind, name: role.name, color: role.color, perms: role.perms } }, r);
         if (!/^(players|log|who|roles)$/.test(String((body.action || {}).a))) out.snap = apiSnapshot(p);
