@@ -796,8 +796,8 @@ function verifyInitData(raw) {
         const pairs = [];
         for (const [k, v] of params.entries()) if (k !== 'hash') pairs.push([k, v]);
         pairs.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-        const secret = crypto.createHmac('sha256', 'WebAppData').update(CFG.token).digest();
-        const calc = crypto.createHmac('sha256', secret).update(pairs.map(([k, v]) => `${k}=${v}`).join('\n')).digest('hex');
+        const secret = crypto.createHmac('sha256', 'WebAppData').update(String(CFG.token), 'utf8').digest();
+        const calc = crypto.createHmac('sha256', secret).update(pairs.map(([k, v]) => `${k}=${v}`).join('\n'), 'utf8').digest('hex');
         if (calc !== hash) return null;
         let u = null; try { u = JSON.parse(params.get('user') || 'null'); } catch (_) { }
         if (!u || !Number.isFinite(u.id)) return null;
@@ -811,7 +811,7 @@ function verifyInitData(raw) {
    что и Telegram (через одноразовый код связки). Секреты лежат в state.deviceVault
    ЗАШИФРОВАННО (ключ из BOT_TOKEN) — в публичном зеркале state.json они бесполезны. */
 let DEV_CACHE = null;
-function devKey() { return crypto.createHash('sha256').update(CFG.token + '|fi-device-vault').digest(); }
+function devKey() { return crypto.createHash('sha256').update(String(CFG.token) + '|fi-device-vault', 'utf8').digest(); }
 function devicesMap() {
     if (DEV_CACHE) return DEV_CACHE;
     DEV_CACHE = {};
@@ -833,7 +833,7 @@ function devicesMap() {
 function putDevice(uid, rec) {
     const iv = crypto.randomBytes(12);
     const c = crypto.createCipheriv('aes-256-gcm', devKey(), iv);
-    const ct = Buffer.concat([c.update(JSON.stringify(rec)), c.final()]);
+    const ct = Buffer.concat([c.update(Buffer.from(JSON.stringify(rec), 'utf8')), c.final()]);
     state.deviceVault = state.deviceVault || {};
     state.deviceVault[uid] = Buffer.concat([iv, c.getAuthTag(), ct]).toString('base64');
     devicesMap()[uid] = rec;
@@ -864,7 +864,7 @@ function deviceVerify(body) {
         if (Math.abs(Date.now() - ts) > 10 * 60000) return null;
         const rec = devicesMap()[uid];
         if (!rec) return null;
-        const calc = crypto.createHmac('sha256', String(rec.s)).update(uid + ':' + ts).digest('hex');
+        const calc = crypto.createHmac('sha256', String(rec.s)).update(uid + ':' + ts, 'utf8').digest('hex');
         return calc === sig.toLowerCase() ? (state.players[rec.p] || null) : null;
     } catch (_) { return null; }
 }
@@ -2690,7 +2690,7 @@ function helpCmd(chat) {
                иначе каждый бут нового изолята меняет секрет, и апдейты начнут
                отбрасываться 403-ми в старых изолятах (Workers может держать несколько) */
             const secret = CLOUD
-                ? crypto.createHash('sha256').update(String(CFG.token) + '|fi-coin-webhook').digest('hex').slice(0, 32)
+                ? crypto.createHash('sha256').update(String(CFG.token) + '|fi-coin-webhook', 'utf8').digest('hex').slice(0, 32)
                 : crypto.randomBytes(16).toString('hex');
             try { if (typeof globalThis !== 'undefined' && globalThis.FI_ENV) globalThis.FI_ENV.TG_WEBHOOK_SECRET = secret; } catch (_) { }
             try { process.env.TG_WEBHOOK_SECRET = secret; } catch (_) { }
