@@ -158,6 +158,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .pxDn{color:#ff5c5c!important}
 @keyframes pxPulse{0%{transform:scale(1)}35%{transform:scale(1.08)}100%{transform:scale(1)}}
 .pxPulse{animation:pxPulse .55s ease;display:inline-block}
+/* 👑 редактор игрока */
+.peRow{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11.5px}
+.peRow+.peRow{border-top:1px dashed rgba(255,255,255,.05)}
+.peNm{flex:1;color:var(--tg-sub)}
+.peVal{font-weight:800;min-width:46px;text-align:right;margin-right:2px}
+.peBtn{width:30px;height:26px;border-radius:8px;border:1px solid var(--tg-border);background:var(--tg-panel2);color:var(--tg-text);font-weight:800;font-size:12.5px;flex-shrink:0}
+.peBtn:active{background:rgba(61,255,139,.18)}
+.peBtn.wide{width:44px}
+.peTwo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.peL{font-size:9.5px;color:var(--tg-sub);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 
 .fanSpin{transform-box:fill-box;transform-origin:center;animation:spin var(--fanSpd,2s) linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -273,7 +283,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 @keyframes toastIn{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:none}}
 @keyframes toastOut{to{opacity:0;transform:translateY(10px) scale(.96)}}
 
-#modalWrap{position:absolute;inset:0;background:rgba(4,8,14,.75);backdrop-filter:blur(5px);z-index:90;display:none;align-items:center;justify-content:center;padding:22px}
+#modalWrap{position:absolute;inset:0;background:rgba(4,8,14,.75);backdrop-filter:blur(5px);z-index:97;display:none;align-items:center;justify-content:center;padding:22px}
 #modalWrap.open{display:flex}
 .modal{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:20px;padding:22px;max-width:330px;width:100%;text-align:center;animation:dropIn .25s ease-out;box-shadow:0 30px 80px rgba(0,0,0,.6)}
 .modal h3{font-size:17px;font-weight:800;margin-bottom:8px}
@@ -1567,6 +1577,7 @@ function playerSub(p){
   if(can('bans')&&!p.b)act.push('<button class="dbtn dgr" data-sub="ban">🚫 бан</button>');
   if(can('bans')&&p.b)act.push('<button class="dbtn" data-sub="unban">✅ разбан</button>');
   if(isO())act.push('<button class="dbtn gold" data-sub="role">👑 роль</button>');
+  if(isO())act.push('<button class="dbtn gold" data-sub="edit">✏️ редактор</button>');
   let inner='';
   if(dvSub==='give'&&can('give'))inner+=`<input class="din wide" data-amt inputmode="decimal" placeholder="сумма (минус — забрать)">
     <div class="dvBtns"><button class="dbtn" data-act="give-fi">＋ FI</button><button class="dbtn gold" data-act="give-usd">＋ USD</button></div>`;
@@ -1613,6 +1624,7 @@ function renderPlayersUI(){
   on('give-fi',()=>playerGiveMoney(pl,'fi'));
   on('give-usd',()=>playerGiveMoney(pl,'usd'));
   on('ban',()=>playerBan(pl));
+  if(isO())on('edit',()=>playerEditor(pl));
   if(isO()){
     on('unrole',()=>dvCall({a:'assign',to:String(pl.id),roleId:''},()=>dvPlayers()));
     c.querySelectorAll('[data-roleid]').forEach(ch=>ch.onclick=e=>{
@@ -1633,6 +1645,64 @@ async function playerBan(pl){
   const reason=((inp&&inp.value)||'').trim()||'нарушение правил';
   await dvCall({a:'ban',to:String(pl.id),reason},()=>dvPlayers());
 }
+/* ---------- 👑 owner: полный редактор игрока ---------- */
+let peDelArm=false;
+async function playerEditor(pl){
+  const j=await apiStaff({a:'pGet',to:String(pl.id)});
+  if(!j||!j.ok)return toast(j&&j.msg||'Нет данных','⛔','red');
+  const d=j.pl;peDelArm=false;
+  const row=(nm,val,g,k,more)=>`<div class="peRow"><span class="peNm">${nm}</span><span class="peVal num">${val}</span>
+    <button class="peBtn" data-g="${g}" data-k="${k}" data-amt="1">+</button><button class="peBtn" data-g="${g}" data-k="${k}" data-amt="-1">−</button>${more||''}</div>`;
+  const minerRows=(S.miners||[]).map(m=>row(`${esc(m.name)}`,`×${(d.miners||{})[m.id]||0}`,'miner',m.id,
+    `<button class="peBtn wide" data-g="miner" data-k="${m.id}" data-amt="10">+10</button>`)).join('');
+  const labRows=Object.entries(LAB_ITEMS).map(([k,it])=>row(`${esc(it.ico||'🔬')} ${esc(it.name||k)}`,`ур.${(d.lab||{})[k]||0}`,'lab',k)).join('');
+  const upgRows=Object.entries(UPG_ITEMS).map(([k,it])=>row(`${esc(it.ico||'⭐')} ${esc(it.name||k)}`,`ур.${(d.upg||{})[k]||0}`,'upg',k)).join('');
+  modal(`<h3>✏️ Редактор игрока</h3>
+  <div class="card" style="text-align:left;max-height:64vh;overflow-y:auto">
+    <div style="font-size:11px;color:var(--tg-sub);margin-bottom:8px">🪪 ${esc(d.id)} · ${d.username?'@'+esc(d.username):'без юзернейма'} · ${d.b?'🚫 забанен':'🟢 активен'} · 📡 ${fmtHash(d.hash||0)}</div>
+    <div class="peL">ник (пусто — вернётся из Telegram)</div>
+    <input class="din wide" id="peNick" maxlength="24" value="${esc(d.nick||'')}" placeholder="${esc(d.first||'ник из Telegram')}">
+    <div class="peTwo">
+      <div><div class="peL">USD</div><input class="din num" id="peUsd" inputmode="decimal" value="${d.usd}"></div>
+      <div><div class="peL">FI</div><input class="din num" id="peFi" inputmode="decimal" value="${d.fi}"></div>
+    </div>
+    <button class="btn btn-em btn-sm" id="peSave" style="width:100%;margin-top:9px">💾 Сохранить профиль</button>
+    <div class="peL" style="margin-top:10px">риг · плюс/минус штук</div>${minerRows}
+    <div class="peL" style="margin-top:10px">лаба</div>${labRows}
+    <div class="peL" style="margin-top:10px">апгрейды</div>${upgRows}
+    <div class="dvBtns" style="margin-top:12px">
+      <button class="dbtn" id="peDayReset">♻️ сброс дня</button>
+      <button class="dbtn" id="peWipeDev">📡 сброс привязок (${d.devices||0})</button>
+    </div>
+    <div class="dvBtns" style="margin-top:6px">
+      ${d.b?'<button class="dbtn" id="peUnban">✅ разбанить</button>':'<button class="dbtn dgr" id="peBan">🚫 забанить</button>'}
+      <button class="dbtn dgr" id="peDel">💥 удалить игрока</button>
+    </div>
+  </div>`);
+  $('peSave').onclick=async()=>{
+    const nick=($('peNick').value||'').trim();
+    const usd=parseFloat(($('peUsd').value||'').replace(',','.'));
+    const fi=parseFloat(($('peFi').value||'').replace(',','.'));
+    const body={a:'pEdit',to:d.id,nick};
+    if(isFinite(usd))body.usd=usd;
+    if(isFinite(fi))body.fi=fi;
+    await dvCall(body,()=>dvPlayers());
+    $('modalWrap').classList.remove('open');
+  };
+  $('modalBox').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>dvCall({a:'pGrant',to:d.id,what:b.dataset.g,k:b.dataset.k,amt:Number(b.dataset.amt)}).then(r=>{if(r)playerEditor(pl);}));
+  const on2=(id,fn)=>{const b=$(id);if(b)b.onclick=fn;};
+  on2('peDayReset',()=>dvCall({a:'pDayReset',to:d.id},()=>dvPlayers()));
+  on2('peWipeDev',()=>dvCall({a:'pWipeDev',to:d.id}));
+  if(!d.b)on2('peBan',()=>dvCall({a:'ban',to:d.id,reason:'нарушение правил (редактор)'},()=>{dvPlayers();playerEditor(pl);}));
+  else on2('peUnban',()=>dvCall({a:'unban',to:d.id},()=>{dvPlayers();playerEditor(pl);}));
+  on2('peDel',async()=>{
+    if(!peDelArm){peDelArm=true;return toast('Тапни ещё раз — удаление окончательно!','💥','red');}
+    await dvCall({a:'pDelete',to:d.id},()=>dvPlayers());
+    $('modalWrap').classList.remove('open');
+  });
+}
+
+
 async function dvRoles(){
   $('dvContent').innerHTML=dvHead('РОЛИ')+'<div style="color:rgba(61,255,139,.5)">⏳…</div>';
   const j=await apiStaff({a:'roles'});
