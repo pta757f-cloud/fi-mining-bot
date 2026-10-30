@@ -839,6 +839,43 @@ function putDevice(uid, rec) {
     devicesMap()[uid] = rec;
     saveState();
 }
+
+/* 🔐 СБРОС устройства/устройств игрока — с защитой от SHA-гонки изолятов:
+   свежий deviceVault тянем из зеркала, чистим, форс-пушим; на неудачу — повторяем. */
+async function wipePlayerDevices(p, reason) {
+    if (!p) return 0;
+    try {
+        for (let i = 0; i < 3; i++) {
+            if (CLOUD && GH.token) {
+                const j = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
+                if (j && j.content) {
+                    try {
+                        const obj = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'));
+                        if (obj && obj.deviceVault && typeof obj.deviceVault === 'object') { state.deviceVault = obj.deviceVault; if (j.sha) state._gitSha = j.sha; }
+                    } catch (_) { }
+                }
+            }
+            const was = state.deviceVault || (state.deviceVault = {});
+            DEV_CACHE = null; /* кэш расшифровки перестроится на свежем vault */
+            const dm = devicesMap();
+            const killed = [];
+            for (const k of Object.keys(was)) {
+                const rec = dm[k];
+                if (rec && String(rec.p) === String(p.id)) { killed.push(k); delete was[k]; }
+            }
+            if (!killed.length) { DEV_CACHE = null; saveState(); return 0; }
+            DEV_CACHE = null; saveState();
+            const pushed = await saveStateToGitHub(true);
+            if (!CLOUD || pushed) {
+                try { send(p.id, '🛡 <b>Привязки телефона сброшены</b>\n' + esc(reason)); } catch (_) { }
+                return killed.length;
+            }
+            /* 409/гонка — перечитали выше, следующий круг */
+        }
+        console.error('[vault wipe] push не прошёл 3 раза');
+    } catch (e) { console.error('[vault wipe]', e && e.message); }
+    return 0;
+}
 function genUid() { let s = 'W'; for (let i = 0; i < 13; i++) s += Math.floor(Math.random() * 10); return s; }
 const LINK_CODE_AB = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function genCode() {
@@ -1560,6 +1597,19 @@ function linkDeviceToPlayer(uid, secret, tp) {
         delete state.players[uid];
         adminSay(`🔗 ${fname(tp)} привязал телефон: отдельный профиль (${uid}) переехал в основной`);
     }
+    /* 🔐 правило одной привязки: новейший 2FA-логин гасит все прежние устройства профиля.
+       Украденный/потерянный телефон мгновенно теряет доступ — новый вход = единственный вход. */
+    try {
+        const dm = devicesMap();
+        const vault = state.deviceVault || (state.deviceVault = {});
+        let killedOld = 0;
+        for (const k of Object.keys(vault)) {
+            if (k === uid) continue;
+            const rec = dm[k];
+            if (rec && String(rec.p) === String(tp.id)) { delete vault[k]; killedOld++; }
+        }
+        if (killedOld) { DEV_CACHE = null; adminSay(`🛡 ${fname(tp)}: прежних привязок отключено ${killedOld} — телефон теперь единственная точка входа`); }
+    } catch (_) { }
     tp.uid = uid;
     putDevice(uid, { s: secret, p: String(tp.id) });
     saveState();
@@ -2228,7 +2278,9 @@ async function onCallback(q) {
                 sess.phase = 'denied';
                 saveState();
                 if (CLOUD) await loginsPush();
-                try { await edit(chat, mid, '🚫 Вход отменён — это не ты. Никто не вошёл в приложение.'); } catch (_) { }
+                try { await edit(chat, mid, '🚫 Вход отменён — это не ты. Привязки телефона к профилю сброшены.'); } catch (_) { }
+                const p = state.players[sess.to];
+                if (p) await wipePlayerDevices(p, 'Кто-то отклонил запрос входа («это не я») — все телефонные привязки сброшены. Если это был твой телефон — войди заново: 🌐 → код придёт сюда.');
                 return answer(q, 'Записал: это не ты');
             }
             if (a === 'lgok') {
@@ -2327,6 +2379,20 @@ async function onMessage(msg) {
                 `2) Введи код в поле «Код привязки (ABCD-1234)»\n` +
                 `3) Баланс станет общим ✅\n\n` +
                 `⏳ Код живёт 10 минут и работает один раз.`);
+        }
+        case 'devices': case 'logout': {
+            /* 🔐 self-service: управление телефонными привязками СВОЕГО профиля */
+            const p = ensurePlayer(user);
+            if (p.banned) return send(chat, '🚫 Забанен — привязки недоступны');
+            const dm = devicesMap();
+            const mine = Object.keys(state.deviceVault || {}).filter(k => { const r = dm[k]; return r && String(r.p) === String(p.id); });
+            if (cmd === 'devices') {
+                if (!mine.length) return send(chat, '📱 Привязок телефона нет.\nAPK → «🌐 Войти через Telegram» — пройди 2FA, вход запомнится.');
+                return send(chat, `📱 Привязок устройства: ${mine.length}\n` + mine.map((k, i) => `${i + 1}. <code>${esc(k)}</code>`).join('\n') + `\n\n🔐 /logout — сбросить все (вход заново по 2FA)`);
+            }
+            if (!mine.length) return send(chat, '📱 Привязок и так нет.');
+            const n = await wipePlayerDevices(p, 'Ты нажал /logout — все телефонные привязки сброшены. APK при следующем запуске попросит заново пройти 2FA (код придёт в этот чат).');
+            return send(chat, `🛡 Сброшено привязок: ${n}.\nСтарое устройство больше не считается входом — при следующем запуске APK попросит 2FA.`);
         }
         case 'profile': case 'bal': { const p = ensurePlayer(user); const s = screenProfile(p); return send(chat, s.text, s.kb); }
         case 'market': { const p = ensurePlayer(user); const s = screenMarket(p); return send(chat, s.text, s.kb); }
@@ -2615,6 +2681,7 @@ function helpCmd(chat) {
         `👤 /profile · 📈 /market · 🏭 /shop · 🏆 /top\n` +
         `🎁 Бонус раз в день · 💼 Работа каждые ${S('workIntervalMin')} мин\n` +
         `📱 /linkcode — код для приложения на телефон\n` +
+        `📱 /devices — моя привязка телефона · 🔐 /logout — сбросить все\n` +
         `📲 APK: ${PAGES_URL}apk/FI-Coin.apk\n` +
         `ℹ️ /price · 🆔 /id\n\n` +
         `<b>STAFF (для админов):</b>\n` +
