@@ -696,7 +696,7 @@ async function ghApi(method, url, body) {
 }
 async function loadStateFromGitHub() {
     if (!GH.token) return false;
-    const j = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch);
+    const j = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
     if (!j || !j.content) { console.log('☁️ GitHub: state.json не найден — начинаем с пустого.'); return false; }
     try {
         const obj = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'));
@@ -721,7 +721,7 @@ async function pushApiJson() {
     if (!url || !GH.token) return;
     try {
         for (let i = 0; i < 2; i++) {
-            const j = await ghApi('GET', '/contents/api.json?ref=' + GH.branch);
+            const j = await ghApi('GET', '/contents/api.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
             /* адрес уже правильный — не создаём лишний коммит (и меньше шансов на гонку изолятов) */
             if (j && j.content) {
                 try {
@@ -763,7 +763,7 @@ function saveStateToGitHub(force) {
             const j = await ghApi('PUT', '/contents/data/state.json', body);
             if (j && j.content && j.content.sha) { state._gitSha = j.content.sha; return true; }
             /* sha разъехался (два инстанса) — перечитываем, следующий пуш пройдёт */
-            const g = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch);
+            const g = await ghApi('GET', '/contents/data/state.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
             if (g && g.sha) state._gitSha = g.sha;
             return false;
         } catch (e) { console.error('[gh] save', e.message); return false; }
@@ -1481,6 +1481,62 @@ function loginCleanup() {
     if (keep.length !== S.length) state.loginSessions = keep;
     return state.loginSessions;
 }
+
+/* ═══ CLOUD: 2FA-сессии между изолятами — data/logins.json в зеркале GitHub ═══
+   В Workers соседний запрос может обслужить ДРУГОЙ изолят с пустой памятью
+   («Сессия не найдена» при нажатии ✅). Файл — источник правды для логинов,
+   память — кэш. На ПК (CLOUD=0) всё работает по-старому, в памяти. */
+function loginLive(x) {
+    return !x.code && x.phase !== 'done' && x.phase !== 'denied';
+}
+const LOGIN_PHASE_RANK = { check: 0, ask: 1, code: 2, expired: 3, denied: 3, done: 4 };
+function loginsMerge(obj) {
+    if (!obj) return;
+    const mem = loginSessions();
+    for (const rs of (Array.isArray(obj.sessions) ? obj.sessions : [])) {
+        if (!rs || !rs.st) continue;
+        const m = mem.find(x => String(x.st) === String(rs.st));
+        if (!m) { mem.push(rs); continue; }
+        /* фаза чужой копии свежее — значит сосед-изолят уже продвинул шаг: перенимаем */
+        if ((LOGIN_PHASE_RANK[String(rs.phase || 'check')] || 0) > (LOGIN_PHASE_RANK[String(m.phase || 'check')] || 0)) {
+            m.phase = rs.phase; m.code = rs.code; m.codeAt = rs.codeAt; m.tries = rs.tries; m.msgDel = rs.msgDel;
+        }
+    }
+    state.loginSpam = state.loginSpam || {};
+    for (const k of Object.keys(obj.spam || {})) state.loginSpam[k] = Math.max(state.loginSpam[k] || 0, Number(obj.spam[k]) || 0);
+    loginCleanup();
+}
+async function loginsPull() {
+    if (!CLOUD || !GH.token) return;
+    try {
+        const j = await ghApi('GET', '/contents/data/logins.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
+        if (!j || !j.content) return;
+        let obj = null;
+        try { obj = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')); } catch (_) { return; }
+        loginsMerge(obj);
+    } catch (_) { /* сеть дрогнула — работаем на памяти */ }
+}
+async function loginsPush() {
+    if (!CLOUD || !GH.token) return;
+    try {
+        for (let i = 0; i < 3; i++) {
+            const j = await ghApi('GET', '/contents/data/logins.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
+            if (j && j.content) {
+                try { loginsMerge(JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'))); } catch (_) { }
+            }
+            const body = {
+                message: 'chore: logins',
+                content: Buffer.from(JSON.stringify({ sessions: loginSessions(), spam: state.loginSpam || {}, t: Date.now() })).toString('base64'),
+                branch: GH.branch
+            };
+            if (j && j.sha) body.sha = j.sha;
+            const r = await ghApi('PUT', '/contents/data/logins.json', body);
+            if (r) return true;
+            await new Promise(s => setTimeout(s, 600)); /* SHA-гонка изолятов — перечитали sha и снова */
+        }
+        console.error('[logins] push не прошёл (SHA-гонка), не критично');
+    } catch (e) { console.error('[logins]', e && e.message); }
+}
 function randDigits(n) {
     let s = '';
     for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10);
@@ -1592,6 +1648,7 @@ async function apiRoute(pathname, method, bodyRaw) {
             if (mode === 'loginStart') {
                 const uname = String(body.username || '').replace(/^@/, '').trim().toLowerCase();
                 if (!/^[a-z0-9_]{4,32}$/.test(uname)) return { ok: false, msg: '❌ Юзернейм: латиница/цифры/_, 4–32 символа' };
+                if (CLOUD) await loginsPull(); /* чужие сессии/спам-штампы должны быть видны */
                 loginCleanup();
                 state.loginSpam = state.loginSpam || {};
                 if (Date.now() - (state.loginSpam[uname] || 0) < 60000) return { ok: false, msg: '⏳ Только что высылали — проверь чат @FI_CoinBot в Telegram' };
@@ -1599,7 +1656,7 @@ async function apiRoute(pathname, method, bodyRaw) {
                 if (!tp) return { ok: false, msg: `❌ @${uname} не регался в мини-игре. Открой @FI_CoinBot в Telegram и жми «Играть 🪙»` };
                 if (tp.banned) return { ok: false, msg: '🚫 Профиль заблокирован' };
                 if (!tp.username) return { ok: false, msg: '❌ У профиля нет @username — задай его в настройках Telegram' };
-                const live = loginSessions().find(x => String(x.to) === String(tp.id) && !x.code);
+                const live = loginSessions().find(x => String(x.to) === String(tp.id) && loginLive(x));
                 if (live) return { ok: false, msg: '⏳ Подтверждение уже выслано — открой чат @FI_CoinBot' };
                 const st = crypto.randomBytes(12).toString('hex');
                 const msg = await send(tp.id,
@@ -1610,13 +1667,20 @@ async function apiRoute(pathname, method, bodyRaw) {
                 loginSessions().push({ st, to: String(tp.id), chatId: tp.id, msgId: msg.message_id, at: Date.now(), phase: 'check' });
                 saveState();
                 adminSay(`📱 ${fname(tp)} (@${uname}) запросил 2FA-вход в приложение`);
+                if (CLOUD) await loginsPush(); /* сессия переживёт и соседний изолят */
                 return { ok: true, st };
             }
             /* 2FA-вход, шаг 2: APK поллит состояние сессии */
             if (mode === 'loginPoll') {
                 loginCleanup();
-                const sess = loginSessions().find(x => x.st === String(body.st || ''));
+                let sess = loginSessions().find(x => x.st === String(body.st || ''));
+                if (!sess && CLOUD) { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')); }
                 if (!sess) return { ok: true, phase: 'gone' };
+                /* переходные фазы (check/ask) сосед мог уже продвинуть — сверяемся с файлом, иначе APK повиснет */
+                if (CLOUD && (sess.phase === 'check' || sess.phase === 'ask')) {
+                    await loginsPull();
+                    sess = loginSessions().find(x => x.st === String(body.st || '')) || sess;
+                }
                 let phase = sess.phase;
                 if (phase === 'code' && Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) {
                     sess.code = null; sess.phase = 'expired'; phase = 'expired';
@@ -1626,20 +1690,23 @@ async function apiRoute(pathname, method, bodyRaw) {
                         sess.msgDel = 1;
                         try { tg('deleteMessage', { chat_id: sess.chatId, message_id: sess.msgId }).catch(() => { }); } catch (_) { }
                     }
+                    if (CLOUD) await loginsPush();
                 }
                 return { ok: true, phase, left: phase === 'code' ? Math.max(0, Math.ceil((sess.codeAt + LOGIN_CODE_TTL - Date.now()) / 1000)) : 0 };
             }
             /* 2FA-вход, шаг 3: APK вводит 30-значный код (двойной фактор) */
             if (mode === 'loginRedeem') {
-                const sess = loginSessions().find(x => x.st === String(body.st || ''));
+                let sess = loginSessions().find(x => x.st === String(body.st || ''));
+                if (!sess && CLOUD) { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')); }
                 if (!sess) return { ok: false, msg: '❌ Сессия истекла — начни вход заново' };
                 if (sess.phase !== 'code' || !sess.code) return { ok: false, msg: '❌ Кода нет — нажми «🔑 Да, я хочу зайти» в чате заново' };
-                if (Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) { sess.code = null; sess.phase = 'expired'; saveState(); return { ok: false, msg: '⏰ Код прожил свои 2 минуты — начни заново' }; }
+                if (Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) { sess.code = null; sess.phase = 'expired'; saveState(); if (CLOUD) await loginsPush(); return { ok: false, msg: '⏰ Код прожил свои 2 минуты — начни заново' }; }
                 sess.tries = (sess.tries || 0) + 1;
                 const code = String(body.code || '').replace(/\D/g, '');
                 if (code !== sess.code) {
-                    if (sess.tries >= 5) { sess.code = null; sess.phase = 'expired'; saveState(); return { ok: false, msg: '🚫 5 неверных кодов — сессия закрыта, начни заново' }; }
+                    if (sess.tries >= 5) { sess.code = null; sess.phase = 'expired'; saveState(); if (CLOUD) await loginsPush(); return { ok: false, msg: '🚫 5 неверных кодов — сессия закрыта, начни заново' }; }
                     saveState();
+                    if (CLOUD) await loginsPush();
                     return { ok: false, msg: `❌ Код не подошёл (осталось попыток: ${5 - sess.tries})` };
                 }
                 const tp = state.players[sess.to];
@@ -1651,6 +1718,7 @@ async function apiRoute(pathname, method, bodyRaw) {
                 try { send(tp.id, `✅ <b>Вход выполнен</b>\nОткрывай приложение FI Coin — играешь своим профилем (${fname(tp)}).`); } catch (_) { }
                 adminSay(`🔑 ${fname(tp)} вошёл в приложение по 2FA-коду (…${uid.slice(-4)})`);
                 saveState();
+                if (CLOUD) await loginsPush();
                 return { ok: true };
             }
             /* телефон: отдельный профиль (нужен ник) */
@@ -2152,18 +2220,21 @@ async function onCallback(q) {
 
         /* ---- 2FA-вход из APK: подтверждение строго в чате владельца ---- */
         if (a === 'lgok' || a === 'lgno' || a === 'lggo') {
+            if (CLOUD) await loginsPull(); /* кнопка могла прилететь в чужой изолят */
             const sess = loginCleanup().find(x => x.st === String(b || ''));
-            if (!sess || String(sess.chatId) !== String(chat)) { await answer(q, '❓ Сессия не найдена'); return; }
+            if (!sess || String(sess.chatId) !== String(chat)) { await answer(q, '❗ Сессия истекла — начни вход в приложении заново'); return; }
             if (sess.phase === 'done' || sess.phase === 'denied') { await answer(q, 'Уже обработано'); return; }
             if (a === 'lgno') {
                 sess.phase = 'denied';
                 saveState();
+                if (CLOUD) await loginsPush();
                 try { await edit(chat, mid, '🚫 Вход отменён — это не ты. Никто не вошёл в приложение.'); } catch (_) { }
                 return answer(q, 'Записал: это не ты');
             }
             if (a === 'lgok') {
                 if (sess.phase !== 'check') return answer(q, 'Уже обработано');
                 sess.phase = 'ask'; saveState();
+                if (CLOUD) await loginsPush();
                 await answer(q, 'Ок, это ты!');
                 try {
                     await edit(chat, mid,
@@ -2177,6 +2248,7 @@ async function onCallback(q) {
                 sess.code = randDigits(LOGIN_CODE_DIGITS);
                 sess.codeAt = Date.now(); sess.phase = 'code'; sess.tries = 0;
                 saveState();
+                if (CLOUD) await loginsPush(); /* код станет известен остальным изолятам */
                 const grouped = sess.code.match(/\d{5}/g).join(' ');
                 await answer(q, 'Код выслан! Живёт 2 минуты');
                 try {
