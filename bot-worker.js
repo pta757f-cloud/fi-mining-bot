@@ -76,6 +76,8 @@ export default {
             }
             /* догоняем рыночные тики, пропущенные за время сна */
             bot.catchupTicks(400);
+            /* живая цена: под-тик не чаще раза в 5 секунд (движение рынка увидит каждый, кто читает /health) */
+            if (typeof bot.subTick === 'function') bot.subTick(5000);
             const bodyRaw = req.method === 'GET' ? '' : await req.text();
             const out = await bot.apiRoute(url.pathname, req.method, bodyRaw);
             return new Response(JSON.stringify(out), { headers: H });
