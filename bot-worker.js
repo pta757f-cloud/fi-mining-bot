@@ -14,16 +14,21 @@
    ============================================================ */
 'use strict';
 
+/* esbuild (platform=neutral) не подкладывает __dirname, а bot.js это ожидает */
+try { globalThis.__dirname = '.'; globalThis.__filename = './bot.js'; } catch (_) { }
+
 let botPromise = null;
 
-/* env-биндинги воркера → process.env (bot.js их читает оттуда) */
+/* env-биндинги воркера → globalThis.FI_ENV (bot.js их читает оттуда;
+   писать в process.env нельзя — в Workers он read-only) */
 function seedEnv(env) {
     try {
-        if (!process.env) process.env = {};
+        if (!globalThis.FI_ENV) globalThis.FI_ENV = {};
         for (const k of ['BOT_TOKEN', 'GH_TOKEN', 'PUBLIC_URL', 'TG_WEBHOOK_SECRET']) {
-            const v = env && env[k];
-            if (v !== undefined && v !== null && String(v) !== '') process.env[k] = String(v);
+            const v = env ? env[k] : undefined;
+            if (v !== undefined && v !== null && String(v) !== '') globalThis.FI_ENV[k] = String(v);
         }
+        globalThis.FI_ENV.FI_CLOUD = '1';
     } catch (e) { /* nodejs_compat подложит окружение сам */ }
 }
 
@@ -64,7 +69,7 @@ export default {
             const url = new URL(req.url);
             /* Telegram стучит сюда с каждым сообщением/нажатием кнопки */
             if (url.pathname === '/tg/webhook' && req.method === 'POST') {
-                const secret = String(process.env.TG_WEBHOOK_SECRET || '');
+                const secret = String((globalThis.FI_ENV && globalThis.FI_ENV.TG_WEBHOOK_SECRET) || process.env.TG_WEBHOOK_SECRET || '');
                 if (secret && String(req.headers.get('x-telegram-bot-api-secret-token') || '') !== secret) {
                     return new Response('forbidden', { status: 403 });
                 }
