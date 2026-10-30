@@ -140,7 +140,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .rigHeroBar{height:6px;border-radius:4px;background:rgba(255,255,255,.06);margin-top:11px;overflow:hidden}
 .rigHeroBar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#2fd46a,#3dff8b);box-shadow:0 0 10px rgba(61,255,139,.5);transition:width .6s}
 .mineBar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin-top:8px;overflow:hidden}
-.mineBar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--mc,#3390ec),rgba(255,255,255,.35));transition:width .5s}
+.mineBar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--mc,#3390ec),rgba(255,255,255,.35));background-size:200% 100%;transition:width .5s;animation:mineFlow 1.4s linear infinite}
+@keyframes mineFlow{0%{background-position:0 0}100%{background-position:-200% 0}}
+.bigPrice{font-size:34px;font-weight:800;color:var(--em);letter-spacing:-1px;transition:color .4s,text-shadow .4s}
+.bigPrice.up{color:#17dd62;text-shadow:0 0 24px rgba(23,221,98,.45)}
+.bigPrice.dn{color:#ff5c5c;text-shadow:0 0 24px rgba(255,92,92,.45)}
+@keyframes pricePop{0%{transform:scale(1)}35%{transform:scale(1.06)}100%{transform:scale(1)}}
+.priceChip.pop .p{animation:pricePop .55s ease}
 .mineShare{font-size:10px;color:var(--tg-sub);margin-top:4px}
 .mineShare b{color:var(--tg-text)}
 .fiChips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
@@ -150,7 +156,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .statusChip i{width:6px;height:6px;border-radius:50%;background:#3dff8b;box-shadow:0 0 8px #3dff8b;animation:chipPulse 1.6s infinite}
 @keyframes chipPulse{0%,100%{opacity:1}50%{opacity:.35}}
 /* тир-бейдж магазина */
-.shopCard{position:relative}
+.shopCard{position:relative;border:1px solid rgba(60,84,102,.55);overflow:hidden}
+.shopCard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--sc,transparent);box-shadow:0 0 14px var(--sc,transparent);border-radius:4px 0 0 4px}
+@media (prefers-reduced-motion:reduce){.mineBar i{animation:none}.bigPrice.up,.bigPrice.dn{text-shadow:none}.priceChip.pop .p{animation:none}}
 .tierTag{position:absolute;right:10px;top:-1px;font-size:9.5px;font-weight:800;color:var(--mc,#3390ec);background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:0 0 8px 8px;padding:3px 9px;z-index:2}
 /* живая цена FI в HUD */
 #hPrice{transition:color .3s}
@@ -204,10 +212,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .upName{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:7px}
 .upDesc{font-size:11px;color:var(--tg-sub);margin-top:3px;line-height:1.4}
 
-.bigPrice{font-size:34px;font-weight:800;color:var(--em);letter-spacing:-1px}
+.priceChip.pop .p{animation:pricePop .55s ease}
 #chartWrap{position:relative;background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:10px;margin-bottom:12px}
 #chart{width:100%;height:190px;display:block}
-.tradeBox{background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:12px;padding:11px;margin-bottom:10px}
+.tradeBox{background:linear-gradient(160deg,rgba(24,36,50,.8),var(--tg-panel2));border:1px solid var(--tg-border);border-radius:12px;padding:11px;margin-bottom:10px}
 .tradeLabel{font-size:10.5px;font-weight:700;color:var(--tg-sub);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;display:flex;justify-content:space-between}
 .sellRow{display:flex;gap:7px}
 .sellRow .btn{flex:1;padding:10px 4px;font-size:12.5px}
@@ -743,6 +751,14 @@ function loginFail(msg){
   $('devLoginBox').style.display='';$('devMainBox').style.display='none';
   devErr(msg);
 }
+function openLinkProfiles(){
+  modal(`<h3>🔗 Связка с Telegram</h3>
+  <p>Возьми код в Telegram-боте <b>@FI_CoinBot</b>: команда <b class="num">/linkcode</b> (или меню ••• → «Привязать телефон»). Введи код здесь — бот и игра станут одним профилем, весь прогресс переносится автоматически.</p>
+  <input class="dinp num" id="lkCode" maxlength="9" placeholder="ABCD-1234">
+  <button class="btn btn-em" onclick="lkGo()">🔗 Связать</button>
+  <button class="btn btn-ghost" data-close="1" style="margin-top:8px">Закрыть</button>`);
+  document.querySelectorAll('#modalBox [data-close]').forEach(x=>x.onclick=closeModal);
+}
 async function lkGo(){
   try{
     const code=($('lkCode').value||'').trim().toUpperCase();
@@ -878,6 +894,15 @@ function renderFarm(){
     </div>
     <div class="rigHeroBar"><i style="width:${clamp(share,2,100)}%"></i></div>
   </div>`;
+  /* 🔗 связка: телефонный профиль ≠ Telegram-профиль — предлагаем единый */
+  if(!IS_TG&&me&&me.via==='phone'&&!me.linked)html+=`<div class="card" style="display:flex;gap:12px;align-items:center;border:1px solid rgba(247,179,43,.4);background:linear-gradient(135deg,rgba(247,179,43,.12),rgba(0,0,0,0))">
+    <div style="font-size:28px">🔗</div>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:13.5px">Telegram и эта игра — разные профили</div>
+      <div style="font-size:11px;color:var(--tg-sub);margin-top:2px">Возьми код в боте @FI_CoinBot командой <b>/linkcode</b> и введи здесь — баланс, риги и прогресс переехали в один профиль.</div>
+    </div>
+    <button class="btn btn-gold btn-sm" id="lkBannerBtn" style="min-width:86px">Связать</button>
+  </div>`;
   /* бонус дня */
   html+=`<div class="card" style="display:flex;gap:12px;align-items:center">
     <div style="font-size:32px;filter:drop-shadow(0 4px 14px rgba(247,179,43,.45))">🎁</div>
@@ -939,9 +964,11 @@ function renderFarm(){
     });
   }
   $('screen').innerHTML=html;
-  $('btnBonus').onclick=()=>doAction({a:'bonus'});
-  $('btnWork').onclick=()=>doAction({a:'work'});
-  $('goShop').onclick=()=>switchTab('shop');
+  const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.onclick=fn;};
+  bind('btnBonus',()=>doAction({a:'bonus'}));
+  bind('btnWork',()=>doAction({a:'work'}));
+  bind('goShop',()=>switchTab('shop'));
+  bind('lkBannerBtn',()=>openLinkProfiles());
   document.querySelectorAll('[data-qc]').forEach(b=>b.onclick=()=>doAction({a:'questClaim',i:Number(b.dataset.qc)}));
 }
 const shopIdx=id=>({usb:0,s9:1,m50:2,avx:3,hyd:4,imm:5})[id]||0;
@@ -1005,7 +1032,17 @@ function renderMarket(){
 function updateMarketLive(){
   const M=S.market;
   const p=$('mPrice'),c=$('mChg');
-  if(p)p.textContent='$'+M.price.toFixed(2);
+  if(p){
+    const prev=(globalThis.__mPrev!==undefined)?globalThis.__mPrev:M.price;
+    if(M.price!==prev){
+      p.classList.remove('up','dn');void p.offsetWidth;
+      if(M.price>prev)p.classList.add('up');else p.classList.add('dn');
+      const chip=$('priceChip');
+      if(chip){chip.classList.remove('pop');void chip.offsetWidth;chip.classList.add('pop');}
+    }
+    globalThis.__mPrev=M.price;
+    p.textContent='$'+M.price.toFixed(2);
+  }
   if(c){c.textContent=(M.d24>0?'+':'')+M.d24.toFixed(1)+'% за 48 тиков';c.style.color=M.d24>=0?'var(--fi-green)':'var(--fi-red)';}
   if($('chart'))drawChart(M.hist,M.d24);
 }
@@ -1102,7 +1139,7 @@ function renderShop(){
   S.miners.forEach((m,ix)=>{
     const can=me.usd>=m.cost;const n=(me.owned||{})[m.id]||0;
     const fiHour=m.hash*(S.cfg.fiPerThHour||0);
-    html+=`<div class="shopCard" style="--mc:${RANKS_IL[ix]}">
+    html+=`<div class="shopCard" style="--mc:${RANKS_IL[ix]};--sc:${RANKS_IL[ix]}">
       <div class="tierTag">${tierNames[ix]||'Тир '+(ix+1)}</div>
       <div class="shopTop">
         <div class="rigArt sm">${rigSVG(ix)}</div>
@@ -1447,7 +1484,7 @@ function render(){
   if(S.me&&S.me.banned){$('banned').classList.add('show');return;}
   paintBadge(S.me&&S.me.role?S.me.role:(role?{name:role.name,color:role.color}:null));
   updateSocialBadge();
-  try{(RENDER[tab]||renderFarm)();}catch(e){console.error('[render]',e&&e.message);$('screen').innerHTML='<div class="offlineBox"><div class="ico">🛠</div><h3>Экран не открылся</h3><p>Сервер вернул данные нового формата — приложение подтянется само при следующем запуске.</p></div>';}
+  try{(RENDER[tab]||renderFarm)();}catch(e){console.error('[render]',e&&e.message);$('screen').innerHTML='<div class="offlineBox"><div class="ico">🛠</div><h3>Экран не открылся</h3><p>Сервер вернул данные нового формата — приложение подтянется само при следующем запуске.</p><p style="font-size:10px;color:var(--tg-sub);margin-top:6px">детали: '+esc(String((e&&e.message)||e))+'</p></div>';}
 }
 
 /* ---------- STAFF (v6 терминал, без ключей) ---------- */
@@ -1869,7 +1906,7 @@ $('menuDrop').onclick=async e=>{
         };
       }catch(_){toast('Сервер не отвечает','📡','red');}
     } else if(DEV){
-      modal(`<h3>🔗 Связка с Telegram</h3><p>Возьми код в Telegram-версии: меню ••• → «Привязать телефон». Введи его здесь — тот же баланс и на телефоне, и в Telegram.</p><input class="dinp num" id="lkCode" maxlength="9" placeholder="ABCD-1234"><button class="btn btn-em" onclick="lkGo()">🔗 Связать</button>`);
+      openLinkProfiles();
     } else toast('Сначала создай профиль на этом телефоне','📱');
   }
   if(m.dataset.menu==='about')modal(`<h3>🪙 FI coin — что это?</h3><p>Единая цена на всех. Сервер считает рынок, доходы и рандом честно.\n\n⛏ Майни ригами\n📈 Торигуй на бирже\n🔬 Усилься в Лабе\n🎰 Крутани колесо\n⚔️ Дерись в дуэлях\n👑 Роли выдает владелец через STAFF</p><button class="btn btn-em" onclick="closeModal()">Понял</button>`);
@@ -1904,7 +1941,7 @@ if(localStorage.getItem('fiIntroSeen7')==='1')$('intro').classList.add('hide');
 })().catch(()=>renderOffline(null));
 
 
-/* 🔴 живая цена FI: каждые 5 секунд — лёгкий /health тянет свежую цену и «дышит» HUD */
+/* 🔴 живая цена FI: каждые 3 секунды — лёгкий /health тянет свежую цену и «дышит» HUD (+ живая биржа) */
 setInterval(async()=>{
   if(document.hidden||!apiBase||!S)return;
   try{
@@ -1914,8 +1951,9 @@ setInterval(async()=>{
     if(!j||!j.ok||typeof j.price!=='number')return;
     S.market.price=j.price;
     updateHUD();
+    if(tab==='market'&&!spinning)updateMarketLive();
   }catch(_){}
-},5000);
+},3000);
 
 if('serviceWorker' in navigator&&!IS_TG)navigator.serviceWorker.register('sw.js').catch(()=>{});
 setInterval(()=>{if(!document.hidden&&S&&apiBase&&!spinning)refresh().catch(()=>{});},2500);
