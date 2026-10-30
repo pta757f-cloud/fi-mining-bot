@@ -21,7 +21,10 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
-/* обёртка включает облачный режим ДО загрузки bot.js */
+/* обёртка включает облачный режим ДО загрузки bot.js
+   (и по env FI_CLOUD, и через FI_ENV — единый мост окружения с Workers-вариантом) */
+globalThis.FI_ENV = globalThis.FI_ENV || { FI_CLOUD: '1' };
+if (!globalThis.FI_ENV.FI_CLOUD) globalThis.FI_ENV.FI_CLOUD = '1';
 process.env.FI_CLOUD = '1';
 
 /* читаем bot.js из кэша на каждый запрос — пока бот грузится, exports пустой */
