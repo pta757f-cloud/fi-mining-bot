@@ -118,11 +118,47 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .qProg{font-size:9.5px;color:var(--tg-sub);margin-top:3px}
 .qRew{font-size:10px;color:var(--fi-gold);font-weight:800;margin-top:2px}
 
-.minerCard{background:var(--tg-panel);border:1px solid var(--tg-border);border-radius:16px;padding:12px;margin-bottom:10px;display:flex;gap:12px;position:relative;overflow:hidden}
-.minerCard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mc,#3390ec);opacity:.85}
-.rigArt{width:92px;height:92px;flex-shrink:0;position:relative}
+.minerCard{background:linear-gradient(145deg,rgba(255,255,255,.028),rgba(255,255,255,0) 55%),var(--tg-panel);border:1px solid var(--tg-border);border-radius:18px;padding:12px;margin-bottom:10px;display:flex;gap:12px;position:relative;overflow:hidden}
+.minerCard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mc,#3390ec);box-shadow:0 0 16px var(--mc,#3390ec);opacity:.9}
+.minerCard::after{content:'';position:absolute;right:-34px;top:-34px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,var(--mc,#3390ec),transparent 70%);opacity:.09;pointer-events:none}
+.rigArt{width:92px;height:92px;flex-shrink:0;position:relative;background:radial-gradient(circle at 32% 22%,rgba(255,255,255,.055),rgba(255,255,255,0) 65%),#0b1219;border:1px solid var(--tg-border);border-radius:14px;padding:3px}
 .rigArt.sm{width:80px;height:80px}
 .rigArt svg{width:100%;height:100%;display:block}
+/* герой-панель фермы */
+.rigHero{background:linear-gradient(150deg,rgba(61,255,139,.07),rgba(51,144,236,.05) 55%,rgba(0,0,0,0)),var(--tg-panel);border:1px solid rgba(61,255,139,.25);border-radius:18px;padding:13px 14px;margin-bottom:10px;position:relative;overflow:hidden}
+.rigHero::after{content:'⛏';position:absolute;right:-6px;bottom:-20px;font-size:66px;opacity:.05;pointer-events:none}
+.rigHeroTop{display:flex;align-items:center;gap:10px}
+.rigHeroIco{width:38px;height:38px;border-radius:12px;background:rgba(61,255,139,.12);border:1px solid rgba(61,255,139,.3);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.rigHeroTit{font-weight:800;font-size:15px}
+.rigHeroSub{font-size:10.5px;color:var(--tg-sub);max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rigShare{margin-left:auto;text-align:right;font-weight:800;font-size:15px;color:var(--em)}
+.rigShare small{display:block;font-size:9px;font-weight:700;color:var(--tg-sub);text-transform:uppercase;letter-spacing:.6px}
+.rigHeroNums{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.rhCell{background:rgba(255,255,255,.03);border:1px solid var(--tg-border);border-radius:11px;padding:8px 11px}
+.rhCell .l{font-size:9.5px;color:var(--tg-sub);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.rhCell .v{font-size:15.5px;font-weight:800;margin-top:2px}
+.rigHeroBar{height:6px;border-radius:4px;background:rgba(255,255,255,.06);margin-top:11px;overflow:hidden}
+.rigHeroBar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#2fd46a,#3dff8b);box-shadow:0 0 10px rgba(61,255,139,.5);transition:width .6s}
+.mineBar{height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin-top:8px;overflow:hidden}
+.mineBar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--mc,#3390ec),rgba(255,255,255,.35));transition:width .5s}
+.mineShare{font-size:10px;color:var(--tg-sub);margin-top:4px}
+.mineShare b{color:var(--tg-text)}
+.fiChips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.fiChip{font-size:10.5px;font-weight:700;padding:3.5px 9px;border-radius:8px;background:var(--tg-panel2);border:1px solid var(--tg-border);white-space:nowrap}
+.fiChip b{color:var(--em)}
+.statusChip{display:inline-flex;align-items:center;gap:4px}
+.statusChip i{width:6px;height:6px;border-radius:50%;background:#3dff8b;box-shadow:0 0 8px #3dff8b;animation:chipPulse 1.6s infinite}
+@keyframes chipPulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* тир-бейдж магазина */
+.shopCard{position:relative}
+.tierTag{position:absolute;right:10px;top:-1px;font-size:9.5px;font-weight:800;color:var(--mc,#3390ec);background:var(--tg-panel2);border:1px solid var(--tg-border);border-radius:0 0 8px 8px;padding:3px 9px;z-index:2}
+/* живая цена FI в HUD */
+#hPrice{transition:color .3s}
+.pxUp{color:#3dff8b!important}
+.pxDn{color:#ff5c5c!important}
+@keyframes pxPulse{0%{transform:scale(1)}35%{transform:scale(1.08)}100%{transform:scale(1)}}
+.pxPulse{animation:pxPulse .55s ease;display:inline-block}
+
 .fanSpin{transform-box:fill-box;transform-origin:center;animation:spin var(--fanSpd,2s) linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .led{animation:blink 1.4s infinite}
@@ -492,13 +528,40 @@ function coinSVG(){
 function rigSVG(tier){
   const accents=['#8fa3b8','#3390ec','#2fd46a','#f7b32b','#ff5c5c','#a855f7'];
   const a=accents[tier]||accents[1];
-  const fans=tier>=4?3:2;let fanG='';
-  const fx=fans===2?[26,58]:[20,42,64];
-  fx.forEach(x=>{fanG+=`<g transform="translate(${x},44)"><circle r="13" fill="#0d141d" stroke="${a}" stroke-opacity=".5" stroke-width="1.4"/><g class="fanSpin" style="--fanSpd:${(2.2-tier*0.28).toFixed(2)}s"><path d="M0,-10 C4,-6 4,-2 0,0 C-4,-2 -4,-6 0,-10 Z" fill="${a}" opacity=".85"/><path d="M0,10 C-4,6 -4,2 0,0 C4,2 4,6 0,10 Z" fill="${a}" opacity=".85"/><path d="M-10,0 C-6,-4 -2,-4 0,0 C-2,4 -6,4 -10,0 Z" fill="${a}" opacity=".55"/><path d="M10,0 C6,4 2,4 0,0 C2,-4 6,-4 10,0 Z" fill="${a}" opacity=".55"/></g><circle r="3" fill="#2a3a4e"/></g>`;});
-  const leds=tier>=3?3:tier>=1?2:1;let ledG='';
-  for(let i=0;i<leds;i++)ledG+=`<circle class="led" cx="${16+i*9}" cy="76" r="2.4" fill="${i===0?'#2fd46a':(i===1?'#f7b32b':'#ff5c5c')}" style="animation-delay:${i*0.3}s"/>`;
-  let fins='';for(let i=0;i<6;i++)fins+=`<rect x="${12+i*11}" y="14" width="5" height="12" rx="1.5" fill="#0d141d" opacity=".8"/>`;
-  return `<svg viewBox="0 0 88 88"><rect x="4" y="10" width="80" height="70" rx="8" fill="url(#bodyG)" stroke="${a}" stroke-opacity=".45" stroke-width="1.5"/><rect x="8" y="13" width="72" height="14" rx="4" fill="#0d141d" opacity=".55"/>${fins}<rect x="8" y="30" width="72" height="34" rx="5" fill="#101a26"/>${fanG}<rect x="8" y="68" width="72" height="9" rx="3" fill="#0d141d" opacity=".7"/>${ledG}<rect x="70" y="70.5" width="8" height="5" rx="1.5" fill="#2a3a4e"/><rect x="2" y="80" width="10" height="5" rx="2" fill="#1a2531"/><rect x="76" y="80" width="10" height="5" rx="2" fill="#1a2531"/><rect x="4" y="10" width="80" height="4" rx="2" fill="#fff" opacity=".08"/></svg>`;
+  const fans=tier>=2?3:2;
+  const fx=fans===2?[27,59]:[21,44,67];
+  let fanG='';
+  fx.forEach(x=>{
+    fanG+=`<g transform="translate(${x},47)">
+      <circle r="15" fill="#0b1119" stroke="${a}" stroke-opacity=".55" stroke-width="1.3"/>
+      <circle r="11.5" fill="none" stroke="${a}" stroke-opacity=".17" stroke-width="4.5"/>
+      <g class="fanSpin" style="--fanSpd:${(2.1-tier*0.3).toFixed(2)}s">${[0,90,180,270].map(rot=>`<path transform="rotate(${rot})" d="M0,-1 C6.5,-5.5 10.5,-1 8.5,2 C5.5,4.5 2,4 0,-1 Z" fill="${a}" opacity="${tier>=3?'0.9':'0.8'}"/>`).join('')}</g>
+      <circle r="3" fill="#22303f"/>
+      <circle r="1.2" fill="${a}" opacity=".9"/>
+    </g>`;
+  });
+  const ledN=1+(tier>=1?1:0)+(tier>=3?1:0)+(tier>=5?1:0);
+  let leds='';for(let i=0;i<6;i++)leds+=`<circle class="led" cx="${20+i*9.6}" cy="76" r="${i<ledN?2.6:1.6}" fill="${i<ledN?(i===0?'#2fd46a':i===1?'#f7b32b':'#ff5c5c'):'#1c2836'}" style="animation-delay:${(i*0.25).toFixed(2)}s"/>`;
+  let vents='';for(let i=0;i<5;i++)vents+=`<rect x="${15+i*12.8}" y="70" width="7" height="3" rx="1.3" fill="${a}" opacity=".3"/>`;
+  const cap=(tier+1)*2;let caps='';for(let i=0;i<cap;i++)caps+=`<rect x="${10+i*8.6}" y="66.5" width="4.2" height="7" rx="1" fill="#1a2634" stroke="${a}" stroke-opacity=".25" stroke-width=".7"/>`;
+  const badge=`<g transform="translate(63,20)"><rect width="17" height="9" rx="2.5" fill="${a}" opacity=".18"/><text x="8.5" y="6.7" font-family="Arial,Helvetica,sans-serif" font-size="5" font-weight="bold" fill="${a}" text-anchor="middle">FI-R${tier+1}</text></g>`;
+  let fins='';for(let i=0;i<7;i++)fins+=`<rect x="${11+i*10}" y="16.5" width="4.5" height="7.5" rx="1.2" fill="${a}" opacity=".33"/>`;
+  return `<svg viewBox="0 0 88 88">
+    <ellipse cx="44" cy="52" rx="41" ry="31" fill="${a}" opacity="${(0.05+tier*0.02).toFixed(2)}"/>
+    <rect x="3" y="9" width="82" height="74" rx="9" fill="url(#bodyG)" stroke="${a}" stroke-opacity=".55" stroke-width="1.6"/>
+    <rect x="5.5" y="11.5" width="77" height="69" rx="7.5" fill="none" stroke="#0f1a27" stroke-width="1.1" opacity=".9"/>
+    <rect x="7" y="13" width="74" height="16.5" rx="4" fill="#fff" opacity=".05"/>
+    <rect x="8" y="14" width="72" height="12.5" rx="3.5" fill="#0c131d" opacity=".85"/>
+    ${fins}
+    ${badge}
+    <rect x="8" y="30.5" width="72" height="33.5" rx="5.5" fill="#0c1420"/>
+    ${fanG}
+    <rect x="8" y="65.5" width="72" height="10.5" rx="3.4" fill="#0c131d" opacity=".92"/>
+    ${caps}${vents}${leds}
+    <rect x="2" y="83.5" width="11" height="4.5" rx="2" fill="#18222e" stroke="${a}" stroke-opacity=".15"/>
+    <rect x="75" y="83.5" width="11" height="4.5" rx="2" fill="#18222e" stroke="${a}" stroke-opacity=".15"/>
+    <rect x="4.5" y="9.8" width="79" height="2.8" rx="1.4" fill="${a}" opacity=".25"/>
+  </svg>`;
 }
 
 /* ---------- утилиты ---------- */
@@ -768,11 +831,15 @@ function renderOffline(e){
 }
 
 /* ---------- HUD ---------- */
+let pxPrevH=null;
 const buyPrice=()=>S.market.price*(1+S.cfg.buySpreadPct*(S.me?S.me.fee:1)/100);
 const sellPrice=()=>S.market.price*(1-S.cfg.sellSpreadPct*(S.me?S.me.fee:1)/100);
 function updateHUD(){
   if(!S)return;const M=S.market,me=S.me;
-  $('hPrice').textContent='$'+M.price.toFixed(2);
+  const hP=$('hPrice');
+  if(pxPrevH!==null&&M.price!==pxPrevH&&hP){const up=M.price>=pxPrevH;hP.classList.remove('pxUp','pxDn','pxPulse');void hP.offsetWidth;hP.classList.add(up?'pxUp':'pxDn','pxPulse');setTimeout(()=>{try{hP.classList.remove('pxUp','pxDn','pxPulse')}catch(_){}},700);}
+  pxPrevH=M.price;
+  hP.textContent='$'+M.price.toFixed(2);
   const chg=$('hChg');
   chg.textContent=(M.d24>0?'+':'')+M.d24.toFixed(1)+'%';
   chg.className='chg '+(M.d24>=0?'up':'dn')+' num';
@@ -783,49 +850,63 @@ function updateHUD(){
 /* =================================================== ФЕРМА =================================================== */
 function renderFarm(){
   const me=S.me,cfg=S.cfg;
+  const myH=me.hash||0;
+  const netH=(typeof S.netHash==='number'&&S.netHash>0)?S.netHash:myH;
+  const share=netH>0?clamp(myH/netH*100,0,100):0;
+  const welcome=esc((S.skin&&S.skin.welcome)||'Добро пожаловать в мир FI Coin!');
   let html='';
-  /* приветствие */
-  html+=`<div class="hintBox em">${esc(S.skin.welcome||'Добро пожаловать в мир FI Coin!')}</div>`;
+  /* герой-панель фермы */
+  html+=`<div class="rigHero">
+    <div class="rigHeroTop">
+      <span class="rigHeroIco">⛏</span>
+      <div class="rigHeroTit">Моя ферма<div class="rigHeroSub">${welcome}</div></div>
+      <span class="rigShare num">${share.toFixed(1)}%<small>доля сети</small></span>
+    </div>
+    <div class="rigHeroNums">
+      <div class="rhCell"><div class="l">Мощность</div><div class="v num">${fmtHash(myH)}</div></div>
+      <div class="rhCell"><div class="l">Доход в час</div><div class="v num" style="color:var(--em)">≈ ${fmtFI(me.perHour||0)} FI</div></div>
+    </div>
+    <div class="rigHeroBar"><i style="width:${clamp(share,2,100)}%"></i></div>
+  </div>`;
   /* бонус дня */
   html+=`<div class="card" style="display:flex;gap:12px;align-items:center">
-    <div style="font-size:34px;filter:drop-shadow(0 4px 14px rgba(247,179,43,.45))">🎁</div>
+    <div style="font-size:32px;filter:drop-shadow(0 4px 14px rgba(247,179,43,.45))">🎁</div>
     <div style="flex:1">
       <div style="font-weight:800;font-size:14px">Бонус дня</div>
-      <div style="font-size:11px;color:var(--tg-sub)">Одно раздача каждый день: ${fmtUSD(cfg.bonusDailyUsd)} + ${fmtFI(cfg.bonusDailyFi)} FI</div>
+      <div style="font-size:11px;color:var(--tg-sub)">Раздача раз в день: ${fmtUSD(cfg.bonusDailyUsd)} + ${fmtFI(cfg.bonusDailyFi)} FI</div>
     </div>
     <button class="btn ${me.bonusReady?'btn-gold':'btn-ghost'} btn-sm" id="btnBonus" ${me.bonusReady?'':'disabled'}>${me.bonusReady?'Забрать':'✅'}</button>
   </div>`;
   /* работа */
   html+=`<div class="card" style="display:flex;gap:12px;align-items:center">
-    <div style="font-size:34px">💼</div>
+    <div style="font-size:32px">💼</div>
     <div style="flex:1">
       <div style="font-weight:800;font-size:14px">Смена на складе</div>
       <div style="font-size:11px;color:var(--tg-sub)">Работодатель платит ${fmtUSD(cfg.workPayMin)}–${fmtUSD(cfg.workPayMax)} каждые ${cfg.workIntervalMin} мин</div>
     </div>
     <button class="btn ${me.workReady?'btn-blue':'btn-ghost'} btn-sm" id="btnWork" ${me.workReady?'':'disabled'}>${me.workReady?'В путь!':'через '+me.workLeftMin+' мин'}</button>
   </div>`;
-  /* статы */
-  html+=`<div class="statGrid">
-    <div class="statBox"><div class="l">мощность</div><div class="v num">${fmtHash(me.hash)}</div></div>
-    <div class="statBox"><div class="l">доход/час</div><div class="v num" style="color:var(--em)">${fmtFI(me.perHour)} FI</div></div>
-  </div>`;
-  /* задания дня */
+  /* задания дня (награда читается защищённо — сервер может не прислать r) */
   html+=`<div class="sectionTitle">Задания дня</div>`;
-  (me.quests||[]).forEach(q=>{
-    const done=q.v>=q.t;const pct=clamp(q.v/q.t*100,0,100);
+  const qs=me.quests||[];
+  if(!qs.length)html+=`<div class="emptyState"><div class="ico">🎯</div><p>Задания дня пока не появились — заходи позже.</p></div>`;
+  qs.forEach(q=>{
+    const done=(q.v||0)>=(q.t||1),pct=clamp((q.v||0)/(q.t||1)*100,0,100);
+    const rew=q.r?(q.r.usd?'+$'+fmtFI(q.r.usd):'+'+fmtFI(q.r.fi)+' FI'):'✦ награда';
     html+=`<div class="questCard ${done&&q.claimed?'done':''}">
-      <div class="qIco">${q.ico}</div>
+      <div class="qIco">${q.ico||'🎯'}</div>
       <div class="qInfo">
-        <div class="qDesc">${esc(q.d)}</div>
+        <div class="qDesc">${esc(q.d||'Задание дня')}</div>
         <div class="qBar"><i style="width:${pct}%"></i></div>
-        <div class="qProg num">${fmtFI(q.v)} / ${fmtFI(q.t)}</div>
-        <div class="qRew">✦ ${q.r&&q.r.usd?'+$'+fmtFI(q.r.usd):'+'+fmtFI(q.r.fi)+' FI'}</div>
+        <div class="qProg num">${fmtFI(q.v||0)} / ${fmtFI(q.t||1)}</div>
+        <div class="qRew">✦ ${rew}</div>
       </div>
       <button class="btn btn-em btn-sm qBtn" data-qc="${q.i}" ${done&&!q.claimed?'':'disabled'}>${q.claimed?'✅':'Забрать'}</button>
     </div>`;
   });
-  /* риги */
-  html+=`<div class="sectionTitle">Мои риги (${Object.values(me.owned||{}).reduce((a,b)=>a+b,0)})</div>`;
+  /* мои риги */
+  const totalOwned=Object.values(me.owned||{}).reduce((a,b)=>a+b,0);
+  html+=`<div class="sectionTitle">Мои риги (${totalOwned})</div>`;
   const owned=S.miners.filter(m=>(me.owned||{})[m.id]>0);
   if(!owned.length){
     html+=`<div class="emptyState"><div class="ico">⛏️</div><p>Пока пусто. Купи первый РИГ в магазине — и пошла добыча!</p>
@@ -833,13 +914,17 @@ function renderFarm(){
   }else{
     owned.forEach(m=>{
       const n=(me.owned||{})[m.id];const tier=shopIdx(m.id);
+      const rh=m.hash*n,rp=rh*(S.cfg.fiPerThHour||0);
+      const rpct=myH>0?clamp(rh/myH*100,0,100):0;
       html+=`<div class="minerCard" style="--mc:${RANKS_IL[tier]}">
         <div class="rigArt">${rigSVG(tier)}</div>
         <div class="minerInfo">
-          <div class="minerName">${m.name} <span class="minerQty">×${n}</span></div>
-          <div class="minerSpecs">⚡ <b>${fmtHash(m.hash*n)}</b> · доход <b>~${fmtFI(m.hash*n*S.cfg.fiPerThHour)} FI/ч</b></div>
+          <div class="minerName">${esc(m.name)} <span class="minerQty">×${n}</span></div>
+          <div class="fiChips"><span class="fiChip">⚡ <b>${fmtHash(rh)}</b></span><span class="fiChip">✦ ≈ <b>${fmtFI(rp)}</b> FI/ч</span></div>
+          <div class="mineBar"><i style="width:${rpct}%"></i></div>
+          <div class="mineShare">вклад в хеш фермы: <b>${rpct.toFixed(1)}%</b></div>
         </div>
-        <span class="statusChip st-ok">Роботает</span>
+        <span class="statusChip st-ok"><i></i>Работает</span>
       </div>`;
     });
   }
@@ -852,6 +937,7 @@ function renderFarm(){
 const shopIdx=id=>({usb:0,s9:1,m50:2,avx:3,hyd:4,imm:5})[id]||0;
 const RANKS_IL=['#8fa3b8','#3390ec','#2fd46a','#f7b32b','#ff5c5c','#a855f7'];
 const workTimer=null;
+
 function updateFarmLive(){}
 
 /* =================================================== БИРЖА =================================================== */
@@ -1002,19 +1088,22 @@ function renderShop(){
   const me=S.me;
   let html=`<div class="sectionTitle">Магазин майнеров</div>
   <div class="hintBox em">Каждый следующий такой же майнер дороже на 18%. Мощность копит FI автоматически — даже ночью.</div>`;
+  const tierNames=['Базовая','Стартовая','Про','Апгрейд','Ферма','Флагман'];
   S.miners.forEach((m,ix)=>{
     const can=me.usd>=m.cost;const n=(me.owned||{})[m.id]||0;
-    html+=`<div class="shopCard">
+    const fiHour=m.hash*(S.cfg.fiPerThHour||0);
+    html+=`<div class="shopCard" style="--mc:${RANKS_IL[ix]}">
+      <div class="tierTag">${tierNames[ix]||'Тир '+(ix+1)}</div>
       <div class="shopTop">
         <div class="rigArt sm">${rigSVG(ix)}</div>
         <div class="shopInfo">
           <div class="shopName">${esc(m.name)}${n?` <span class="minerQty">×${n}</span>`:''}</div>
           <div class="shopDesc">${esc(m.desc||'')}</div>
-          <div class="specPills"><span class="pill">⚡ <b>${fmtHash(m.hash)}</b></span><span class="pill">💵 <b>~${fmtFI(m.hash*S.cfg.fiPerThHour)}/ч</b></span></div>
+          <div class="specPills"><span class="pill">⚡ <b>${fmtHash(m.hash)}</b></span><span class="pill">✦ ≈ <b>${fmtFI(fiHour)}</b> FI/ч</span></div>
         </div>
       </div>
       <div class="shopBuy">
-        <div class="priceTag num">${fmtUSD(m.cost)}<small>${can?'Хватит':'не хватает '+fmtUSD(m.cost-me.usd)}</small></div>
+        <div class="priceTag num">${fmtUSD(m.cost)}<small>${can?'Хватит на покупку':'не хватает '+fmtUSD(m.cost-me.usd)}</small></div>
         <button class="btn ${can?'btn-em':'btn-ghost'}" data-buy="${m.id}" ${can?'':'disabled'}>Купить</button>
       </div>
     </div>`;
@@ -1022,7 +1111,6 @@ function renderShop(){
   $('screen').innerHTML=html;
   document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>doAction({a:'buyminer',id:b.dataset.buy}));
 }
-
 /* =================================================== ЛАБА =================================================== */
 function renderLab(){
   const me=S.me;
@@ -1349,7 +1437,7 @@ function render(){
   if(S.me&&S.me.banned){$('banned').classList.add('show');return;}
   paintBadge(S.me&&S.me.role?S.me.role:(role?{name:role.name,color:role.color}:null));
   updateSocialBadge();
-  (RENDER[tab]||renderFarm)();
+  try{(RENDER[tab]||renderFarm)();}catch(e){console.error('[render]',e&&e.message);$('screen').innerHTML='<div class="offlineBox"><div class="ico">🛠</div><h3>Экран не открылся</h3><p>Сервер вернул данные нового формата — приложение подтянется само при следующем запуске.</p></div>';}
 }
 
 /* ---------- STAFF (v6 терминал, без ключей) ---------- */
@@ -1744,6 +1832,20 @@ if(localStorage.getItem('fiIntroSeen7')==='1')$('intro').classList.add('hide');
   await refresh();
   if(S&&S.me&&S.me.banned)$('banned').classList.add('show');
 })().catch(()=>renderOffline(null));
+
+
+/* 🔴 живая цена FI: каждые 5 секунд — лёгкий /health тянет свежую цену и «дышит» HUD */
+setInterval(async()=>{
+  if(document.hidden||!apiBase||!S)return;
+  try{
+    const r=await fetch(apiBase+'/health',{cache:'no-store'});
+    if(!r.ok)return;
+    const j=await r.json();
+    if(!j||!j.ok||typeof j.price!=='number')return;
+    S.market.price=j.price;
+    updateHUD();
+  }catch(_){}
+},5000);
 
 if('serviceWorker' in navigator&&!IS_TG)navigator.serviceWorker.register('sw.js').catch(()=>{});
 setInterval(()=>{if(!document.hidden&&S&&apiBase&&!spinning)refresh().catch(()=>{});},2500);
