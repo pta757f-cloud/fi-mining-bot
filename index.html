@@ -439,10 +439,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <div id="devWait" style="display:none;max-width:280px;margin-top:10px;background:rgba(51,144,236,.08);border:1px solid rgba(51,144,236,.25);border-radius:12px;padding:10px 12px;font-size:11.5px;color:#a8cef5;line-height:1.5;text-align:left">📱 <span id="devWaitTxt">Открой чат @FI_CoinBot в Telegram</span></div>
     <div id="devCodeBox" style="display:none;max-width:280px;margin-top:10px;text-align:center;background:rgba(23,221,98,.06);border:1px solid rgba(23,221,98,.3);border-radius:12px;padding:10px 10px 12px">
       <div style="font-size:10.5px;color:var(--tg-sub)">Шаг 2. Код из Telegram (жмёт только ты):</div>
-      <div class="num" id="devLoginTimer" style="font-size:15px;font-weight:800;color:#ffb347">45 с</div>
-      <input class="dinp num" id="devLoginCode" inputmode="numeric" maxlength="30" placeholder="30 цифр одним куском" style="margin-top:6px">
+      <div class="num" id="devLoginTimer" style="font-size:15px;font-weight:800;color:#ffb347">120 с</div>
+      <input class="dinp num" id="devLoginCode" inputmode="numeric" maxlength="40" placeholder="код из чата (пробелы не важны)" style="margin-top:6px">
       <button class="btn btn-em" id="devLoginGo" style="width:100%;margin-top:6px">🔓 Войти</button>
-      <div style="font-size:9.5px;color:var(--tg-sub);margin-top:6px">через 45 секунд код удалится из Telegram — и нигде его больше нет</div>
+      <div style="font-size:9.5px;color:var(--tg-sub);margin-top:6px">через 2 минуты код удалится из Telegram — и нигде его больше нет</div>
     </div>
     <div id="devErr"></div>
   </div>
@@ -611,18 +611,18 @@ function bindDevCard(){
         else if(ph==='code'){
           stopLoginTimers();
           $('devWait').style.display='none';$('devCodeBox').style.display='block';
-          let left=j.left||45;setLoginTimer(left);
+          let left=j.left||120;setLoginTimer(left);
           $('devLoginCode').focus();
         }
         else if(ph==='denied'){loginFail('Вход отклонён в Telegram («это не я»). Если это был ты — попробуй ещё раз.');}
-        else if(ph==='expired'||ph==='gone'){loginFail('Сессия закрыта (код прожил 45 секунд или истёк шаг) — начни заново.');}
+        else if(ph==='expired'||ph==='gone'){loginFail('Сессия закрыта (код прожил 2 минуты или истёк шаг) — начни заново.');}
       }catch(e){ }
     },3000);
   };
   $('devLoginGo').onclick=async()=>{
     devErr();
     const code=($('devLoginCode').value||'').replace(/\D/g,'');
-    if(code.length<10)return devErr('Введи все 30 цифр из чата Telegram');
+    if(code.length<30)return devErr('Введи все 30 цифр из чата Telegram — можно просто вставить целиком (пробелы не важны)');
     if(!DEV)saveDev(newDevice());
     const b=$('devLoginGo');b.disabled=true;b.textContent='Проверяю…';
     try{
