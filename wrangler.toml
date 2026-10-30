@@ -5,3 +5,8 @@ main = "bot-worker.js"
 compatibility_date = "2025-09-23"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
+
+[vars]
+# публичный адрес воркера: поддомен pta757f закреплён за аккаунтом (см. hello-воркер в панели)
+PUBLIC_URL = "https://fi-coin-bot.pta757f.workers.dev"
+
