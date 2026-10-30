@@ -702,9 +702,23 @@ function roleChipHTML(rl){
 
 /* ---------- сеть ---------- */
 async function findApi(){
+  /* порядок: адрес из api.json (живой/мертвый проверяем) → запасные адреса */
+  const urls=[];const seen=u=>!urls.includes(u);
   try{const r=await fetch('api.json?ts='+Date.now(),{cache:'no-store'});
-    if(r.ok){const j=await r.json();if(j&&j.api)return String(j.api).replace(/\/+$/,'');}
+    if(r.ok){const j=await r.json();if(j&&j.api&&seen(String(j.api).replace(/\/+$/,'')))urls.push(String(j.api).replace(/\/+$/,''));}
   }catch(e){}
+  const extra=JSON.parse((localStorage.getItem('fiApiExtra')||'[]'));
+  for(const u of extra){const c=String(u).replace(/\/+$/,'');if(seen(c))urls.push(c);}
+  if(!urls.length){
+    const last=String(localStorage.getItem('fiApiLast')||'').replace(/\/+$/,'');
+    if(last&&seen(last))urls.push(last);
+  }
+  for(const u of urls){
+    try{
+      const r=await fetch(u+'/health',{cache:'no-store',signal:AbortSignal.timeout(6000)});
+      if(r.ok){localStorage.setItem('fiApiLast',u);return u;}
+    }catch(e){}
+  }
   return '';
 }
 async function sync(actions){
