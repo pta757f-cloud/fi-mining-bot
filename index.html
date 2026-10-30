@@ -756,6 +756,8 @@ async function refresh(light){
     if(!keepFocus&&!spinning)render();
   }catch(e){
     setNet(false);
+    /* сервер снёс привязку (panic «это не я», /logout или сброс изолятом) — возвращаем на 2FA */
+    if(e&&e.auth&&!IS_TG&&DEV){DEV=null;try{localStorage.removeItem('fiDev');}catch(_){ }showDevCard();devErr('🛡 Сессия сброшена сервером (например, ты нажал /logout или «это не я»). Пройди вход заново — код придёт в Telegram.');return;}
     if(!S)renderOffline(e);
   }
 }
