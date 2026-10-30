@@ -17,8 +17,15 @@ const crypto = require('crypto');
    FI_CLOUD=1 → состояние игры живёт в GitHub-зеркале (как и на ПК),
    сервер Telegram работает по WEBHOOK (бесконечный опрос не нужен),
    тики рынка «догоняются» от state.lastTick при каждом входящем запросе. */
-const CLOUD = String(process.env.FI_CLOUD || '') === '1';
-const TG_WEBHOOK_SECRET = String(process.env.TG_WEBHOOK_SECRET || '');
+/* обёртки (bot-worker.js / bot-cloud.js) передают окружение через globalThis.FI_ENV:
+   в Cloudflare Workers process.env доступен только на чтение, записи в него теряются */
+const envGet = k => {
+    const E = (typeof globalThis !== 'undefined' && globalThis.FI_ENV) || (typeof process !== 'undefined' && process.env) || {};
+    const v = E[k];
+    return String(v === undefined || v === null ? '' : v);
+};
+const CLOUD = envGet('FI_CLOUD') === '1';
+const TG_WEBHOOK_SECRET = envGet('TG_WEBHOOK_SECRET');
 let CATCHING_UP = false;
 
 /* ------------------------- КОНФИГ-ФАЙЛ ------------------------- */
@@ -61,22 +68,24 @@ function loadConfig() {
         },
         miners: DEFAULT_MINERS
     };
+    let cfg;
     try {
         const disk = JSON.parse(fs.readFileSync(CFG_PATH, 'utf8'));
-        const cfg = Object.assign({}, defaults, disk);
+        cfg = Object.assign({}, defaults, disk);
         cfg.game = Object.assign({}, defaults.game, disk.game || {});
         if (!Array.isArray(cfg.miners) || !cfg.miners.length) cfg.miners = defaults.miners;
-        /* окружение имеет приоритет (Render/хостинг): config.json не обязателен */
-        const envV = k => String((typeof process !== 'undefined' && process.env) ? process.env[k] || '' : '').trim();
-        if (envV('BOT_TOKEN')) cfg.token = envV('BOT_TOKEN');
-        if (envV('GH_TOKEN')) cfg.ghToken = envV('GH_TOKEN');
-        if (envV('PUBLIC_URL')) cfg.publicUrl = envV('PUBLIC_URL');
-        if (typeof cfg.token !== 'string') cfg.token = String(cfg.token || '');
-        return cfg;
     } catch (e) {
-        try { fs.writeFileSync(CFG_PATH, JSON.stringify(defaults, null, 2), 'utf8'); } catch (_) { }
-        return defaults;
+        /* конфига нет (облако/fresh) — работаем на дефолтах; в облаке на диск не пишем */
+        try { if (!CLOUD) fs.writeFileSync(CFG_PATH, JSON.stringify(defaults, null, 2), 'utf8'); } catch (_) { }
+        cfg = defaults;
     }
+    /* окружение имеет приоритет (Cloudflare Workers / Deno Deploy / Render): config.json не обязателен */
+    const envV = k => envGet(k).trim();
+    if (envV('BOT_TOKEN')) cfg.token = envV('BOT_TOKEN');
+    if (envV('GH_TOKEN')) cfg.ghToken = envV('GH_TOKEN');
+    if (envV('PUBLIC_URL')) cfg.publicUrl = envV('PUBLIC_URL');
+    if (typeof cfg.token !== 'string') cfg.token = String(cfg.token || '');
+    return cfg;
 }
 const CFG = loadConfig();
 
@@ -663,7 +672,7 @@ function catchupTicks(maxTicks) {
 }
 
 /* ==================== ☁ ОБЛАКО: GitHub-хранилище состояния ==================== */
-const ENV = k => String(process.env[k] || '').trim();
+const ENV = k => envGet(k).trim();
 const GH = {
     token: ENV('GH_TOKEN') || CFG.ghToken || '',
     repo: ENV('GH_REPO') || CFG.ghRepo || 'pta757f-cloud/fi-mining-bot',
@@ -2595,6 +2604,7 @@ function helpCmd(chat) {
         const PUBLISH = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
         if (PUBLISH) {
             const secret = crypto.randomBytes(16).toString('hex');
+            try { if (typeof globalThis !== 'undefined' && globalThis.FI_ENV) globalThis.FI_ENV.TG_WEBHOOK_SECRET = secret; } catch (_) { }
             try { process.env.TG_WEBHOOK_SECRET = secret; } catch (_) { }
             const ok = await tg('setWebhook', {
                 url: PUBLISH + '/tg/webhook', secret_token: secret,
