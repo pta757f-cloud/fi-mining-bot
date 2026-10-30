@@ -1,0 +1,7 @@
+# FI Coin — Cloudflare Workers (бесплатный тариф, без карты)
+# Деплой: npx wrangler deploy   (нужен CLOUDFLARE_API_TOKEN)
+name = "fi-coin-bot"
+main = "bot-worker.js"
+compatibility_date = "2025-09-23"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
