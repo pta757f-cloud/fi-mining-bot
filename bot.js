@@ -717,18 +717,29 @@ async function loadStateFromGitHub() {
 
 /* Публикуем адрес облачного API в репозиторий, чтобы Pages-мини-приложение всегда знало, куда стучаться */
 async function pushApiJson() {
-    const url = ENV('PUBLIC_URL') || CFG.publicUrl || '';
+    const url = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
     if (!url || !GH.token) return;
     try {
-        const j = await ghApi('GET', '/contents/api.json?ref=' + GH.branch);
-        const body = {
-            message: 'chore: api url',
-            content: Buffer.from(JSON.stringify({ api: url.replace(/\/+$/, ''), t: Date.now() })).toString('base64'),
-            branch: GH.branch
-        };
-        if (j && j.sha) body.sha = j.sha;
-        const r = await ghApi('PUT', '/contents/api.json', body);
-        if (r) console.log('📡 api.json обновлён в GitHub → ' + url);
+        for (let i = 0; i < 2; i++) {
+            const j = await ghApi('GET', '/contents/api.json?ref=' + GH.branch);
+            /* адрес уже правильный — не создаём лишний коммит (и меньше шансов на гонку изолятов) */
+            if (j && j.content) {
+                try {
+                    const curApi = (JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')).api || '').replace(/\/+$/, '');
+                    if (curApi === url) { console.log('📡 api.json уже указывает на ' + url); return; }
+                } catch (_) { }
+            }
+            const body = {
+                message: 'chore: api url',
+                content: Buffer.from(JSON.stringify({ api: url, t: Date.now() })).toString('base64'),
+                branch: GH.branch
+            };
+            if (j && j.sha) body.sha = j.sha;
+            const r = await ghApi('PUT', '/contents/api.json', body);
+            if (r) { console.log('📡 api.json обновлён в GitHub → ' + url); return; }
+            if (i === 0) await new Promise(s => setTimeout(s, 700)); /* 409 — гонка изолятов: перечитываем свежий sha */
+            else console.error('[gh] api.json: PUT не прошёл (SHA-гонка изолятов, не критично)');
+        }
     } catch (e) { console.error('[gh] api.json', e.message); }
 }
 let gitSaving = false, gitLastSave = 0;
@@ -2574,9 +2585,9 @@ function helpCmd(chat) {
     if (GH.token) await loadStateFromGitHub();
     if (CLOUD) saveState(); /* теперь состояние актуально + _gitSha свежий, пуши пройдут с первого раза */
     if (!CLOUD) startApiServer();
-    /* на облаке GH-публикацию адреса тоже делаем, но не блокируем запуск */
-    if (CLOUD) pushApiJson().catch(() => { });
-    else await pushApiJson();
+    /* на облаке GH-публикацию адреса тоже делаем — ЖДЁМ: в Workers незавершённые
+       промисы убиваются вместе с ответом запроса, поэтому fire-and-forget не доживает */
+    await pushApiJson().catch(e => { const s = (e && e.stack ? e.stack.split('\n')[0] : null) || (e && e.message); console.error('[api.json push]', s || 'no message'); });
 
     /* расписание тиков рынка: перечитываем эту переменную каждый раз */
     if (!CLOUD) {
@@ -2603,7 +2614,12 @@ function helpCmd(chat) {
     if (CLOUD) {
         const PUBLISH = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
         if (PUBLISH) {
-            const secret = crypto.randomBytes(16).toString('hex');
+            /* секрет вебхука: в облаке делаем его СТАБИЛЬНЫМ (выводим из токена) —
+               иначе каждый бут нового изолята меняет секрет, и апдейты начнут
+               отбрасываться 403-ми в старых изолятах (Workers может держать несколько) */
+            const secret = CLOUD
+                ? crypto.createHash('sha256').update(String(CFG.token) + '|fi-coin-webhook').digest('hex').slice(0, 32)
+                : crypto.randomBytes(16).toString('hex');
             try { if (typeof globalThis !== 'undefined' && globalThis.FI_ENV) globalThis.FI_ENV.TG_WEBHOOK_SECRET = secret; } catch (_) { }
             try { process.env.TG_WEBHOOK_SECRET = secret; } catch (_) { }
             const ok = await tg('setWebhook', {
