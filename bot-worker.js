@@ -24,7 +24,7 @@ let botPromise = null;
 function seedEnv(env) {
     try {
         if (!globalThis.FI_ENV) globalThis.FI_ENV = {};
-        for (const k of ['BOT_TOKEN', 'GH_TOKEN', 'PUBLIC_URL', 'TG_WEBHOOK_SECRET']) {
+        for (const k of ['BOT_TOKEN', 'GH_TOKEN', 'PUBLIC_URL', 'TG_WEBHOOK_SECRET', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']) {
             const v = env ? env[k] : undefined;
             if (v !== undefined && v !== null && String(v) !== '') globalThis.FI_ENV[k] = String(v);
         }
@@ -67,6 +67,19 @@ export default {
         }
         try {
             const url = new URL(req.url);
+            /* Google OAuth: /gauth/start → 302 в Google; /gauth/done → обмен кода на сессию (браузерный GET) */
+            if (req.method === 'GET' && (url.pathname === '/gauth/start' || url.pathname === '/gauth/done') && typeof bot.gApi === 'function') {
+                try {
+                    const g = await bot.gApi(url.pathname, url.searchParams);
+                    if (g && g.redirect) return new Response(null, { status: 302, headers: { Location: g.redirect, 'Cache-Control': 'no-store' } });
+                    return new Response(String((g && g.html) || '<!doctype html><meta charset="utf-8"><p>Google вход недоступен</p>'), {
+                        status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+                    });
+                } catch (e) {
+                    console.error('[gauth]', e && (e.stack ? e.stack.split('\n')[0] : e.message));
+                    return new Response('<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;background:#0e1621;color:#dfe9f3;align-items:center;justify-content:center;height:100vh"><p>Ошибка Google-входа — открой игру и попробуй ещё раз.</p></body>', { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+                }
+            }
             /* Telegram стучит сюда с каждым сообщением/нажатием кнопки */
             if (url.pathname === '/tg/webhook' && req.method === 'POST') {
                 const secret = String((globalThis.FI_ENV && globalThis.FI_ENV.TG_WEBHOOK_SECRET) || process.env.TG_WEBHOOK_SECRET || '');
