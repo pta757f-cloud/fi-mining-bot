@@ -169,12 +169,7 @@ const rng = (a, b) => a + Math.random() * (b - a);
 const fmtInt = n => Math.floor(Math.abs(n)).toLocaleString('ru-RU').replace(/,/g, ' ') + (n < 0 && Math.floor(n) === 0 ? '-' : '');
 function fmt(n) {
     n = Number(n) || 0;
-    if (Math.abs(n) >= 1000) {
-        const a = Math.abs(n);
-        const base = fmtInt(a);
-        const cents = Math.round((a - Math.floor(a)) * 100);
-        return (n < 0 ? '-' : '') + base + (cents ? '.' + String(cents).padStart(2, '0') : '');
-    }
+    if (Math.abs(n) >= 1000) return (n < 0 ? '-' : '') + fmtInt(n);
     if (Math.abs(n) < 1 && n !== 0) return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
     return n.toFixed(2);
 }
@@ -633,6 +628,32 @@ function unbanPlayer(p, byWho) {
 }
 
 /* ------------------------- ТИК РЫНКА ------------------------- */
+/* Цена передаётся сервером и одинакова у всех игроков: детерминированная функция
+   (seed + якорь + время) — любой изолят Workers считает одинаковую цену в любой момент. */
+function mHashNum(s, n) { const h = crypto.createHash('sha256').update(String(s) + '|' + String(n), 'utf8').digest(); return h.readUInt32BE(0) / 0xffffffff; } /* 0..1 */
+function ensureMarketSeed() { const M = state.market || {}; if (!M.seed) M.seed = shaH('fi-market|' + String(M.price || 2) + '|' + String(Date.now())); if (!M.anchorP) M.anchorP = M.price || 2; if (!M.anchorT) M.anchorT = Date.now(); return M; }
+function curPrice() {
+    const M = ensureMarketSeed();
+    const now = Date.now();
+    if (M.frozen && M.frozenPrice !== undefined) return Math.max(0.0001, Number(M.frozenPrice));
+    const p0 = Math.max(0.000001, M.anchorP !== undefined ? M.anchorP : (M.price || 2));
+    const t0 = M.anchorT || now;
+    const steps = Math.min(Math.max(0, Math.floor((now - t0) / 3000)), 6000);
+    let lp = Math.log(p0);
+    const v = Math.max(0.05, Number(S('volatilityPct')) || 8) / 100;
+    const baseSeg = Math.floor(t0 / 3000);
+    for (let i = 0; i < steps; i++) lp += (mHashNum(M.seed, baseSeg + i) * 2 - 1) * v * 0.35;
+    let p = Math.max(0.0001, Math.exp(lp));
+    if (steps >= 6000 || !M.anchorP) { M.anchorP = p; M.anchorT = now; }
+    return p;
+}
+/* фиксация якоря цены при сохранении — все изоляты считают одинаково */
+const _saveStateOrig = saveState;
+function saveState() {
+    try { const M = state.market || {}; if (!M.anchorP || !M.anchorT) { M.anchorP = curPrice(); M.anchorT = Date.now(); } } catch (_) { }
+    return _saveStateOrig();
+}
+
 function marketTick() {
     const now = Date.now();
     const dt = state.lastTick ? Math.min(now - state.lastTick, 5 * 60 * 1000) : 1000;
@@ -924,11 +945,14 @@ function deviceVerify(body) {
     } catch (_) { return null; }
 }
 function authPlayer(body) {
-    /* ① приложение: долгосрочная сессия по токену */
+    /* ① приложение: долгосрочная сессия по токену (вход через юзернейм + подтверждение в ТГ) */
     if (body && body.token) {
-        ensureAuthIndex();
+        ensureAppIndex();
         const sess = state.sessions[String(body.token)];
-        if (sess && state.players[sess.pid]) { sessionTouch(String(body.token)); return { p: state.players[sess.pid], tg: state.players[sess.pid] }; }
+        if (sess && state.players[sess.pid] && Date.now() - (sess.at || 0) < 90 * 864e5) {
+            sess.at = Date.now();
+            return { p: state.players[sess.pid], tg: state.players[sess.pid] };
+        }
     }
     const u = verifyInitData(body.init || '');
     if (u) return { p: ensurePlayer(u), tg: u };
@@ -936,6 +960,13 @@ function authPlayer(body) {
     if (p) return { p, tg: p };
     return null;
 }
+
+/* ------------------------- СЕССИИ ПРИЛОЖЕНИЯ ------------------------- */
+function ensureAppIndex() { state.sessions = state.sessions || {}; }
+function sessionNew(pid) { ensureAppIndex(); const t = crypto.randomBytes(24).toString('hex'); state.sessions[t] = { pid: String(pid), at: Date.now() }; return t; }
+function sessionKill(pid) { ensureAppIndex(); let n = 0; for (const t of Object.keys(state.sessions)) if (String(state.sessions[t].pid) === String(pid)) { delete state.sessions[t]; n++; } return n; }
+function sessionKillOne(t) { ensureAppIndex(); if (state.sessions[t]) { delete state.sessions[t]; return true; } return false; }
+
 /* ------------------------- СОЦИАЛКА: друзья и онлайн ------------------------- */
 const ONLINE_MS = 120000;              /* 🟢 = заходил в игру последние 2 минуты */
 const FRIENDS_MAX = 50;
@@ -1001,8 +1032,8 @@ function apiSnapshot(p) {
                 const v = q.k === 'sell' ? d.sell : q.k === 'buy' ? d.buy : d.mine;
                 return { i, ico: q.ico, d: q.d, t: q.t, v: Math.round(v * 100) / 100, r: q.r, claimed: !!(d.claimed || {})[i], done: v >= q.t };
             }),
-            via: p.auth ? 'app' : (p.via === 'phone' ? 'phone' : 'tg'),
-            linked: !!(p.auth && p.auth.tgChatId) || !!p.uid,
+            via: p.via === 'phone' ? 'phone' : 'tg',
+            linked: !!p.uid,
             players: socialPlayersList(String(p.id)),
             friends: friendsOf(p),
             reqIn: reqInFor(p),
@@ -1586,27 +1617,6 @@ async function apiRunStaff(user, role, act) {
             adminSay(`👑 ${fname(user)} (mini): ${fname(tp)} · ${def.name || act.key} → ур. ${now}`);
             return { ok: true, msg: `✅ ${def.name || act.key}: ур. ${now}` };
         }
-        case 'giveAll': {
-            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
-            const amt = Number(act.amt);
-            if (!isFinite(amt) || amt === 0 || Math.abs(amt) > 1e12) return { ok: false, msg: '❌ Сумма: число (минус — забрать у всех)' };
-            const kind = act.kind === 'usd' ? 'usd' : 'fi';
-            let n = 0;
-            for (const pl of Object.values(state.players)) { if (pl.banned) continue; giveTo(pl, kind, amt); n++; }
-            adminSay('👑 ' + fname(user) + ' (mini) выдал ВСЕМ (' + n + '): ' + (kind === 'usd' ? '$' + fmt(amt) : CIn(amt)));
-            return { ok: true, msg: '✅ Выдано ' + n + ' игрокам: ' + (kind === 'usd' ? '$' + fmt(amt) : CIn(amt)) };
-        }
-        case 'pSetMarket': {
-            if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
-            const put = [];
-            if (act.price !== undefined) { const v = Number(act.price); if (!isFinite(v) || v <= 0 || v > 1e6) return { ok: false, msg: '❌ Цена: 0 < число ≤ 1e6' }; setPrice(v); put.push('цена $' + v.toFixed(2)); }
-            if (act.frozen !== undefined) { state.market.frozen = !!act.frozen; put.push(state.market.frozen ? 'заморозка ❄️' : 'токи ▶️'); }
-            if (act.vol !== undefined) { const v = Number(act.vol); if (isFinite(v) && v >= 0 && v <= 20) { state.settings.volatilityPct = v; put.push('волатильность ' + v + '%'); } }
-            if (act.buySpread !== undefined) { const v = Number(act.buySpread); if (isFinite(v) && v >= 0 && v <= 50) { state.settings.buySpreadPct = v; put.push('спред покупки ' + v + '%'); } }
-            if (act.sellSpread !== undefined) { const v = Number(act.sellSpread); if (isFinite(v) && v >= 0 && v <= 50) { state.settings.sellSpreadPct = v; put.push('спред продажи ' + v + '%'); } }
-            adminSay('👑 ' + fname(user) + ' (mini) рынок: ' + (put.join(', ') || '—'));
-            return { ok: true, msg: put.length ? '✅ ' + put.join(', ') : '❌ нечего менять' };
-        }
         case 'pDayReset': {
             if (!isOwnerRole) return { ok: false, msg: '👑 Только владелец' };
             const tp = findPlayerByNameOrId(String(act.to || '').replace(/^@/, ''));
@@ -1666,159 +1676,6 @@ function loginCleanup() {
     });
     if (keep.length !== S.length) state.loginSessions = keep;
     return state.loginSessions;
-}
-
-/* ==================== GOOGLE OAUTH 2.0 (PKCE) — «Войти через Google» ====================
-   Флоу: приложение → системный браузер (intent://) → /gauth/start → Google (выбор аккаунта)
-   → /gauth/done?code&state → VK обмен на access_token → userinfo {sub,email} →
-   создаём/находим G-игрока → сессия-токен кладём в data/gauth.json (меж-изолятное зеркало)
-   → приложение подбирает токен поллингом /api/auth gPoll → вошёл. */
-function gCreds() {
-    try {
-        const g = CFG.googleClient || {};
-        return {
-            id: ENV('GOOGLE_CLIENT_ID') || g.id || '',
-            secret: ENV('GOOGLE_CLIENT_SECRET') || g.secret || ''
-        };
-    } catch (_) { return { id: '', secret: '' }; }
-}
-function gStateOk(st) { return /^g[0-9a-f]{32}$/.test(String(st || '')); }
-function gPkceVerifier(st) {
-    /* детерминированный verifier из state — хранить не нужно, формула живёт у сервера */
-    const pepper = shaH('fi-coin-google-pkce|v1');
-    return shaH(pepper + '|' + shaH(st + '|coin-game-timofey'));
-}
-function gPkceChallenge(st) {
-    const bytes = crypto.createHash('sha256').update(gPkceVerifier(st), 'utf8').digest();
-    return bytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-async function gRelayRead() {
-    ensureAuthIndex();
-    state.gRelay = state.gRelay || {};
-    if (!CLOUD || !GH.token) return state.gRelay;
-    try {
-        const j = await ghApi('GET', '/contents/data/gauth.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
-        if (j && j.content) {
-            try { state.gRelay = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')) || {}; } catch (_) { state.gRelay = {}; }
-        }
-    } catch (_) { /* сеть дрогнула — работаем на памяти */ }
-    return state.gRelay;
-}
-async function gRelayWrite(st, rec) {
-    ensureAuthIndex();
-    state.gRelay = state.gRelay || {};
-    state.gRelay[st] = rec;
-    try {
-        for (const k of Object.keys(state.gRelay)) if (Date.now() - ((state.gRelay[k] || {}).at || 0) > 10 * 60000) delete state.gRelay[k];
-    } catch (_) { }
-    if (!CLOUD || !GH.token) { saveState(); return; }
-    try {
-        for (let i = 0; i < 3; i++) {
-            let sha = null;
-            const j = await ghApi('GET', '/contents/data/gauth.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
-            if (j && j.content) {
-                try { const o = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')); if (o && typeof o === 'object') state.gRelay = Object.assign(o, state.gRelay); } catch (_) { }
-            }
-            if (j && j.sha) sha = j.sha;
-            let body = {
-                message: 'chore: gauth relay',
-                content: Buffer.from(JSON.stringify(state.gRelay)).toString('base64'),
-                branch: GH.branch,
-                ...(sha ? { sha } : {})
-            };
-            const r = await ghApi('PUT', '/contents/data/gauth.json', body);
-            if (r) return true;
-            await new Promise(s => setTimeout(s, 600));
-        }
-    } catch (e) { console.error('[grelay]', e && e.message); }
-    return false;
-}
-function gAuthAccount(ui) {
-    /* находим/создаём игрока Google-аккаунта по sub */
-    ensureAuthIndex();
-    state.gAccounts = state.gAccounts || {};
-    const sub = String(ui.sub || ''); const email = String(ui.email || '').toLowerCase();
-    let pid = state.gAccounts[sub];
-    let p = pid && state.players[pid];
-    if (!p) {
-        const id = 'G' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
-        p = newPlayer({ id, first_name: '', username: '' });
-        p.auth = { nick: '', nickKey: '', email, sub, salt: '', passHash: '', tgChatId: '', tgUsername: '', devs: {}, via: 'google' };
-        state.players[id] = p;
-        state.gAccounts[sub] = id;
-        logLine('🆕 Google-аккаунт: ' + (email || sub));
-    }
-    if (email && p.auth.email !== email) p.auth.email = email;
-    return p;
-}
-/* роут для воркера: /gauth/start и /gauth/done — браузерные GET */
-async function gAuthRoute(pathname, searchParams) {
-    const c = gCreds();
-    const HTML = (title, body, extra = '') =>
-        '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-        '<title>' + esc(title) + ' · FI Coin</title></head><body style="margin:0;background:#0e1621;color:#dfe9f3;' +
-        'font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">' +
-        '<div style="text-align:center;padding:28px;max-width:420px">' + body + '<div style="margin-top:22px">' +
-        '<a href="https://pta757f-cloud.github.io/fi-mining-bot/" style="color:#17dd62;font-weight:700;text-decoration:none">🪙 Открыть игру FI Coin</a></div>' + extra + '</div></body></html>';
-    if (pathname === '/gauth/start') {
-        const st = String(searchParams.get('state') || '');
-        if (!gStateOk(st)) return { html: HTML('Вход', '<div style="font-size:56px">🪙</div><h1 style="font-size:20px">FI Coin</h1><p>Сессия входа устарела — открой игру и нажми «Войти через Google» заново.</p>') };
-        if (!c.id) return { html: HTML('Настройка', '<div style="font-size:50px">🔧</div><h1 style="font-size:19px">Google-вход не настроен</h1><p style="color:#9fb7c9">Хозяин ещё не подключил OAuth-клиент. Вход по нику и паролю работает.</p>') };
-        const base = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
-        const q = {
-            client_id: c.id,
-            redirect_uri: base + '/gauth/done',
-            response_type: 'code',
-            scope: 'openid email profile',
-            state: st,
-            code_challenge: gPkceChallenge(st),
-            code_challenge_method: 'S256',
-            prompt: 'select_account' /* всегда показываем выбор аккаунта — как просили */
-        };
-        return { redirect: 'https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(q).map(k => k + '=' + encodeURIComponent(q[k])).join('&') };
-    }
-    if (pathname === '/gauth/done') {
-        const redirect = () => { const p = { code: searchParams.get('code') || '', error: searchParams.get('error') || '', state: searchParams.get('state') || '' }; return p; };
-        const rr = redirect();
-        if (rr.error || !rr.code || !gStateOk(rr.state)) {
-            return { html: HTML('Вход', '<div style="font-size:52px">😐</div><h1 style="font-size:20px">Не получилось</h1><p style="color:#9fb7c9">Google-вход не завершён — открой игру и попробуй ещё раз.</p>' + (rr.error ? '<p style="color:#5a4a4e;font-size:12px">' + esc(rr.error) + '</p>' : '')) };
-        }
-        /* обмен кода → access_token (PKCE + client_secret) */
-        const base = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
-        let tj = null;
-        try {
-            const form = {
-                client_id: c.id, code: rr.code, grant_type: 'authorization_code',
-                redirect_uri: base + '/gauth/done', code_verifier: gPkceVerifier(rr.state)
-            };
-            if (c.secret) form.client_secret = c.secret;
-            const res = await fetch('https://oauth2.googleapis.com/token', {
-                method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams(form).toString()
-            });
-            tj = await res.json().catch(() => null);
-        } catch (_) { }
-        if (!tj || !tj.access_token) {
-            const w = tj && (tj.error_description || tj.error) ? String(tj.error_description || tj.error) : 'Google не ответил';
-            return { html: HTML('Вход', '<div style="font-size:52px">⚠️</div><h1 style="font-size:20px">Google отменил вход</h1><p style="color:#9fb7c9">' + esc(w) + '</p>') };
-        }
-        let ui = null;
-        try {
-            const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: 'Bearer ' + tj.access_token } });
-            ui = await res.json().catch(() => null);
-        } catch (_) { }
-        if (!ui || !ui.sub) {
-            return { html: HTML('Вход', '<div style="font-size:52px">⚠️</div><h1 style="font-size:20px">Профиль не получен</h1><p style="color:#9fb7c9">Попробуй ещё раз в игре.</p>') };
-        }
-        const p = gAuthAccount(ui);
-        await accountRemember(p, 'google-browser');
-        const token = sessionNew(p.id);
-        await gRelayWrite(rr.state, { token, needsNick: !p.auth.nick, email: String(ui.email || ''), at: Date.now() });
-        logLine('🔑 Google-вход: ' + (p.auth.email || ui.sub) + ' → ' + fname(p));
-        const nickTxt = p.auth.nick ? ('Ник: <b>' + esc(p.auth.nick) + '</b>') : 'В игре придумай себе ник — регистрация завершится.';
-        return { html: HTML('Вход выполнен', '<div style="font-size:56px">✅</div><h1 style="font-size:21px;color:#17dd62">Вход выполнен</h1><p style="color:#9fb7c9">' + esc(String(ui.email || '')) + '</p><p>' + nickTxt + '</p><p style="color:#5a6f80;font-size:12px;margin-top:14px">Вернись в приложение FI Coin — игра уже ждёт.</p>') };
-    }
-    return null; /* не наш путь */
 }
 
 /* ═══ CLOUD: 2FA-сессии между изолятами — data/logins.json в зеркале GitHub ═══
@@ -1917,41 +1774,9 @@ function linkDeviceToPlayer(uid, secret, tp) {
     saveState();
 }
 
-/* ==================== АККАУНТЫ ПРИЛОЖЕНИЯ (Google-стиль: ник+пароль; TG = 2FA) ==================== */
-const OWNER_CLAIM_CODE = '3545425893';
-const BOT_LINK = 'https://t.me/FI_CoinBot';
-function ensureAuthIndex() { state.accIndex = state.accIndex || {}; state.sessions = state.sessions || {}; state.tg2faPending = state.tg2faPending || {}; state.tgBindCodes = state.tgBindCodes || {}; }
-function accNickKey(n) { return 'n|' + String(n || '').trim().toLowerCase(); }
-function shaH(str) { return crypto.createHash('sha256').update(String(str), 'utf8').digest('hex'); }
-function findAccountPlayer(nick) { ensureAuthIndex(); const pid = state.accIndex[accNickKey(nick)]; return pid && state.players[pid] ? state.players[pid] : null; }
-function accountRegister(nick, pass, tg) {
-    ensureAuthIndex();
-    const nk = String(nick || '').trim();
-    if (!/^[\p{L}\p{N}][\p{L}\p{N} .@_-]{1,23}$/u.test(nk)) return { err: 'Ник: 2–24 символа — буквы/цифры /.@_-' };
-    if (!pass || String(pass).length > 64) return { err: 'Пароль обязателен (до 64 символов)' };
-    if (findAccountPlayer(nk)) return { err: 'Такой ник уже занят' };
-    const id = 'G' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
-    const p = newPlayer({ id, first_name: nk.slice(0, 24), username: String(tg || '').replace(/^@/, '').toLowerCase() });
-    p.auth = { nick: nk, nickKey: accNickKey(nk), salt: shaH('salt|' + id + '|' + Math.random()), passHash: '', tgChatId: '', tgUsername: '', devs: {} };
-    p.auth.passHash = shaH(p.auth.salt + '|' + String(pass));
-    state.players[id] = p;
-    state.accIndex[p.auth.nickKey] = id;
-    logLine('🆕 Аккаунт приложения: ' + nk + ' (' + id + ')');
-    return { ok: true, p };
-}
-function accountCheckPass(p, pass) { try { return !!(p && p.auth && p.auth.passHash === shaH(p.auth.salt + '|' + String(pass))); } catch (e) { return false; } }
-function sessionNew(pid) { ensureAuthIndex(); const t = shaH('tok|' + Date.now() + '|' + pid + '|' + Math.random()).slice(0, 48); state.sessions[t] = { pid: String(pid), at: Date.now() }; return t; }
-function sessionTouch(t) { try { const s0 = state.sessions && state.sessions[t]; if (s0) s0.at = Date.now(); } catch (_) { } }
-function accountRemember(p, fp) { try { if (p && p.auth) p.auth.devs = Object.assign({}, p.auth.devs || {}, { [String(fp || 'unknown') || 'unknown']: { at: Date.now() } }); } catch (_) { } }
-function accCleanup() {
-    ensureAuthIndex();
-    const now = Date.now();
-    for (const t of Object.keys(state.sessions)) if (now - (state.sessions[t].at || 0) > 90 * 864e5) delete state.sessions[t];
-    for (const k of Object.keys(state.tg2faPending)) if (now - ((state.tg2faPending[k] || {}).at || 0) > 10 * 60000) delete state.tg2faPending[k];
-    for (const c of Object.keys(state.tgBindCodes)) if (now - ((state.tgBindCodes[c] || {}).at || 0) > 10 * 60000) delete state.tgBindCodes[c];
-}
-
 async function apiRoute(pathname, method, bodyRaw) {
+    /* цена одинаковая у всех — детерминированно с сервера, перед любым чтением */
+    try { state.market.price = curPrice(); } catch (_) { }
     if (method === 'GET') {
         if (pathname === '/health') return { ok: true, name: S('title'), price: state.market.price, t: Date.now() };
         return { ok: false, err: 'not found' };
@@ -1970,138 +1795,9 @@ async function apiRoute(pathname, method, bodyRaw) {
         saveState();
         return { ok: true };
     }
+    if (body === null) return { ok: false, err: 'bad json' };
 
-    /* ==================== /api/auth: регистрация/вход/2FA/привязка ТГ/овнер-код ==================== */
-    if (pathname === '/api/auth') {
-        try {
-            accCleanup();
-            const mode = String(body.mode || '');
-            if (mode === 'register') {
-                const r = accountRegister(body.nick, body.pass, body.tg);
-                if (r.err) return { ok: false, msg: '❌ ' + r.err };
-                const token = sessionNew(r.p.id);
-                saveState(); saveStateToGitHub(false);
-                return { ok: true, token };
-            }
-            if (mode === 'login') {
-                const p = findAccountPlayer(body.nick);
-                if (!p || !accountCheckPass(p, body.pass)) return { ok: false, msg: '❌ Неверный ник или пароль' };
-                if (p.banned) return { ok: false, msg: '🚫 Аккаунт заблокирован' };
-                const fp = String(body.fp || '');
-                if (fp && p.auth && p.auth.devs && p.auth.devs[fp]) {
-                    const token = sessionNew(p.id);
-                    saveState();
-                    return { ok: true, token };
-                }
-                /* новое устройство → 2FA через Telegram */
-                const st = 'L' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
-                state.tg2faPending[st] = { pid: String(p.id), nick: p.auth.nick, nickKey: p.auth.nickKey, fp, chatId: p.auth.tgChatId || '', at: Date.now(), tries: 0 };
-                if (p.auth.tgChatId) {
-                    try {
-                        await send(p.auth.tgChatId,
-                            '🔐 <b>Вход в FI Coin</b>\nАккаунт: «' + esc(p.auth.nick) + '»\nУстройство: новое (первый раз).\n\nЭто ты?',
-                            [[{ text: '✅ Да, это я', callback_data: 'lgok:' + st }, { text: '❌ Это не я', callback_data: 'lgno:' + st }]]);
-                    } catch (_) {
-                        return { ok: false, msg: '❌ Telegram не отвечает для 2FA — попробуй позже' };
-                    }
-                    saveState(); saveStateToGitHub(false);
-                    return { ok: false, need2fa: true, st, viaTg: true };
-                }
-                /* Telegram не привязан — v1: код в ответе с приглашением привязать TG */
-                const code = String(Math.floor(100000 + Math.random() * 900000));
-                state.tg2faPending[st].code = code;
-                state.tg2faPending[st].noTg = true;
-                saveState(); saveStateToGitHub(false);
-                return { ok: false, need2fa: true, st, viaTg: false, debug: code, msg: '⚠️ Telegram не привязан — код показан в приложении. Привяжи TG в профиле!' };
-            }
-            if (mode === 'verify') {
-                let rec = state.tg2faPending[String(body.st || '')];
-                if (!rec) {
-                    const p0 = findAccountPlayer(body.nick);
-                    if (p0 && p0.auth) {
-                        const k = Object.keys(state.tg2faPending).find(x => state.tg2faPending[x].nickKey === p0.auth.nickKey && state.tg2faPending[x].fp === String(body.fp || ''));
-                        if (k) rec = state.tg2faPending[k];
-                    }
-                }
-                if (!rec) return { ok: false, msg: '❗ Запрос истёк — войди заново' };
-                if (rec.denied) return { ok: false, msg: '🚫 Вход отклонён («это не я»). Если код написал вор — пароль уже стоит сменить.' };
-                rec.tries = (rec.tries || 0) + 1;
-                if (rec.tries > 6) { try { for (const k of Object.keys(state.tg2faPending)) if (state.tg2faPending[k] === rec) delete state.tg2faPending[k]; } catch (_) { } return { ok: false, msg: '❗ Слишком много попыток — войди заново' }; }
-                if (String(rec.code || '') !== String(body.code || '').trim()) { saveState(); return { ok: false, msg: '❌ Код не подошёл' }; }
-                const p = state.players[rec.pid];
-                if (!p || !p.auth) return { ok: false, msg: '❗ Аккаунт не найден' };
-                if (p.banned) return { ok: false, msg: '🚫 Аккаунт заблокирован' };
-                accountRemember(p, rec.fp || body.fp);
-                try { for (const k of Object.keys(state.tg2faPending)) { const rq = state.tg2faPending[k]; if (rq && (rq.nickKey === p.auth.nickKey || k === String(body.st))) delete state.tg2faPending[k]; } } catch (_) { }
-                const token = sessionNew(p.id);
-                saveState(); saveStateToGitHub(false);
-                return { ok: true, token };
-            }
-            if (mode === 'bindTgStart') {
-                const au = authPlayer(body);
-                if (!au) return { ok: false, err: 'auth' };
-                const p = au.p;
-                if (!p.auth) return { ok: false, msg: 'У Telegram-профиля бот уже есть в чате — привязка не нужна 🙂' };
-                const code = 'F' + Math.random().toString(36).slice(2, 8).toUpperCase();
-                state.tgBindCodes[code] = { pid: String(p.id), at: Date.now() };
-                saveState(); saveStateToGitHub(false);
-                return { ok: true, code, url: BOT_LINK + '?start=' + code };
-            }
-            if (mode === 'claim') {
-                const au = authPlayer(body);
-                if (!au) return { ok: false, err: 'auth' };
-                const code = String(body.code || '').trim();
-                if (code !== OWNER_CLAIM_CODE) return { ok: false, msg: '❌ Неверный код владельца' };
-                if (state.ownerClaimUsed) return { ok: false, msg: '👑 Код владельца уже использован — только один игрок может им воспользоваться' };
-                state.ownerClaimUsed = String(au.p.id);
-                state.ownerId = String(au.p.id);
-                adminSay('👑 ВЛАДЕЛЕЦ по одноразовому коду: ' + fname(au.p) + ' (' + au.p.id + ')');
-                logLine('👑 Новый владелец: ' + fname(au.p) + ' (' + au.p.id + ')');
-                saveState(); saveStateToGitHub(false);
-                return { ok: true, msg: '👑 Ты теперь владелец' };
-            }
-            if (mode === 'logout') {
-                const t = String(body.token || '');
-                if (state.sessions && state.sessions[t]) delete state.sessions[t];
-                saveState();
-                return { ok: true };
-            }
-            if (mode === 'gPoll') {
-                /* приложение ждёт возврата из Google-браузера: токен кладёт /gauth/done в data/gauth.json */
-                const st = String(body.state || '');
-                if (!gStateOk(st)) return { ok: false, msg: '❗ Сессия входа не валидна' };
-                const relay = await gRelayRead();
-                const rec = relay[st];
-                if (!rec || Date.now() - (rec.at || 0) > 10 * 60000) {
-                    if (rec) { delete relay[st]; saveState(); }
-                    return { ok: false, pending: true, msg: 'Ждём Google…' };
-                }
-                delete relay[st]; /* токен одноразовый */
-                saveState();
-                return { ok: true, token: String(rec.token || ''), needsNick: !!rec.needsNick, email: String(rec.email || '') };
-            }
-            if (mode === 'gNick') {
-                /* регистрация Google-аккаунта: игрок придумал ник — фиксируем */
-                const au = authPlayer(body);
-                if (!au) return { ok: false, err: 'auth' };
-                const p = au.p;
-                if (!p.auth) return { ok: false, msg: '❗ Это не Google-аккаунт' };
-                if (p.auth.nick) return { ok: true, msg: 'Ник уже выбран' };
-                const nk = String(body.nick || '').trim();
-                if (!/^[\p{L}\p{N}][\p{L}\p{N} .@_-]{1,23}$/u.test(nk)) return { ok: false, msg: '❌ Ник: 2–24 символа — буквы/цифры /.@_-' };
-                const key = accNickKey(nk);
-                if (state.accIndex[key] && state.accIndex[key] !== String(p.id)) return { ok: false, msg: '❌ Такой ник уже занят' };
-                p.auth.nick = nk; p.auth.nickKey = key; p.first_name = nk.slice(0, 24);
-                state.accIndex[key] = String(p.id);
-                logLine('🪪 ' + fname(p) + ' (' + (p.auth.email || 'google') + ') выбрал ник: ' + nk);
-                saveState(); saveStateToGitHub(false);
-                return { ok: true, msg: '✅ Ник сохранён' };
-            }
-            return { ok: false, err: 'mode?' };
-        } catch (e) { console.error('[auth]', e && e.message); return { ok: false, err: 'server' }; }
-    }
-
-        /* Устройства: регистрация телефона, коды связки с Telegram */
+    /* Устройства: регистрация телефона, коды связки с Telegram */
     if (pathname === '/api/device') {
         try {
             const mode = String(body.mode || '');
@@ -2159,8 +1855,9 @@ async function apiRoute(pathname, method, bodyRaw) {
                 try { send(p.id, `🔐 <b>Вход в FI Coin подтверждён</b>\nУстройство <code>…${uid.slice(-4)}</code> теперь играет твоим профилем.\nЕсли это был не ты — дай знать владельцу.`); } catch (_) { }
                 return { ok: true, msg: '✅ Готово! Открой FI Coin на телефоне — войдёшь как ты.' };
             }
-            /* 2FA-вход, шаг 1: APK просит сессию по юзернейму */
+            /* 2FA-вход, шаг 1: приложение просит сессию по юзернейму Telegram */
             if (mode === 'loginStart') {
+                if (CLOUD && GH.token) await loadStateFromGitHub(); /* игрок мог регистрироваться на другом изоляте */
                 const uname = String(body.username || '').replace(/^@/, '').trim().toLowerCase();
                 if (!/^[a-z0-9_]{4,32}$/.test(uname)) return { ok: false, msg: '❌ Юзернейм: латиница/цифры/_, 4–32 символа' };
                 if (CLOUD) await loginsPull(); /* чужие сессии/спам-штампы должны быть видны */
@@ -2185,7 +1882,18 @@ async function apiRoute(pathname, method, bodyRaw) {
                 if (CLOUD) await loginsPush(); /* сессия переживёт и соседний изолят */
                 return { ok: true, st };
             }
-            /* 2FA-вход, шаг 2: APK поллит состояние сессии */
+            /* 2FA-вход, шаг 2: приложение поллит — после «Да, это я» в боте выдаёт токен сессии */
+            if (mode === 'authPoll') {
+                loginCleanup();
+                let sess = loginSessions().find(x => x.st === String(body.st || ''));
+                if (!sess && CLOUD) { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')); }
+                if (!sess) return { ok: true, phase: 'gone' };
+                if (CLOUD && sess.phase === 'check') { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')) || sess; }
+                if (sess.phase === 'denied' || sess.phase === 'expired') return { ok: false, msg: '❌ Сессия отменена или истекла — начни вход заново' };
+                if (sess.phase === 'done' && sess.token) return { ok: true, phase: 'done', token: sess.token };
+                return { ok: true, phase: sess.phase };
+            }
+            /* 2FA-вход, шаг 2 (старый): APK поллит состояние сессии */
             if (mode === 'loginPoll') {
                 loginCleanup();
                 let sess = loginSessions().find(x => x.st === String(body.st || ''));
@@ -2277,13 +1985,19 @@ async function apiRoute(pathname, method, bodyRaw) {
                 try { send(tp.id, `📱 <b>Телефон привязан!</b>\nОткрой приложение на телефоне — тот же баланс и та же ферма, что и здесь.`); } catch (_) { }
                 return { ok: true, msg: '✅ Связано! Открывай игру на телефоне' };
             }
+            /* выход из приложения — отозвать токен сессии */
+            if (mode === 'logout') {
+                const t = String(body.token || '');
+                if (t && sessionKillOne(t)) { saveState(); if (CLOUD) await loginsPush(); adminSay('🚪 приложение: выход'); }
+                return { ok: true };
+            }
             return { ok: false, msg: '❌ Неизвестный режим' };
         } catch (e) { return { ok: false, msg: '❌ Ошибка: ' + e.message }; }
     }
 
     if (pathname === '/api/sync') {
-        let au = authPlayer(body);
-        if (!au && body && body.token && CLOUD && GH.token) { await loadStateFromGitHub(); au = authPlayer(body); } /* другой изолят только что выдал токен — тянем зеркало */
+        if (CLOUD && GH.token) await loadStateFromGitHub(); /* свежее состояние из зеркала —_progress не теряется между изолятами */
+        const au = authPlayer(body);
         if (!au) return { ok: false, err: 'auth' };
         const p = au.p;
         p.lastSeen = Date.now(); /* 🟢 онлайн = заходил в игру последние 2 минуты */
@@ -2311,8 +2025,8 @@ async function apiRoute(pathname, method, bodyRaw) {
     }
 
     if (pathname === '/api/staff') {
-        let au = authPlayer(body);
-        if (!au && body && body.token && CLOUD && GH.token) { await loadStateFromGitHub(); au = authPlayer(body); } /* то же для owner-консоли */
+        if (CLOUD && GH.token) await loadStateFromGitHub();
+        const au = authPlayer(body);
         if (!au) return { ok: false, err: 'auth' };
         const role = apiRole(au.tg);
         if (!role) return { ok: false, err: 'forbidden' };
@@ -2375,39 +2089,428 @@ async function pollLoop() {
 
 /* ------------------------- CALLBACK ------------------------- */
 async function onCallback(q) {
-    const data = String(q.data || '');
-    const chat = q.message && q.message.chat ? q.message.chat.id : (q.from && q.from.id);
-    const mid = q.message && q.message.message_id;
-    const parts = data.split(':'), a = parts[0], b = parts[1] || '';
+    const msg = q.message;
+    if (!msg) { return answer(q); }
+    const chat = msg.chat.id, mid = msg.message_id;
+    const user = q.from;
+    const parts = q.data.split(':');
+    const [a, b, c, d] = parts;
+
     try {
-        if (a === 'lgok' || a === 'lgno') {
-            accCleanup();
-            const rec = state.tg2faPending[b];
-            if (!rec || (Date.now() - (rec.at || 0) > 10 * 60000)) { await answer(q, '❗ Запрос устарел — начни вход в приложении заново'); return; }
-            if (String(rec.chatId) !== String(chat)) { await answer(q, '❗ Это диалог другого аккаунта'); return; }
-            if (rec.done) { await answer(q, 'Уже обработано'); return; }
-            if (a === 'lgno') {
-                rec.done = true; rec.denied = true;
-                saveState(); saveStateToGitHub(false);
-                try { await send(chat, '🚫 Запрос входа отклонён («это не я»). Если это был ты — начни вход заново в приложении. Если НЕТ — срочно смени пароль в приложении: войти вор без кода не сможет.'); } catch (_) { }
-                /* жёсткая мера: закрыть все активные сессии аккаунта */
-                try { ensureAuthIndex(); for (const t of Object.keys(state.sessions)) if (String(state.sessions[t].pid) === String(rec.pid)) delete state.sessions[t]; } catch (_) { }
-                try { accountRemember(state.players[rec.pid], rec.fp); const p0 = state.players[rec.pid]; if (p0 && p0.auth && p0.auth.devs) delete p0.auth.devs[String(rec.fp || '')]; } catch (_) { }
+        /* выход в меню / экраны (доступны и забаненным для просмотра запроса) */
+        if (a === 'tab') {
+            const p = ensurePlayer(user);
+            if (p.banned && b !== 'profile') return answer(q, '🚫 Забанен — посмотри /profile');
+            let screen;
+            if (b === 'main') screen = screenMain();
+            else if (b === 'profile') screen = screenProfile(p);
+            else if (b === 'market') screen = screenMarket(p);
+            else if (b === 'shop') screen = screenShop(p);
+            else if (b === 'top') screen = screenTop();
+            else if (b === 'staff') {
+                if (!isStaff(user)) { return answer(q, '🔒 Нет доступа: введи /staff'); }
+                screen = screenStaff();
+            } else screen = screenMain();
+            const ok = await edit(chat, mid, screen.text, screen.kb);
+            if (!ok) await send(chat, screen.text, screen.kb);
+            return answer(q);
+        }
+
+        /* отмена диалога */
+        if (a === 'dlg' && b === 'cancel') {
+            delete state.dialogs[user.id];
+            await answer(q, 'Отменено');
+            return send(chat, '🆗 Отменено.');
+        }
+
+        /* дуэли: кнопки «Принять/Отклонить» в уведомлении — только тому, кому адресован вызов */
+        if (a === 'dacc' || a === 'ddeny') {
+            const p = ensurePlayer(user);
+            if (p.banned) { saveState(); return answer(q, '🚫 Забанен'); }
+            const d = (state.duels || []).find(x => x.id === b && String(x.toId) === String(p.id));
+            if (!d) { saveState(); return answer(q, '❗ Вызов уже неактуален'); }
+            state.duels = (state.duels || []).filter(x => x.id !== d.id);
+            const fp = state.players[d.fromId];
+            if (a === 'ddeny' || !fp) {
+                if (fp) fp.usd += d.amount;
+                if (fp) { try { send(fp.id, `✖️ <b>${esc(fname(p))}</b> отклонил твой вызов. Ставка $${fmt(d.amount)} вернулась.`); } catch (_) { } }
+                try { await edit(chat, mid, `✖️ ${esc(d.fromName)} → ${esc(fname(p))}: вызов отклонён, ставка возвращена.`); } catch (_) { }
+                adminSay(`✖️ ${fname(p)} (tg) отклонил вызов ${d.fromName} — $${fmt(d.amount)} возвращено`);
                 saveState();
-                await answer(q, 'Записал: это не ты');
-                return;
+                return answer(q, 'Отклонено — ставка вернулась сопернику');
             }
-            rec.code = String(Math.floor(100000 + Math.random() * 900000));
-            rec.codeAt = Date.now();
-            saveState(); saveStateToGitHub(false);
-            await answer(q, 'Код выслан');
-            try { await send(chat, '🔑 <b>КОД ВХОДА в FI Coin</b>: <code>' + rec.code + '</code>\nЖивёт 10 минут. Введи его в приложении.'); } catch (_) { }
+            if ((p.usd || 0) < d.amount) {
+                fp.usd += d.amount;
+                try { send(fp.id, `❗ ${esc(fname(p))} не смог оплатить ставку — вызов отменён, деньги возвращены.`); } catch (_) { }
+                try { await edit(chat, mid, `❗ Ставку не оплатить — вызов отменён, ставка возвращена ${esc(fname(fp))}.`); } catch (_) { }
+                saveState();
+                return answer(q, 'Не хватило на ставку — вызов отменён');
+            }
+            p.usd -= d.amount;
+            const pot = d.amount * 2;
+            const accWins = Math.random() < 0.5;
+            const winner = accWins ? p : fp;
+            winner.usd += pot;
+            winner.duelWins = (winner.duelWins || 0) + 1;
+            adminSay(`⚔️ Дуэль (tg): ${fname(winner)} победил ${fname(accWins ? fp : p)} — банк $${fmt(pot)}`);
+            try { send(winner.id, `⚔️ <b>Дуэль с ${esc(fname(accWins ? fp : p))}</b>\n🏆 Победа! Приз $${fmt(pot)}`); } catch (_) { }
+            try { send((accWins ? fp : p).id, `⚔️ <b>Дуэль с ${esc(fname(winner))}</b>\n💀 Поражение. −$${fmt(d.amount)}`); } catch (_) { }
+            try { await edit(chat, mid, `⚔️ Дуэль ${esc(d.fromName)} vs ${esc(fname(p))}: <b>${esc(fname(winner))}</b> победил! Банк $${fmt(pot)}.`); } catch (_) { }
+            saveState();
+            return answer(q, accWins ? `🏆 Победа! +$${fmt(pot)}` : `💀 Проиграл −$${fmt(d.amount)}`);
+        }
+
+        const p = ensurePlayer(user);
+
+        if (a === 'act') {
+            if (p.banned) return answer(q, '🚫 Забанен — действия закрыты');
+            if (b === 'bonus') {
+                const today = new Date().toDateString();
+                if (p.bonusDay === today) return answer(q, '❄️ Бонус уже получен сегодня');
+                p.bonusDay = today;
+                giveTo(p, 'usd', S('bonusDailyUsd'));
+                giveTo(p, 'fi', S('bonusDailyFi'));
+                adminSay(`🎁 ${fname(p)} получил дневной бонус`);
+                await answer(q, `🎁 +$${fmt(S('bonusDailyUsd'))} и ${CIn(S('bonusDailyFi')).replace(/<[^>]+>/g, '')}`);
+            } else if (b === 'work') {
+                const need = S('workIntervalMin') * 60000;
+                const left = p.workAt + need - Date.now();
+                if (left > 0) return answer(q, `💼 Смена будет через ${Math.ceil(left / 60000)} мин`);
+                const pay = Math.round(rng(S('workPayMin'), S('workPayMax')));
+                p.usd += pay;
+                p.workAt = Date.now();
+                adminSay(`💼 ${fname(p)} отработал смену +$${pay}`);
+                await answer(q, `💼 Смена отработана! +$${fmt(pay)}`);
+            } else if (b === 'lcode') {
+                if (p.uid) {
+                    await answer(q, '📱 Приложение уже привязано');
+                    return send(chat, `📱 Приложение уже привязано к этому профилю (ID <code>${esc(p.uid)}</code>).\nОткрой игру на телефоне — баланс общий.`);
+                }
+                const code = createLinkCode(p);
+                adminSay(`📱 ${fname(p)} получил код для приложения`);
+                await answer(q, '📱 Код на 10 минут');
+                await send(chat,
+                    `📱 <b>Код для приложения на телефон</b>\n\n` +
+                    `<b><code>${code}</code></b>\n\n` +
+                    `1) Открой игру на телефоне (APK или сайт)\n` +
+                    `2) Введи код в поле «Код привязки (ABCD-1234)»\n` +
+                    `3) Баланс станет общим — и тут, и в приложении ✅\n\n` +
+                    `⏳ Код живёт 10 минут и работает один раз.`);
+            }
+            saveState();
+            const sp = screenProfile(p);
+            const ok = await edit(chat, mid, sp.text, sp.kb);
+            if (!ok) await send(chat, sp.text, sp.kb);
             return;
         }
-        await answer(q, '🤖 Игра переехала в приложение FI Coin — бот только для 2FA 🙂');
+
+        if (a === 'mk') {
+            if (p.banned) return answer(q, '🚫 Забанен — рынок закрыт');
+            if (b === 'buy' || b === 'sell') {
+                state.dialogs[user.id] = { type: b === 'buy' ? 'trade_buy' : 'trade_sell', t: Date.now() };
+                await answer(q);
+                return send(chat, `${b === 'buy' ? '🟢 <b>Покупка</b>' : '🔴 <b>Продажа</b>'} ${esc(S('coinName'))}\n\n` +
+                    `Курс: <b>$${fmt(state.market.price * (b === 'buy' ? 1 + S('buySpreadPct') / 100 : 1 - S('sellSpreadPct') / 100))}</b> за монету\n` +
+                    (b === 'buy' ? `У тебя: $${fmt(p.usd)}` : `У тебя: ${CIn(p.fi).replace(/<[^>]+>/g, '')}`) +
+                    `\n\nПришли количество монет (или слово «все»):`, kbCancel());
+            }
+        }
+
+        if (a === 'shop' && b === 'buy') {
+            if (p.banned) return answer(q, '🚫 Забанен');
+            const m = miner(c);
+            if (!m) return answer(q, '❌ Нет в наличии');
+            const cost = minerCost(m, p.miners[m.id] || 0);
+            if (p.usd < cost) return answer(q, `❌ Не хватает $${fmt(cost - p.usd)}`);
+            p.usd -= cost;
+            p.miners[m.id] = (p.miners[m.id] || 0) + 1;
+            adminSay(`🏭 ${fname(p)} купил ${m.name} за $${fmt(cost)}`);
+            saveState();
+            await answer(q, `✅ ${m.name}: +${fmt(m.hash)} TH/s`);
+            const ss = screenShop(p);
+            const ok = await edit(chat, mid, ss.text, ss.kb);
+            if (!ok) await send(chat, ss.text, ss.kb);
+            return;
+        }
+
+        /* ---- STAFF-зоны (только staff) ---- */
+        if (a === 'st' || (a === 'dlg' && ['price', 'broadcast', 'pgivefi', 'pgiveusd', 'pgivefi-', 'pgiveusd-', 'set', 'num'].includes(b))) {
+            if (!isStaff(user)) return answer(q, '🔒 Нет доступа');
+        }
+
+        if (a === 'st') {
+            /* цена вверх/вниз: панель процентов */
+            if (b === 'price' && (c === 'up' || c === 'down')) {
+                const kind = c === 'up' ? 'pump' : 'dump';
+                const pctps = [1, 5, 10, 25].map(pc => ({ text: `${c === 'up' ? '📈+' : '📉−'}${pc}%`, callback_data: `st:${kind}:${pc}` }));
+                const kb = [
+                    pctps,
+                    [{ text: c === 'up' ? '📈✖2' : '📉÷2', callback_data: `st:${c === 'up' ? 'x2' : 'half'}:0` },
+                     { text: '🎯 Установить цену', callback_data: 'dlg:price' },
+                     { text: state.market.frozen ? '▶️ Отпустить' : '❄️ Заморозить', callback_data: 'st:freeze' }],
+                    [{ text: '🤖 Авто-рынок', callback_data: 'st:auto' }, { text: '⬅️ Назад', callback_data: 'tab:staff' }],
+                ];
+                await answer(q);
+                const screen = {
+                    text: `${c === 'up' ? '📈 <b>Подъём цены</b>' : '📉 <b>Спуск цены</b>'}\n\n${CIn(1).replace(/<[^>]+>/g, '')}: <b>$${fmt(state.market.price)}</b>\nТренд: <b>$${fmt(state.market.trend)}</b>\n${state.market.frozen ? '❄️ заморожено' : '🏃 плавает'}`,
+                    kb
+                };
+                const ok = await edit(chat, mid, screen.text, screen.kb);
+                if (!ok) await send(chat, screen.text, screen.kb);
+                return;
+            }
+            if (b === 'pump' || b === 'dump' || b === 'x2' || b === 'half') {
+                const pct = Number(c) || 0;
+                pumpDump(b, pct);
+                adminSay(`📈/📉 ${fname(user)}: ${b} ${pct} → $${fmt(state.market.price)}`);
+                saveState();
+                await answer(q, `✅ Цена: $${fmt(state.market.price)}`);
+                return reOpenStaff(chat, mid);
+            }
+            if (b === 'freeze') {
+                state.market.frozen = !state.market.frozen;
+                adminSay(`${state.market.frozen ? '❄️' : '▶️'} ${fname(user)} ${state.market.frozen ? 'заморозил' : 'отпустил'} цену`);
+                saveState();
+                await answer(q, state.market.frozen ? '❄️ Цена заморожена' : '▶️ Цена плавает');
+                return reOpenStaff(chat, mid);
+            }
+            if (b === 'auto') {
+                /* 🤖 вернуть рынок в авто-режим: стартовая цена, тренд сброшен, заморозка снята */
+                state.market = freshMarket();
+                adminSay(`🤖 ${fname(user)} вернул рынок на АВТО — цена $${fmt(state.market.price)}, курс сам плавает`);
+                saveState();
+                await answer(q, `🤖 Авто-рынок: $${fmt(state.market.price)}`);
+                return reOpenStaff(chat, mid);
+            }
+            if (b === 'give') {
+                state.dialogs[user.id] = { type: 'give_' + (c === 'usd' ? 'usd' : 'fi'), t: Date.now() };
+                await answer(q);
+                return send(chat, `🪙 <b>Выдача ${c === 'usd' ? 'USD' : esc(S('coinName'))} игроку</b>\n\nПришли сообщение в формате:\n<code>ник сумма</code>\nПример: <code>@steve 500</code>\n\nВыдать всем: <code>* 100</code>`, kbCancel());
+            }
+            if (b === 'allfi' || b === 'allusd') {
+                const amt = Number(c) || 0;
+                const n = giveAll(b === 'allfi' ? 'fi' : 'usd', amt, fname(user));
+                saveState();
+                await answer(q, `🎁 Выдано всем (${n}): ${b === 'allfi' ? CIn(amt).replace(/<[^>]+>/g, '') : '$' + fmt(amt)}`);
+                return reOpenStaff(chat, mid);
+            }
+            if (b === 'players') {
+                const s = screenPlayers();
+                await answer(q);
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'banlist') {
+                const s = screenBans();
+                await answer(q);
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'player') {
+                const s = screenPlayerCard(c, isOwner(user));
+                await answer(q);
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'ban') {
+                if (!canBan(user)) { await answer(q, '🔒 Забанить может только владелец'); return; }
+                const tp = state.players[c];
+                if (!tp) return answer(q, '❌ Нет игрока');
+                banPlayer(tp, fname(user));
+                saveState();
+                await answer(q, `🚫 ${tp.first_name} забанен`);
+                const s = screenPlayerCard(c, isOwner(user));
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'unban') {
+                if (!canBan(user)) { await answer(q, '🔒 Разбанить может только владелец'); return; }
+                const tp = state.players[c];
+                if (!tp) return answer(q, '❌ Нет игрока');
+                unbanPlayer(tp, fname(user));
+                saveState();
+                await answer(q, `✅ ${tp.first_name} разбанен`);
+                const s = screenPlayerCard(c, isOwner(user));
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'zero') {
+                const tp = state.players[c];
+                if (!tp) return answer(q, '❌ Нет игрока');
+                tp.usd = 0; tp.fi = 0;
+                adminSay(`🗑 ${fname(user)} обнулил ${fname(tp)}`);
+                saveState();
+                await answer(q, '🗑 Баланс обнулён');
+                const s = screenPlayerCard(c, isOwner(user));
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'settings') {
+                const group = c; // пусто | 'num'
+                if (group === 'num') {
+                    const s = screenNumFields(c && parts[3] || '');
+                    await answer(q);
+                    const ok = await edit(chat, mid, s.text, s.kb);
+                    if (!ok) await send(chat, s.text, s.kb);
+                    return;
+                }
+                const s = screenSettings(isOwner(user));
+                await answer(q);
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'resets') {
+                if (!isOwner(user)) { await answer(q, '🏛 Сбросы доступны только владельцу'); return; }
+                const s = screenResets();
+                await answer(q);
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'reset') {
+                if (!isOwner(user)) { await answer(q, '🏛 Только владелец'); return; }
+                if (c === 'market') {
+                    state.market = freshMarket();
+                    for (const pp of Object.values(state.players)) { pp.fi = S('startFi'); }
+                    adminSay(`📉 ${fname(user)} сбросил рынок`);
+                    saveState();
+                    await answer(q, '✅ Рынок сброшен');
+                    return reOpenStaff(chat, mid);
+                }
+                if (c === 'balances') { /* подтверждение через диалог */ state.dialogs[user.id] = { type: 'confirm_reset_balances', t: Date.now() }; await answer(q); return send(chat, '🧯 Подтверди: пришли слово <code>да</code> — обнуляю балансы всем (кроме staff).', kbCancel()); }
+                if (c === 'nuke') { state.dialogs[user.id] = { type: 'confirm_nuke', t: Date.now() }; await answer(q); return send(chat, '💥 Подтверди: пришли слово <code>да</code> — удалю ВСЕХ игроков и всю историю (ты остаёшься).', kbCancel()); }
+            }
+            if (b === 'staffrm') {
+                if (!isOwner(user)) return answer(q, '🏛 Только владелец');
+                const s = screenStaffRm();
+                await answer(q);
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'staffdel') {
+                if (!isOwner(user)) { await answer(q, '🏛 Только владелец'); return; }
+                if (c === String(state.ownerId)) return answer(q, '❌ Владельца снять нельзя');
+                state.staffIds = state.staffIds.filter(x => x !== c);
+                adminSay(`➖ ${fname(user)} снял staff с <code>${c}</code>`);
+                saveState();
+                const s = screenStaffRm();
+                await answer(q, '✅ Снял права');
+                const ok = await edit(chat, mid, s.text, s.kb);
+                if (!ok) await send(chat, s.text, s.kb);
+                return;
+            }
+            if (b === 'log') {
+                const lines = state.log.slice(0, 20).map(l => `• ${new Date(l.t).toLocaleTimeString('ru-RU')} — ${esc(l.s)}`);
+                await answer(q);
+                return send(chat, `📜 <b>Журнал</b>\n\n${lines.join('\n') || '—'}`);
+            }
+        }
+
+        /* ---- диалоги-переходы из staff-кнопок ---- */
+        if (a === 'dlg') {
+            if (b === 'price') { state.dialogs[user.id] = { type: 'setprice', t: Date.now() }; await answer(q, 'Пришли новую цену $'); return send(chat, '🎯 Пришли новую цену монеты числом (например <code>3.50</code>):', kbCancel()); }
+            if (b === 'broadcast') { state.dialogs[user.id] = { type: 'broadcast', t: Date.now() }; await answer(q); return send(chat, '📢 Пришли текст рассылки всем игрокам:', kbCancel()); }
+            if (b === 'pgivefi' || b === 'pgiveusd' || b === 'pgivefi-' || b === 'pgiveusd-') {
+                const kind = (b.endsWith('-') ? b.slice(0, -1) : b).replace('pgive', '');
+                const sign = b.endsWith('-') ? -1 : 1;
+                state.dialogs[user.id] = { type: 'pgive', kind, sign, target: d, t: Date.now() };
+                const tp = state.players[d];
+                await answer(q);
+                return send(chat, `${sign > 0 ? 'Выдать' : 'Забрать'} ${kind === 'usd' ? 'USD' : esc(S('coinName'))} у/для <b>${fname(tp || {})}</b>\n\nПришли положительное число:`, kbCancel());
+            }
+            if (b === 'set' && c) {
+                const f = TEXT_FIELDS[c];
+                if (!f) return answer(q, '❓');
+                state.dialogs[user.id] = { type: 'settext', field: c, t: Date.now() };
+                await answer(q);
+                return send(chat, `✍️ Пришли новое значение — <b>${esc(f.label)}</b>:` + (f.max < 500 ? `\n(до ${f.max} символов)` : ''), kbCancel());
+            }
+            if (b === 'num' && c) {
+                const defs = [...NUM_FIELDS.market, ...NUM_FIELDS.econ];
+                const f = defs.find(x => x.key === c);
+                if (!f) return answer(q, '❓');
+                state.dialogs[user.id] = { type: 'setnum', field: c, t: Date.now() };
+                await answer(q, `Сейчас: ${state.settings[c]}`);
+                return send(chat, `🔢 <b>${esc(c)}</b> — ${esc(f.label)}\n\nСейчас: <b>${state.settings[c]}</b>\nПришли новое число:`, kbCancel());
+            }
+            if (b === 'staffadd') {
+                if (!isOwner(user)) { await answer(q, '🏛 Только владелец'); return; }
+                state.dialogs[user.id] = { type: 'staffadd', t: Date.now() };
+                await answer(q);
+                return send(chat, '👮 Пришли ник игрока (@ник) или его ID, чтобы выдать staff-права:', kbCancel());
+            }
+        }
+
+        /* 🔐 кик сессий приложений своего профиля (кнопки из /info) */
+        if (a === 'kick' || a === 'kickall') {
+            if (CLOUD) await loginsPull();
+            ensureAppIndex();
+            const uid = String(user.id);
+            if (a === 'kickall') {
+                const n = sessionKill(uid);
+                saveState();
+                if (CLOUD) await loginsPush();
+                await answer(q, 'Сессий приложений отключено: ' + n);
+                return;
+            }
+            const t = String(b || '');
+            const sess = state.sessions[t];
+            if (!sess || String(sess.pid) !== uid) { await answer(q, '❗ Сессия не найдена или не твоя'); return; }
+            sessionKillOne(t);
+            saveState();
+            if (CLOUD) await loginsPush();
+            await answer(q, 'Сессия …' + String(t).slice(-6) + ' кикнута');
+            return;
+        }
+
+        /* ---- вход из приложения: подтверждение строго в чате владельца ---- */
+        if (a === 'lgok' || a === 'lgno') {
+            if (CLOUD) await loginsPull(); /* кнопка могла прилететь в чужой изолят */
+            const sess = loginCleanup().find(x => x.st === String(b || ''));
+            if (!sess || String(sess.chatId) !== String(chat)) { await answer(q, '❗ Сессия истекла — начни вход в приложении заново'); return; }
+            if (sess.phase === 'done' || sess.phase === 'denied') { await answer(q, 'Уже обработано'); return; }
+            if (a === 'lgno') {
+                sess.phase = 'denied';
+                saveState();
+                if (CLOUD) await loginsPush();
+                try { await edit(chat, mid, '🚫 Вход отменён — это не ты.'); } catch (_) { }
+                return answer(q, 'Записал: это не ты');
+            }
+            if (a === 'lgok') {
+                if (sess.phase !== 'check') return answer(q, 'Уже обработано');
+                sess.phase = 'done';
+                sess.token = sessionNew(sess.to); /* токен сессии — приложение подхватит его по authPoll */
+                saveState();
+                if (CLOUD) await loginsPush();
+                await answer(q, 'Ок, это ты! Открывай приложение.');
+                try {
+                    await edit(chat, mid,
+                        '✅ <b>Вход в приложение FI Coin подтверждён</b>\nОткрывай приложение на телефоне — твой прогресс уже на сервере.');
+                } catch (_) { }
+                const tp = state.players[sess.to];
+                try { send(tp.id, `✅ <b>Вход выполнен</b>\nИграй своим профилем (${fname(tp)}).`); } catch (_) { }
+                return;
+            }
+        }
+
+        await answer(q);
     } catch (e) {
-        try { await answer(q, 'Ошибка'); } catch (_) { }
+        console.error('[cb]', q.data, e.message);
+        try { await answer(q, '⚠️ Ошибка'); } catch (_) { }
     }
+}
+async function reOpenStaff(chat, mid) {
+    const s = screenStaff();
+    const ok = await edit(chat, mid, s.text, s.kb);
+    if (!ok) await send(chat, s.text, s.kb);
 }
 
 /* ------------------------- СООБЩЕНИЯ ------------------------- */
@@ -2419,47 +2522,172 @@ async function onMessage(msg) {
     const chat = msg.chat.id;
     const user = msg.from || {};
     const cmd = (text.match(/^\/(\w+)/) || [])[1] || '';
-    const m = text.split(/\s+/);
 
-    ensurePlayer(user); /* TG-участник существует как игрок (legacy-совместимость) */
+    /* --- активные диалоги --- */
+    const dlg = state.dialogs[user.id];
+    if (dlg && !cmd && Date.now() - dlg.t < 10 * 60 * 1000) {
+        const handled = await onDialogInput(user, chat, dlg, text);
+        if (handled) saveState();
+        return;
+    }
 
-    /* 🔐 привязка TG-чата к аккаунту приложения: /start <код> (кнопка из приложения подставляет код сама) */
-    if (cmd === 'start' && m[1]) {
-        accCleanup();
-        const code = String(m[1]).trim().toUpperCase();
-        const b = state.tgBindCodes[code];
-        if (!b) return send(chat, '⌛ Код привязки не найден или устарел.\nВ приложении: «Профиль» → «🔐 Привязать Telegram» — и пришли НОВЫЙ код.');
-        const tp = state.players[b.pid];
-        if (!tp) return send(chat, '❌ Игрок кода не найден — попробуй заново в приложении.');
-        tp.auth = tp.auth || { nick: fname(tp), nickKey: accNickKey(tp.auth && tp.auth.nick || ''), salt: '', passHash: '', tgChatId: '', tgUsername: '', devs: {} };
-        tp.auth.tgChatId = String(user.id);
-        tp.auth.tgUsername = String(user.username || '').toLowerCase();
-        delete state.tgBindCodes[code];
-        saveState(); saveStateToGitHub(false);
-        logLine('🔐 ' + fname(tp) + ' привязал Telegram как 2FA');
-        return send(chat,
-            '✅ <b>Telegram привязан к аккаунту «' + esc(tp.auth.nick || fname(tp)) + '»</b> — теперь это второй фактор (2FA).\n\n' +
-            '🔒 При входе с нового устройства сюда придёт запрос «это ты?» — без твоего подтверждения никто не войдёт, даже зная пароль.\n\n' +
-            'Вернись в приложение — и продолжай игру.');
+    /* --- бан-фильтр (кроме некоторых команд) --- */
+    if (BANNED_ALLOWED.has(cmd)) {
+        if (cmd === 'start') {
+            const p = ensurePlayer(user);
+            if (p.banned) return send(chat, `🚫 <b>Аккаунт заблокирован.</b>\nПричина: ${esc(p.banReason || 'не указана')}\n\nОбратись к администрации.`);
+            logLine(`🆕 ${fname(p)} в игре`);
+            return send(chat, screenMain().text, screenMain().kb);
+        }
+        if (cmd === 'id') return send(chat, `🆔 Твой ID: <code>${user.id}</code>`);
+        if (cmd === 'help') return helpCmd(chat);
+        if (cmd === 'cancel') { delete state.dialogs[user.id]; return send(chat, '🆗 Ок.'); }
+        return;
+    }
+    const myP = findPlayer(user);
+    if (myP && myP.banned) {
+        return send(chat, `🚫 <b>Аккаунт заблокирован.</b>\nПричина: ${esc(myP.banReason || 'не указана')}`);
     }
 
     switch (cmd) {
-        case 'start':
+        case 'help': return helpCmd(chat);
+        case 'linkcode': case 'app': {
+            const p = ensurePlayer(user);
+            if (p.banned) return send(chat, '🚫 Забанен — связка недоступна');
+            if (p.uid) return send(chat, `📱 Приложение уже привязано (ID <code>${esc(p.uid)}</code>).\nОткрой игру на телефоне — баланс общий.`);
+            const code = createLinkCode(p);
+            adminSay(`📱 ${fname(p)} получил код для приложения (/linkcode)`);
             return send(chat,
-                '🪙 <b>' + esc(S('title')) + ' — бот защиты входа (2FA)</b>\n\n' +
-                'Вся игра переехала в приложение FI Coin — здесь только безопасность:\n' +
-                '• подтверждаешь вход с нового устройства («это ты?»)\n' +
-                '• привязываешь Telegram к аккаунту приложения.\n\n' +
-                '🔐 Привязка: открой приложение → «Профиль» → «🔐 Привязать Telegram» — придёшь сюда с готовой командой.');
-        case 'code': {
-            if (m[1]) { msg.text = '/start ' + m[1]; return onMessage(msg); }
-            return send(chat, 'Код привязки появляется в приложении: «Профиль» → «🔐 Привязать Telegram».');
+                `📱 <b>Код для приложения на телефон</b>\n\n` +
+                `<b><code>${code}</code></b>\n\n` +
+                `1) Открой игру на телефоне (APK: ${PAGES_URL}apk/FI-Coin.apk)\n` +
+                `2) Введи код в поле «Код привязки (ABCD-1234)»\n` +
+                `3) Баланс станет общим ✅\n\n` +
+                `⏳ Код живёт 10 минут и работает один раз.`);
         }
-        case 'help': case 'id':
-            return send(chat, '🆔 Твой Telegram ID: <code>' + user.id + '</code>\n🤖 Я 2FA-бот: коды входа приходят сюда автоматически.');
-        default:
-            return;
+        case 'devices': case 'logout': {
+            /* 🔐 self-service: управление телефонными привязками СВОЕГО профиля */
+            const p = ensurePlayer(user);
+            if (p.banned) return send(chat, '🚫 Забанен — привязки недоступны');
+            const dm = devicesMap();
+            const mine = Object.keys(state.deviceVault || {}).filter(k => { const r = dm[k]; return r && String(r.p) === String(p.id); });
+            if (cmd === 'devices') {
+                if (!mine.length) return send(chat, '📱 Привязок телефона нет.\nAPK → «🌐 Войти через Telegram» — пройди 2FA, вход запомнится.');
+                return send(chat, `📱 Привязок устройства: ${mine.length}\n` + mine.map((k, i) => `${i + 1}. <code>${esc(k)}</code>`).join('\n') + `\n\n🔐 /logout — сбросить все (вход заново по 2FA)`);
+            }
+            if (!mine.length) return send(chat, '📱 Привязок и так нет.');
+            const n = await wipePlayerDevices(p, 'Ты нажал /logout — все телефонные привязки сброшены. APK при следующем запуске попросит заново пройти 2FA (код придёт в этот чат).');
+            return send(chat, `🛡 Сброшено привязок: ${n}.\nСтарое устройство больше не считается входом — при следующем запуске APK попросит 2FA.`);
+        }
+        case 'info': {
+            /* 🔐 инфо профиля + сессии приложений (если случайно нажал «да» чужому логину — кикни отсюда) */
+            const p = ensurePlayer(user);
+            if (p.banned) return send(chat, '🚫 Забанен — информация недоступна');
+            ensureAppIndex();
+            const mine = Object.keys(state.sessions || {}).filter(t => String(state.sessions[t].pid) === String(p.id));
+            const kb = [];
+            if (mine.length) kb.push([{ text: '👢 Кикнуть все сессии приложений', callback_data: 'kickall' }]);
+            for (const t of mine.slice(0, 6)) kb.push([{ text: '👢 Сессия …' + String(t).slice(-6), callback_data: 'kick:' + t }]);
+            return send(chat,
+                `👤 <b>${esc(fname(p))}</b>\n` +
+                `🆔 <code>${esc(String(p.id))}</code>\n` +
+                `💵 $${fmt(p.usd)}   ${fmt(p.fi)} FI\n` +
+                `⛏ Ригов: ${Object.keys(p.miners || {}).length}\n` +
+                `📅 В игре с ${new Date(p.joined).toLocaleDateString('ru-RU')}\n` +
+                `🔐 Активных сессий приложений: ${mine.length}\n` +
+                (mine.length ? '\nЕсли не ты входил — нажми «Кикнуть все сессии».' : ''),
+                mine.length ? { inline_keyboard: kb } : undefined);
+        }
+        case 'profile': case 'bal': { const p = ensurePlayer(user); const s = screenProfile(p); return send(chat, s.text, s.kb); }
+        case 'market': { const p = ensurePlayer(user); const s = screenMarket(p); return send(chat, s.text, s.kb); }
+        case 'shop': { const p = ensurePlayer(user); const s = screenShop(p); return send(chat, s.text, s.kb); }
+        case 'top': { const s = screenTop(); return send(chat, s.text, s.kb); }
+        case 'price': return send(chat, priceHeader() + `Всего в игре: ${CIn(supply()).replace(/<[^>]+>/g, '')}\n${state.market.frozen ? '❄️ Курс заморожен' : '🏃 Курс движется'}`);
+        case 'staff': {
+            if (isStaff(user)) { const s = screenStaff(); return send(chat, s.text, s.kb); }
+            state.dialogs[user.id] = { type: 'auth', t: Date.now() };
+            return send(chat, '🔒 <b>Вход в STAFF-консоль</b>\n\nПришли пароль (config.json → staffPassword).\n<b>Первый вошедший становится владельцем</b> (👑 безлимит).', kbCancel());
+        }
+        /* ---------- команды банов ---------- */
+        case 'ban': {
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            if (!canBan(user)) return send(chat, '🏛 Банить может только владелец (👑)');
+            const m = text.split(/\s+/);
+            const target = m[1];
+            if (!target) return send(chat, 'Формат: <code>/ban @ник причина…</code>');
+            const tp = findPlayerByNameOrId(target);
+            if (!tp) return send(chat, `❌ Не нашёл игрока «${esc(target)}».`);
+            if (isOwner({ id: tp.id }) ) return send(chat, '❌ Владельца забанить нельзя.');
+            const reason = m.slice(2).join(' ');
+            banPlayer(tp, fname(user), reason);
+            saveState();
+            notifyBan(tp, reason);
+            return send(chat, `🚫 <b>${fname(tp)}</b> забанен.\nПричина: ${esc(reason || '—')}`);
+        }
+        case 'unban': {
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            if (!canBan(user)) return send(chat, '🏛 Разбанить может только владелец (👑)');
+            const target = text.split(/\s+/)[1];
+            if (!target) return send(chat, 'Формат: <code>/unban @ник</code>');
+            const tp = findPlayerByNameOrId(target);
+            if (!tp) return send(chat, `❌ Не нашёл игрока «${esc(target)}».`);
+            unbanPlayer(tp, fname(user));
+            saveState();
+            return send(chat, `✅ <b>${fname(tp)}</b> разбанен. Баланс: ${CIn(tp.fi).replace(/<[^>]+>/g, '')} / $${fmt(tp.usd)}`);
+        }
+        case 'banlist': {
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            const s = screenBans();
+            return send(chat, s.text, s.kb);
+        }
+
+        /* ---------- staff-управление из текста ---------- */
+        case 'give': { /* /give @nick 100 [fi|usd] */
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            const m = text.split(/\s+/);
+            if (m.length < 3) return send(chat, 'Формат: <code>/give ник 100 fi</code> или <code>usd</code>, «*» — всем');
+            const amount = parseFloat((m[2] || '').replace(',', '.'));
+            if (!isFinite(amount)) return send(chat, '❌ Некорректная сумма');
+            const kind = (m[3] || 'fi').toLowerCase() === 'usd' ? 'usd' : 'fi';
+            if (m[1] === '*') {
+                const n = giveAll(kind, amount, fname(user));
+                saveState();
+                return send(chat, `✅ Выдал ${n} игрокам: ${kind === 'usd' ? '$' + fmt(amount) : CIn(amount)}`);
+            }
+            const tp = findPlayerByNameOrId(m[1]);
+            if (!tp) return send(chat, `❌ Не нашёл игрока «${esc(m[1])}».`);
+            giveTo(tp, kind, amount);
+            adminSay(`🪙 ${fname(user)} выдал ${fname(tp)}: ${kind === 'usd' ? '$' + fmt(amount) : CIn(amount)}`);
+            saveState();
+            notifyGift(tp, amount, kind);
+            return send(chat, `✅ ${fname(tp)} получает ${kind === 'usd' ? '$' + fmt(amount) : CIn(amount)}`);
+        }
+        case 'pump': { /* /pump 10 */
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            const pct = parseFloat(text.split(/\s+/)[1] || '');
+            if (!isFinite(pct)) return send(chat, 'Формат: <code>/pump 10</code>');
+            setPrice(pumpDump('pump', pct));
+            saveState();
+            return send(chat, `📈 Цена: <b>$${fmt(state.market.price)}</b>`);
+        }
+        case 'dump': {
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            const pct = parseFloat(text.split(/\s+/)[1] || '');
+            if (!isFinite(pct)) return send(chat, 'Формат: <code>/dump 10</code>');
+            setPrice(pumpDump('dump', pct));
+            saveState();
+            return send(chat, `📉 Цена: <b>$${fmt(state.market.price)}</b>`);
+        }
+        case 'freeze': {
+            if (!isStaff(user)) return send(chat, '🔒 Команда для staff');
+            state.market.frozen = !state.market.frozen;
+            adminSay(`${state.market.frozen ? '❄️' : '▶️'} ${fname(user)} заморозка=${state.market.frozen}`);
+            saveState();
+            return send(chat, state.market.frozen ? '❄️ Курс заморожен' : '▶️ Курс снова плавает');
+        }
     }
+
+    if (!dlg) return; // молча на неизвестный текст
 }
 
 /* ---- уведомления игроку через ЛС ---- */
@@ -2683,7 +2911,7 @@ module.exports.subTick = subTick;
         module.exports.saveState = saveState;
         module.exports.CLOUD = CLOUD;
         /* для Cloudflare Workers (bot-worker.js читает глобал, exports из бандла может протухнуть) */
-        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, subTick, saveState, CLOUD, gApi: (pathname, searchParams) => gAuthRoute(pathname, searchParams) };
+        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, subTick, saveState, CLOUD };
     } catch (e) { console.error('[exports]', e && e.message); }
 
     if (!CFG.token || CFG.token.includes('@BotFather')) {
