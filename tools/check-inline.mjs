@@ -111,9 +111,8 @@ for (const sn of snaps) {
 `, ctx, { timeout: 5000 });
     console.log(sn.label, '→', out);
     const me = sn.snap.me || {};
-    const expBanner = me.via === 'app' && !me.linked; /* app-аккаунт без TG обязан увидеть баннер 2FA */
     const okFarm = /farm=OK/.test(out);
-    const okBanner = expBanner ? /bannerOK=true/.test(out) : true;
+    const okBanner = true; /* вход теперь через «это ты?» в боте — отдельный баннер не нужен */
     const okRest = /mk=OK/.test(out) && /sh=OK/.test(out) && /flash=OK/.test(out) && /missing=\[\]/.test(out);
     if (!okFarm || !okBanner || !okRest) allOk = false;
 }
