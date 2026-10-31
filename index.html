@@ -847,12 +847,19 @@ async function findApi(){
   const probes=urls.map(u=>new Promise(res=>{
     const t0=Date.now();
     fetch(u+'/health',{cache:'no-store',signal:AbortSignal.timeout(7500)})
-      .then(r=>res({u,ok:!!r&&r.ok,ms:Date.now()-t0,err:(r&&!r.ok)?('http '+r.status):''}))
-      .catch(e=>res({u,ok:false,ms:Date.now()-t0,err:(e&&e.name==='TimeoutError')?'таймаут':String((e&&e.message)||(e&&e.name)||'сбой').slice(0,46)}));
+      .then(r=>res({u,ok:!!r&&r.ok,ms:Date.now()-t0,err:(r&&!r.ok)?('http '+r.status):'',diag:false}))
+      .catch(e=>res({u,ok:false,ms:Date.now()-t0,err:(e&&e.name==='TimeoutError')?'таймаут':String((e&&e.message)||(e&&e.name)||'сбой').slice(0,46),diag:false}));
+  }));
+  /* фоновая диагностика: доступен ли с телефона сам «край» Cloudflare (1.1.1.1 — это не API-хост, в apiBase не попадает) */
+  probes.push(new Promise(res=>{
+    const t0=Date.now();
+    fetch('https://1.1.1.1/dns-query?name=example.com&type=A',{cache:'no-store',signal:AbortSignal.timeout(7500),headers:{accept:'application/dns-json'}})
+      .then(r=>res({u:'край Cloudflare (1.1.1.1)',ok:!!r&&r.ok,ms:Date.now()-t0,err:'',diag:true}))
+      .catch(e=>res({u:'край Cloudflare (1.1.1.1)',ok:false,ms:Date.now()-t0,err:(e&&e.name==='TimeoutError')?'таймаут':'сбой',diag:true}));
   }));
   const rs=await Promise.all(probes);
   try{localStorage.setItem('fiNetReport',rs.map(x=>x.u.replace(/^https:\/\//,'')+(x.ok?': ok '+x.ms+'мс':': '+(x.err||'сбой')+' '+x.ms+'мс')).join(' · '));}catch(e){}
-  const good=rs.filter(x=>x.ok);
+  const good=rs.filter(x=>x.ok&&!x.diag);
   if(!good.length)return '';
   let best=good[0];for(const g of good)if(g.ms<best.ms)best=g;
   localStorage.setItem('fiApiLast',best.u);
@@ -904,15 +911,28 @@ function paintNetReport(){
   let r='';try{r=localStorage.getItem('fiNetReport')||''}catch(_){}
   if(r)el.textContent=r;
 }
+function noteNetProblem(tag){
+  let r='';try{r=localStorage.getItem('fiNetReport')||''}catch(_){}
+  r=(r?r+' · ':'')+tag+': сбой';
+  try{localStorage.setItem('fiNetReport',r);}catch(_){}
+  paintNetReport();
+}
 function renderOffline(e){
   let rep='';try{rep=localStorage.getItem('fiNetReport')||''}catch(_){}
   $('screen').innerHTML=`<div class="offlineBox"><div class="ico">${e&&e.auth?'🔒':'🛰'}</div>
   <h3>${e&&e.auth?'Открой через Telegram':'Нет связи с сервером'}</h3>
   <p>${e&&e.auth?'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram расскажет серверу, кто ты.':'Телефон не достучался до сервера. Пробуем резервные маршруты и повторяем сами каждые 20 секунд.'}</p>
-  ${e&&e.auth?'':'<button class="btn btn-em" id="retryNet">🔁 Повторить попытку</button>'}
+  ${e&&e.auth?'':'<button class="btn btn-em btn-sm" id="retryNet">🔁 Повторить попытку</button>'}
+  ${e&&e.auth?'':'<button class="btn btn-ghost btn-sm" id="netCheck" style="margin-top:8px">🧪 Открыть проверку связи</button>'}
   ${e&&e.auth?'':(rep?'<div class="netReport" id="netReport">'+esc(rep)+'</div>':'')}</div>`;
   const rb=document.getElementById('retryNet');
   if(rb)rb.onclick=retryConn;
+  const nb=document.getElementById('netCheck');
+  if(nb)nb.onclick=()=>{
+    const T=window.Telegram&&window.Telegram.WebApp;
+    const url='https://fi-coin-app-2.pages.dev/health';
+    if(T&&T.openLink)T.openLink(url);else window.open(url,'_blank');
+  };
   scheduleAutoRetry(e);
 }
 async function retryConn(){
@@ -924,6 +944,7 @@ async function retryConn(){
   if(!base){toast('Связи нет. Подождём и попробуем сами','📡','red');return;}
   apiBase=base;setNet(true);
   await refresh();
+  if(!S)noteNetProblem('sync ('+base.replace(/^https:\/\//,'')+')');
 }
 function scheduleAutoRetry(e){
   if(e&&e.auth)return;
@@ -934,8 +955,9 @@ function scheduleAutoRetry(e){
     paintNetReport();
     if(!base)return;
     apiBase=base;setNet(true);
-    clearInterval(offRetryT);offRetryT=null;
     await refresh();
+    if(!S){noteNetProblem('sync ('+base.replace(/^https:\/\//,'')+')');return;} /* связь нашлась, но данные не собрались — цикл продолжается */
+    clearInterval(offRetryT);offRetryT=null;
   },20000);
 }
 
