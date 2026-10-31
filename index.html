@@ -774,7 +774,7 @@ async function afterAuth(j){
 function ask2fa(j){
   modal(`<h3>🔐 Подтверждение входа</h3>
   <div style="font-size:12.5px;line-height:1.5;color:var(--tg-text)">Это устройство для аккаунта <b>${esc(($('authNick').value||'').trim())}</b> новое. Код подтверждения ${j.viaTg?'отправлен в твой <b>Telegram</b> (бот @FI_CoinBot).':'показан ниже — Telegram ещё не привязан.'}</div>
-  ${j.viaTg?`<a class="btn btn-ghost" style="display:inline-block;margin-top:8px" href="https://t.me/FI_CoinBot" target="_blank" rel="noopener">📲 Открыть Telegram</a>`:''}
+  ${j.viaTg?`<a class="btn btn-ghost" style="display:inline-block;margin-top:8px" href="https://t.me/FI_CoinBot" rel="noopener">📲 Открыть Telegram</a>`:''}
   ${j.debug?`<div class="num" style="font-size:20px;font-weight:800;letter-spacing:3px;color:var(--em);margin:8px 0;user-select:all">${esc(j.debug)}</div>`:''}
   <input class="dinp num" id="tfaCode" maxlength="6" inputmode="numeric" placeholder="6-значный код" style="margin-top:6px">
   <button class="btn btn-em" id="tfaGo" style="width:100%;margin-top:8px">🔓 Подтвердить вход</button>
@@ -798,10 +798,11 @@ async function openTgBind(){
     modal(`<h3>🔐 Привязать Telegram (2FA)</h3>
     <div style="font-size:12.5px;line-height:1.5">Открой Telegram — в чате <b>@FI_CoinBot</b> нажми «Старт» (кнопка ниже подставит код сама):</div>
     <div class="num" style="font-size:22px;font-weight:800;letter-spacing:2px;margin:10px 0;user-select:all">${esc(j.code)}</div>
-    <a class="btn btn-em" style="display:inline-block" href="${esc(j.url)}" target="_blank" rel="noopener">📲 Открыть Telegram</a>
+    <button class="btn btn-em" id="tbindGo" style="display:inline-block;cursor:pointer">📲 Открыть Telegram</button>
     <div style="font-size:10.5px;color:var(--tg-sub);margin-top:10px;line-height:1.5">Вручную: чат @FI_CoinBot → отправить <b>/start ${esc(j.code)}</b>. Код живёт 10 минут.</div>
-    <button class="btn btn-ghost" data-close="1" style="margin-top:10px">Я привязал</button>`);
-    document.querySelectorAll('#modalBox [data-close]').forEach(x=>x.onclick=closeModal);
+    <button class="btn btn-ghost" id="tbindDone" style="margin-top:10px">✅ Я привязал — проверить</button>`);
+    $('tbindGo').onclick=()=>{try{location.assign(j.url);}catch(e){}};
+    $('tbindDone').onclick=()=>{closeModal();toast('Проверяю привязку…','🔐');refresh().catch(()=>{});};
   }catch(e){toast('Сервер недоступен','📡','red');}
 }
 function openTgInvite(){
