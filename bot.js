@@ -647,12 +647,6 @@ function curPrice() {
     if (steps >= 6000 || !M.anchorP) { M.anchorP = p; M.anchorT = now; }
     return p;
 }
-/* фиксация якоря цены при сохранении — все изоляты считают одинаково */
-const _saveStateOrig = saveState;
-function saveState() {
-    try { const M = state.market || {}; if (!M.anchorP || !M.anchorT) { M.anchorP = curPrice(); M.anchorT = Date.now(); } } catch (_) { }
-    return _saveStateOrig();
-}
 
 function marketTick() {
     const now = Date.now();
