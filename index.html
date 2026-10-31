@@ -463,12 +463,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <div class="introCoin" id="introCoin"></div>
     <h1>FI Mining Bot</h1>
     <div class="sub">Изумрудная криптовалюта <b style="color:var(--em)">FI coin</b> — майнинг, биржа, лаборатория, колесо удачи и PvP-дуэли!</div>
+    <button class="btn btn-em" id="startBtn">▶ НАЧАТЬ МАЙНИНГ</button>
+  </div>
+    <button class="btn btn-em" id="startBtn">▶ НАЧАТЬ МАЙНИНГ</button>
+  </div>
     <div class="card" style="max-width:290px;margin:18px auto 0;padding:14px;text-align:left">
       <div style="font-weight:800;font-size:14px;margin-bottom:8px">🎮 Вход в игру</div>
       <div style="font-size:11px;color:var(--tg-sub);margin-bottom:8px">Введи свой @юзернейм из Telegram — бот спросит «это ты?», ты нажмёшь «Да» — и окажешься в игре.</div>
-      <input class="dinp" id="authUser" maxlength="32" autocapitalize="none" placeholder="@username" style="margin-top:8px">
-      <button class="btn btn-em" id="authUserGo" style="width:100%;margin-top:8px">📲 Попросить подтвердить в боте</button>
-      <div id="authErr" style="font-size:11px;color:#ff8a8a;min-height:16px;margin-top:8px"></div>
     </div>
     <div style="font-size:10.5px;color:var(--tg-sub);line-height:1.5;margin-top:12px">💾 Прогресс хранится на сервере — не теряется при перезаходе. Вход через @FI_CoinBot — это твой 2FA.</div>
   </div>
@@ -642,37 +643,6 @@ async function deviceBody(){
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(DEV.secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const mac=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(DEV.uid+':'+ts));
   return {uid:DEV.uid,ts,sig:Array.from(new Uint8Array(mac)).map(b=>b.toString(16).padStart(2,'0')).join('')};
-}
-function getToken(){try{return localStorage.getItem('fiToken')||''}catch(e){return ''}}
-function setToken(t){try{t?localStorage.setItem('fiToken',t):localStorage.removeItem('fiToken')}catch(e){}}
-function showAuth(){try{$('intro').classList.remove('hide');}catch(e){}}
-async function authPayload(){if(IS_TG)return{init:TG_INIT};const t=getToken();if(t)return{token:t};return{};}
-async function apiPost(path,body){const r=await fetch(apiBase+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});return r.json();}
-async function loginStart(){
-  const uname=($('authUser').value||'').replace(/^@/,'').trim().toLowerCase();
-  const err=$('authErr');err.textContent='';
-  if(!/^[a-z0-9_]{4,32}$/.test(uname)){err.textContent='Юзернейм: латиница, цифры, _, 4–32 символа';return;}
-  try{
-    const j=await apiPost('/api/device',{mode:'loginStart',username:uname});
-    if(j.ok&&j.st){loginWait(j.st);return;}
-    err.textContent=(j.msg||'Не удалось').replace('❌ ','');
-  }catch(e){err.textContent='Сервер недоступен';}
-}
-function loginWait(st){
-  $('authErr').textContent='Ждём тебя в Telegram…';
-  let n=0;
-  const iv=setInterval(async()=>{
-    n++;if(n>110){clearInterval(iv);$('authErr').textContent='Время ожидания истекло — попробуй ещё раз';return;}
-    try{
-      const j=await apiPost('/api/device',{mode:'authPoll',st});
-      if(j.ok&&j.phase==='done'&&j.token){clearInterval(iv);setToken(j.token);$('intro').classList.add('hide');toast('Вход выполнен','✅','green');await refresh();return;}
-      if(!j.ok){clearInterval(iv);$('authErr').textContent=(j.msg||'Ошибка входа').replace('❌ ','');return;}
-    }catch(e){}
-  },3000);
-}
-async function appLogout(){
-  try{await apiPost('/api/device',{mode:'logout'});}catch(e){}
-  setToken('');S=null;role=null;showAuth();
 }
 function saveDev(d){DEV=d;try{localStorage.setItem('fiDev',JSON.stringify(d));}catch(e){}}
 async function devRegister(nick){
@@ -883,7 +853,7 @@ async function refresh(light){
   }catch(e){
     setNet(false);
     /* сессия сброшена сервером (паника «это не я», /logout, сброс изолятом) — экран входа */
-    if(e&&e.auth&&!IS_TG){setToken('');S=null;role=null;showAuth();$('authErr').textContent='Сессия истекла — войди заново';return;}
+    
     if(!S)renderOffline(e);
   }
 }
@@ -1471,8 +1441,7 @@ function renderProfile(){
       <div style="font-weight:800;font-size:13px">Безопасность входа</div>
       <div style="font-size:11px;color:var(--tg-sub);margin-top:2px">Вход через бота @FI_CoinBot — при логине с нового устройства он спросит «это ты?». Если нажал случайно — /info в боте → кикни сессии.</div>
     </div>
-    <button class="btn btn-em btn-sm" style="margin-left:auto" onclick="appLogout()">🚪 Выйти</button>
-  </div>
+      </div>
   <div class="statGrid" style="margin-bottom:10px">
     <div class="statBox"><div class="l">всего добыто</div><div class="v num" style="color:var(--em)">${fmtFI(me.totalMined)} FI</div></div>
     <div class="statBox"><div class="l">куплено / продано</div><div class="v num">${fmtFI(me.bought)} / ${fmtFI(me.sold)}</div></div>
@@ -1961,7 +1930,6 @@ $('menuDrop').onclick=async e=>{
 /* ---------- старт ---------- */
 $('introCoin').innerHTML=coinSVG();
 $('botAvatar').innerHTML=coinSVG();
-$('authUserGo').onclick=loginStart;
 
 (async()=>{
   document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
@@ -1982,15 +1950,11 @@ $('authUserGo').onclick=loginStart;
     $('intro').classList.add('hide');
     return;
   }
-  /* приложение: вход через @юзернейм и «это ты?» в боте @FI_CoinBot */
-  if(getToken()){
-    try{await refresh();}catch(e){if(e&&e.auth){setToken('');S=null;role=null;showAuth();$('authErr').textContent='Сессия истекла — войди заново';return;}throw e;}
-  }
-  if(S){$('intro').classList.add('hide');if(S.me&&S.me.banned)$('banned').classList.add('show');return;}
-  showAuth();
-  await refresh();
-  if(S){$('intro').classList.add('hide');if(S.me&&S.me.banned)$('banned').classList.add('show');return;}
-})().catch(()=>{if(!IS_TG)showAuth();renderOffline(null);});
+  /* не-TG: показать карту входа через бота */
+  showDevCard();
+  bindDevCard();
+  if(!apiBase)setNet(false);
+}).catch(()=>renderOffline(null));
 
 
 /* 🔴 живая цена FI: каждые 3 секунды — лёгкий /health тянет свежую цену и «дышит» HUD (+ живая биржа) */
