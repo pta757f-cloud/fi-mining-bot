@@ -395,6 +395,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .offlineBox .ico{font-size:46px}
 .offlineBox h3{margin:10px 0 6px;font-size:18px}
 .offlineBox p{font-size:12.5px;color:var(--tg-sub);line-height:1.55;white-space:pre-line}
+.netReport{font-size:9px;color:var(--tg-sub);opacity:.72;max-width:300px;margin:10px auto 0;line-height:1.6;word-break:break-all;text-align:center}
 </style>
 </head>
 <body>
@@ -827,9 +828,9 @@ function roleChipHTML(rl){
 /* ---------- сеть ---------- */
 async function findApi(){
   /* порядок: прошлый удачный адрес (кэш) → адрес из api.json → alt из api.json → запасные из localStorage → жёсткие константы.
-     По каждому адресу пробуем /health с таймаутом; первый живой становится apiBase. */
+     Все адреса проверяются ОДНОВРЕМЕННО (гонка /health, таймаут 7.5 с) — живой и самый быстрый становится apiBase.
+     По каждому хосту пишется отчёт (fiNetReport): виден на офлайн-экране. */
   const urls=[];
-  const seen=u=>!urls.includes(u);
   const add=u=>{
     u=String(u||'').replace(/\/+$/,'');
     if(/^https:\/\//.test(u)&&!urls.includes(u))urls.push(u);
@@ -842,13 +843,20 @@ async function findApi(){
   (Array.isArray(extra)?extra:[]).forEach(add);
   /* жёсткие фолбеки: pages.dev-прокси (для сетей, где workers.dev режется) и прямой воркер */
   ['https://fi-coin-app-2.pages.dev','https://fi-coin-bot.pta757f.workers.dev'].forEach(add);
-  for(const u of urls){
-    try{
-      const r=await fetch(u+'/health',{cache:'no-store',signal:AbortSignal.timeout(7000)});
-      if(r.ok){localStorage.setItem('fiApiLast',u);return u;}
-    }catch(e){}
-  }
-  return '';
+  if(!urls.length)return '';
+  const probes=urls.map(u=>new Promise(res=>{
+    const t0=Date.now();
+    fetch(u+'/health',{cache:'no-store',signal:AbortSignal.timeout(7500)})
+      .then(r=>res({u,ok:!!r&&r.ok,ms:Date.now()-t0,err:(r&&!r.ok)?('http '+r.status):''}))
+      .catch(e=>res({u,ok:false,ms:Date.now()-t0,err:(e&&e.name==='TimeoutError')?'таймаут':String((e&&e.message)||(e&&e.name)||'сбой').slice(0,46)}));
+  }));
+  const rs=await Promise.all(probes);
+  try{localStorage.setItem('fiNetReport',rs.map(x=>x.u.replace(/^https:\/\//,'')+(x.ok?': ok '+x.ms+'мс':': '+(x.err||'сбой')+' '+x.ms+'мс')).join(' · '));}catch(e){}
+  const good=rs.filter(x=>x.ok);
+  if(!good.length)return '';
+  let best=good[0];for(const g of good)if(g.ms<best.ms)best=g;
+  localStorage.setItem('fiApiLast',best.u);
+  return best.u;
 }
 async function sync(actions){
   const res=await fetch(apiBase+'/api/sync',{
@@ -891,11 +899,18 @@ async function refresh(light){
   }
 }
 let offRetryT=null;
+function paintNetReport(){
+  const el=$('netReport');if(!el)return;
+  let r='';try{r=localStorage.getItem('fiNetReport')||''}catch(_){}
+  if(r)el.textContent=r;
+}
 function renderOffline(e){
+  let rep='';try{rep=localStorage.getItem('fiNetReport')||''}catch(_){}
   $('screen').innerHTML=`<div class="offlineBox"><div class="ico">${e&&e.auth?'🔒':'🛰'}</div>
   <h3>${e&&e.auth?'Открой через Telegram':'Нет связи с сервером'}</h3>
   <p>${e&&e.auth?'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram расскажет серверу, кто ты.':'Телефон не достучался до сервера. Пробуем резервные маршруты и повторяем сами каждые 20 секунд.'}</p>
-  ${e&&e.auth?'':'<button class="btn btn-em" id="retryNet">🔁 Повторить попытку</button>'}</div>`;
+  ${e&&e.auth?'':'<button class="btn btn-em" id="retryNet">🔁 Повторить попытку</button>'}
+  ${e&&e.auth?'':(rep?'<div class="netReport" id="netReport">'+esc(rep)+'</div>':'')}</div>`;
   const rb=document.getElementById('retryNet');
   if(rb)rb.onclick=retryConn;
   scheduleAutoRetry(e);
@@ -904,6 +919,7 @@ async function retryConn(){
   const rb=document.getElementById('retryNet');
   if(rb){rb.disabled=true;rb.textContent='⏳ Проверяю связь…';}
   const base=await findApi();
+  paintNetReport();
   if(rb){rb.disabled=false;rb.textContent='🔁 Повторить попытку';}
   if(!base){toast('Связи нет. Подождём и попробуем сами','📡','red');return;}
   apiBase=base;setNet(true);
@@ -915,6 +931,7 @@ function scheduleAutoRetry(e){
   offRetryT=setInterval(async()=>{
     if(S||!IS_TG){clearInterval(offRetryT);offRetryT=null;return;}
     const base=await findApi();
+    paintNetReport();
     if(!base)return;
     apiBase=base;setNet(true);
     clearInterval(offRetryT);offRetryT=null;
