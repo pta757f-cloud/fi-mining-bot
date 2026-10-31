@@ -27,6 +27,9 @@ const envGet = k => {
 const CLOUD = envGet('FI_CLOUD') === '1';
 const TG_WEBHOOK_SECRET = envGet('TG_WEBHOOK_SECRET');
 let CATCHING_UP = false;
+/* последнее время, когда состояние подтягивалось из GitHub-зеркала —
+   чтобы не тащить файл на каждый запрос, кэшируем 5 секунд */
+let statePulledAt = 0;
 
 /* ------------------------- КОНФИГ-ФАЙЛ ------------------------- */
 const CFG_PATH = path.join(__dirname, 'config.json');
@@ -1787,6 +1790,7 @@ async function apiRoute(pathname, method, bodyRaw) {
             else if (u && u.my_chat_member) { /* добавление/бан бота — игнорируем */ }
         } catch (e) { console.error('[webhook]', e && e.message); }
         saveState();
+        if (CLOUD) await saveStateToGitHub(false);
         return { ok: true };
     }
     if (body === null) return { ok: false, err: 'bad json' };
@@ -1794,6 +1798,10 @@ async function apiRoute(pathname, method, bodyRaw) {
     /* Устройства: регистрация телефона, коды связки с Telegram */
     if (pathname === '/api/device') {
         try {
+            if (CLOUD && GH.token && Date.now() - statePulledAt > 5000) {
+                await loadStateFromGitHub();
+                statePulledAt = Date.now();
+            }
             const mode = String(body.mode || '');
             /* мини-игра (Telegram) делает код привязки */
             if (mode === 'linkcode') {
@@ -1990,7 +1998,8 @@ async function apiRoute(pathname, method, bodyRaw) {
     }
 
     if (pathname === '/api/sync') {
-        if (CLOUD && GH.token) await loadStateFromGitHub(); /* свежее состояние из зеркала —_progress не теряется между изолятами */
+        if (CLOUD && GH.token) await loadStateFromGitHub(); /* перед каждым действием — свежее состояние из зеркала, иначе баланс откатывается к старому сохранению */
+        statePulledAt = Date.now();
         const au = authPlayer(body);
         if (!au) return { ok: false, err: 'auth' };
         const p = au.p;
@@ -2007,6 +2016,7 @@ async function apiRoute(pathname, method, bodyRaw) {
         }
         saveState();
         saveStateToGitHub(false);
+        statePulledAt = Date.now();
         const snap = apiSnapshot(p);
         snap.msg = msg;
         /* Результат одиночного действия отдаём в ответе целиком (ok/seg/win и т.п.) — иначе клиент не отличает успех от проигрыша */
