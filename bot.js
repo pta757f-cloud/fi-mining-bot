@@ -1668,6 +1668,159 @@ function loginCleanup() {
     return state.loginSessions;
 }
 
+/* ==================== GOOGLE OAUTH 2.0 (PKCE) — «Войти через Google» ====================
+   Флоу: приложение → системный браузер (intent://) → /gauth/start → Google (выбор аккаунта)
+   → /gauth/done?code&state → VK обмен на access_token → userinfo {sub,email} →
+   создаём/находим G-игрока → сессия-токен кладём в data/gauth.json (меж-изолятное зеркало)
+   → приложение подбирает токен поллингом /api/auth gPoll → вошёл. */
+function gCreds() {
+    try {
+        const g = CFG.googleClient || {};
+        return {
+            id: ENV('GOOGLE_CLIENT_ID') || g.id || '',
+            secret: ENV('GOOGLE_CLIENT_SECRET') || g.secret || ''
+        };
+    } catch (_) { return { id: '', secret: '' }; }
+}
+function gStateOk(st) { return /^g[0-9a-f]{32}$/.test(String(st || '')); }
+function gPkceVerifier(st) {
+    /* детерминированный verifier из state — хранить не нужно, формула живёт у сервера */
+    const pepper = shaH('fi-coin-google-pkce|v1');
+    return shaH(pepper + '|' + shaH(st + '|coin-game-timofey'));
+}
+function gPkceChallenge(st) {
+    const bytes = crypto.createHash('sha256').update(gPkceVerifier(st), 'utf8').digest();
+    return bytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function gRelayRead() {
+    ensureAuthIndex();
+    state.gRelay = state.gRelay || {};
+    if (!CLOUD || !GH.token) return state.gRelay;
+    try {
+        const j = await ghApi('GET', '/contents/data/gauth.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
+        if (j && j.content) {
+            try { state.gRelay = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')) || {}; } catch (_) { state.gRelay = {}; }
+        }
+    } catch (_) { /* сеть дрогнула — работаем на памяти */ }
+    return state.gRelay;
+}
+async function gRelayWrite(st, rec) {
+    ensureAuthIndex();
+    state.gRelay = state.gRelay || {};
+    state.gRelay[st] = rec;
+    try {
+        for (const k of Object.keys(state.gRelay)) if (Date.now() - ((state.gRelay[k] || {}).at || 0) > 10 * 60000) delete state.gRelay[k];
+    } catch (_) { }
+    if (!CLOUD || !GH.token) { saveState(); return; }
+    try {
+        for (let i = 0; i < 3; i++) {
+            let sha = null;
+            const j = await ghApi('GET', '/contents/data/gauth.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
+            if (j && j.content) {
+                try { const o = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')); if (o && typeof o === 'object') state.gRelay = Object.assign(o, state.gRelay); } catch (_) { }
+            }
+            if (j && j.sha) sha = j.sha;
+            let body = {
+                message: 'chore: gauth relay',
+                content: Buffer.from(JSON.stringify(state.gRelay)).toString('base64'),
+                branch: GH.branch,
+                ...(sha ? { sha } : {})
+            };
+            const r = await ghApi('PUT', '/contents/data/gauth.json', body);
+            if (r) return true;
+            await new Promise(s => setTimeout(s, 600));
+        }
+    } catch (e) { console.error('[grelay]', e && e.message); }
+    return false;
+}
+function gAuthAccount(ui) {
+    /* находим/создаём игрока Google-аккаунта по sub */
+    ensureAuthIndex();
+    state.gAccounts = state.gAccounts || {};
+    const sub = String(ui.sub || ''); const email = String(ui.email || '').toLowerCase();
+    let pid = state.gAccounts[sub];
+    let p = pid && state.players[pid];
+    if (!p) {
+        const id = 'G' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+        p = newPlayer({ id, first_name: '', username: '' });
+        p.auth = { nick: '', nickKey: '', email, sub, salt: '', passHash: '', tgChatId: '', tgUsername: '', devs: {}, via: 'google' };
+        state.players[id] = p;
+        state.gAccounts[sub] = id;
+        logLine('🆕 Google-аккаунт: ' + (email || sub));
+    }
+    if (email && p.auth.email !== email) p.auth.email = email;
+    return p;
+}
+/* роут для воркера: /gauth/start и /gauth/done — браузерные GET */
+async function gAuthRoute(pathname, searchParams) {
+    const c = gCreds();
+    const HTML = (title, body, extra = '') =>
+        '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<title>' + esc(title) + ' · FI Coin</title></head><body style="margin:0;background:#0e1621;color:#dfe9f3;' +
+        'font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh">' +
+        '<div style="text-align:center;padding:28px;max-width:420px">' + body + '<div style="margin-top:22px">' +
+        '<a href="https://pta757f-cloud.github.io/fi-mining-bot/" style="color:#17dd62;font-weight:700;text-decoration:none">🪙 Открыть игру FI Coin</a></div>' + extra + '</div></body></html>';
+    if (pathname === '/gauth/start') {
+        const st = String(searchParams.get('state') || '');
+        if (!gStateOk(st)) return { html: HTML('Вход', '<div style="font-size:56px">🪙</div><h1 style="font-size:20px">FI Coin</h1><p>Сессия входа устарела — открой игру и нажми «Войти через Google» заново.</p>') };
+        if (!c.id) return { html: HTML('Настройка', '<div style="font-size:50px">🔧</div><h1 style="font-size:19px">Google-вход не настроен</h1><p style="color:#9fb7c9">Хозяин ещё не подключил OAuth-клиент. Вход по нику и паролю работает.</p>') };
+        const base = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
+        const q = {
+            client_id: c.id,
+            redirect_uri: base + '/gauth/done',
+            response_type: 'code',
+            scope: 'openid email profile',
+            state: st,
+            code_challenge: gPkceChallenge(st),
+            code_challenge_method: 'S256',
+            prompt: 'select_account' /* всегда показываем выбор аккаунта — как просили */
+        };
+        return { redirect: 'https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(q).map(k => k + '=' + encodeURIComponent(q[k])).join('&') };
+    }
+    if (pathname === '/gauth/done') {
+        const redirect = () => { const p = { code: searchParams.get('code') || '', error: searchParams.get('error') || '', state: searchParams.get('state') || '' }; return p; };
+        const rr = redirect();
+        if (rr.error || !rr.code || !gStateOk(rr.state)) {
+            return { html: HTML('Вход', '<div style="font-size:52px">😐</div><h1 style="font-size:20px">Не получилось</h1><p style="color:#9fb7c9">Google-вход не завершён — открой игру и попробуй ещё раз.</p>' + (rr.error ? '<p style="color:#5a4a4e;font-size:12px">' + esc(rr.error) + '</p>' : '')) };
+        }
+        /* обмен кода → access_token (PKCE + client_secret) */
+        const base = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
+        let tj = null;
+        try {
+            const form = {
+                client_id: c.id, code: rr.code, grant_type: 'authorization_code',
+                redirect_uri: base + '/gauth/done', code_verifier: gPkceVerifier(rr.state)
+            };
+            if (c.secret) form.client_secret = c.secret;
+            const res = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(form).toString()
+            });
+            tj = await res.json().catch(() => null);
+        } catch (_) { }
+        if (!tj || !tj.access_token) {
+            const w = tj && (tj.error_description || tj.error) ? String(tj.error_description || tj.error) : 'Google не ответил';
+            return { html: HTML('Вход', '<div style="font-size:52px">⚠️</div><h1 style="font-size:20px">Google отменил вход</h1><p style="color:#9fb7c9">' + esc(w) + '</p>') };
+        }
+        let ui = null;
+        try {
+            const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: 'Bearer ' + tj.access_token } });
+            ui = await res.json().catch(() => null);
+        } catch (_) { }
+        if (!ui || !ui.sub) {
+            return { html: HTML('Вход', '<div style="font-size:52px">⚠️</div><h1 style="font-size:20px">Профиль не получен</h1><p style="color:#9fb7c9">Попробуй ещё раз в игре.</p>') };
+        }
+        const p = gAuthAccount(ui);
+        await accountRemember(p, 'google-browser');
+        const token = sessionNew(p.id);
+        await gRelayWrite(rr.state, { token, needsNick: !p.auth.nick, email: String(ui.email || ''), at: Date.now() });
+        logLine('🔑 Google-вход: ' + (p.auth.email || ui.sub) + ' → ' + fname(p));
+        const nickTxt = p.auth.nick ? ('Ник: <b>' + esc(p.auth.nick) + '</b>') : 'В игре придумай себе ник — регистрация завершится.';
+        return { html: HTML('Вход выполнен', '<div style="font-size:56px">✅</div><h1 style="font-size:21px;color:#17dd62">Вход выполнен</h1><p style="color:#9fb7c9">' + esc(String(ui.email || '')) + '</p><p>' + nickTxt + '</p><p style="color:#5a6f80;font-size:12px;margin-top:14px">Вернись в приложение FI Coin — игра уже ждёт.</p>') };
+    }
+    return null; /* не наш путь */
+}
+
 /* ═══ CLOUD: 2FA-сессии между изолятами — data/logins.json в зеркале GitHub ═══
    В Workers соседний запрос может обслужить ДРУГОЙ изолят с пустой памятью
    («Сессия не найдена» при нажатии ✅). Файл — источник правды для логинов,
@@ -1913,6 +2066,37 @@ async function apiRoute(pathname, method, bodyRaw) {
                 saveState();
                 return { ok: true };
             }
+            if (mode === 'gPoll') {
+                /* приложение ждёт возврата из Google-браузера: токен кладёт /gauth/done в data/gauth.json */
+                const st = String(body.state || '');
+                if (!gStateOk(st)) return { ok: false, msg: '❗ Сессия входа не валидна' };
+                const relay = await gRelayRead();
+                const rec = relay[st];
+                if (!rec || Date.now() - (rec.at || 0) > 10 * 60000) {
+                    if (rec) { delete relay[st]; saveState(); }
+                    return { ok: false, pending: true, msg: 'Ждём Google…' };
+                }
+                delete relay[st]; /* токен одноразовый */
+                saveState();
+                return { ok: true, token: String(rec.token || ''), needsNick: !!rec.needsNick, email: String(rec.email || '') };
+            }
+            if (mode === 'gNick') {
+                /* регистрация Google-аккаунта: игрок придумал ник — фиксируем */
+                const au = authPlayer(body);
+                if (!au) return { ok: false, err: 'auth' };
+                const p = au.p;
+                if (!p.auth) return { ok: false, msg: '❗ Это не Google-аккаунт' };
+                if (p.auth.nick) return { ok: true, msg: 'Ник уже выбран' };
+                const nk = String(body.nick || '').trim();
+                if (!/^[\p{L}\p{N}][\p{L}\p{N} .@_-]{1,23}$/u.test(nk)) return { ok: false, msg: '❌ Ник: 2–24 символа — буквы/цифры /.@_-' };
+                const key = accNickKey(nk);
+                if (state.accIndex[key] && state.accIndex[key] !== String(p.id)) return { ok: false, msg: '❌ Такой ник уже занят' };
+                p.auth.nick = nk; p.auth.nickKey = key; p.first_name = nk.slice(0, 24);
+                state.accIndex[key] = String(p.id);
+                logLine('🪪 ' + fname(p) + ' (' + (p.auth.email || 'google') + ') выбрал ник: ' + nk);
+                saveState(); saveStateToGitHub(false);
+                return { ok: true, msg: '✅ Ник сохранён' };
+            }
             return { ok: false, err: 'mode?' };
         } catch (e) { console.error('[auth]', e && e.message); return { ok: false, err: 'server' }; }
     }
@@ -2098,7 +2282,8 @@ async function apiRoute(pathname, method, bodyRaw) {
     }
 
     if (pathname === '/api/sync') {
-        const au = authPlayer(body);
+        let au = authPlayer(body);
+        if (!au && body && body.token && CLOUD && GH.token) { await loadStateFromGitHub(); au = authPlayer(body); } /* другой изолят только что выдал токен — тянем зеркало */
         if (!au) return { ok: false, err: 'auth' };
         const p = au.p;
         p.lastSeen = Date.now(); /* 🟢 онлайн = заходил в игру последние 2 минуты */
@@ -2126,7 +2311,8 @@ async function apiRoute(pathname, method, bodyRaw) {
     }
 
     if (pathname === '/api/staff') {
-        const au = authPlayer(body);
+        let au = authPlayer(body);
+        if (!au && body && body.token && CLOUD && GH.token) { await loadStateFromGitHub(); au = authPlayer(body); } /* то же для owner-консоли */
         if (!au) return { ok: false, err: 'auth' };
         const role = apiRole(au.tg);
         if (!role) return { ok: false, err: 'forbidden' };
@@ -2497,7 +2683,7 @@ module.exports.subTick = subTick;
         module.exports.saveState = saveState;
         module.exports.CLOUD = CLOUD;
         /* для Cloudflare Workers (bot-worker.js читает глобал, exports из бандла может протухнуть) */
-        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, subTick, saveState, CLOUD };
+        globalThis.FI_BOT = { apiRoute, onMessage, onCallback, catchupTicks, subTick, saveState, CLOUD, gApi: (pathname, searchParams) => gAuthRoute(pathname, searchParams) };
     } catch (e) { console.error('[exports]', e && e.message); }
 
     if (!CFG.token || CFG.token.includes('@BotFather')) {
