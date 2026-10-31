@@ -464,15 +464,21 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
     <h1>FI Coin</h1>
     <div class="sub">Майнинг · биржа · лаба · апгрейды. Один рынок на всех — цена единая.</div>
     <div class="card" style="max-width:300px;margin:18px auto 0;text-align:left;padding:14px">
-      <div style="font-weight:800;font-size:14px;margin-bottom:8px">🎮 Вход в игру</div>
-      <input class="dinp" id="authNick" maxlength="24" autocapitalize="none" placeholder="Ник или Google-почта">
-      <input class="dinp" id="authPass" type="password" maxlength="64" placeholder="Пароль" style="margin-top:8px">
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-em" id="authGo" style="flex:1">▶ Войти</button>
-        <button class="btn btn-ghost" id="authReg" style="flex:1">🆕 Регистрация</button>
+      <div style="font-weight:800;font-size:14px;margin-bottom:10px">🎮 Вход в игру</div>
+      <button class="btn btn-em" id="gBtn" style="width:100%;font-weight:800">🔵 Войти через Google</button>
+      <div id="googleNote" style="font-size:10px;color:var(--tg-sub);margin-top:6px">Выберешь свой Google-аккаунт в Chrome — и вернёшься в игру с прогрессом.</div>
+      <button class="btn btn-ghost" id="legacyToggle" style="width:100%;margin-top:10px;font-size:11px;color:var(--tg-sub)">Вход по нику и паролю ▾</button>
+      <div id="legacyAuth" style="display:none">
+        <input class="dinp" id="authNick" maxlength="24" autocapitalize="none" placeholder="Ник или Google-почта" style="margin-top:8px">
+        <input class="dinp" id="authPass" type="password" maxlength="64" placeholder="Пароль" style="margin-top:8px">
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-em" id="authGo" style="flex:1">▶ Войти</button>
+          <button class="btn btn-ghost" id="authReg" style="flex:1">🆕 Регистрация</button>
+        </div>
+        <div id="authErr" style="font-size:11px;color:#ff8a8a;min-height:16px;margin-top:6px"></div>
       </div>
-      <div id="authErr" style="font-size:11px;color:#ff8a8a;min-height:16px;margin-top:6px"></div>
-      <div style="font-size:10.5px;color:var(--tg-sub);line-height:1.5;margin-top:4px">💾 Прогресс хранится на сервере — ничего не теряется при выходе.<br> Telegram = 2FA: вход с нового устройства подтверждается кодом в бот @FI_CoinBot.</div>
+      <div id="gErr" style="font-size:11px;color:#ff8a8a;min-height:15px;margin-top:8px"></div>
+      <div style="font-size:10.5px;color:var(--tg-sub);line-height:1.5;margin-top:6px">💾 Прогресс хранится на сервере — ничего не теряется при выходе.<br>Telegram = 2FA: вход с нового устройства подтверждается кодом в бот @FI_CoinBot.</div>
     </div>
   </div>
 
@@ -818,6 +824,74 @@ async function appLogout(){
   setToken('');S=null;role=null;
   showAuth('Вышел. Прогресс сохранён на сервере 💾');
   renderOffline({auth:true});
+}
+/* ---------- Google OAuth: браузер ↔ Google ↔ возвращение с токеном ---------- */
+function gStateNew(){
+  let h='';
+  try{for(let i=0;i<16;i++)h+=Math.floor(Math.random()*16).toString(16);}catch(e){}
+  if(h.length!==32)h=(function(){let s='';for(let i=0;i<32;i++)s+=Math.floor(Math.random()*16).toString(16);return s;})();
+  return 'g'+h;
+}
+function googleStart(){
+  const st=gStateNew();
+  try{localStorage.setItem('fiGState',st);}catch(e){}
+  const gErr=$('gErr');if(gErr)gErr.textContent='';
+  const start=apiBase+'/gauth/start?state='+st;
+  /* APK: intent:// открывает СИСТЕМНЫЙ Chrome (оболочка перехватывает intent://). Браузер PC — обычная ссылка. */
+  const intent='intent://'+start.replace(/^https?:\/\//,'')+'#Intent;scheme=https;action=android.intent.action.VIEW;S.browser_fallback_url='+encodeURIComponent(start)+';end';
+  gWaiting(st);
+  try{location.assign(intent);}catch(e){ try{location.assign(start);}catch(_){}}
+}
+function gWaiting(st){
+  modal(`<h3>🔵 Вход через Google</h3>
+  <div style="font-size:12.5px;line-height:1.55">Открылся Chrome — выбери свой Google-аккаунт. Как выберешь, <b>вернись в игру</b> — войдём автоматически.</div>
+  <div id="gWaitTxt" style="font-size:11px;color:var(--tg-sub);margin-top:10px">Жду Google…</div>
+  <div class="num" style="font-size:26px;font-weight:800;letter-spacing:3px;margin:10px 0;user-select:all;color:var(--em)">⏳</div>
+  <button class="btn btn-ghost" data-close="1" style="margin-top:6px">Скрыть (войти позже)</button>`);
+  document.querySelectorAll('#modalBox [data-close]').forEach(x=>x.onclick=closeModal);
+  let n=0;
+  const iv=setInterval(async()=>{
+    n++;
+    const w=$('gWaitTxt');if(w)w.textContent='Жду Google… ('+Math.ceil(n*3/60)+' мин)';
+    if(n>100){clearInterval(iv);const w2=$('gWaitTxt');if(w2)w2.textContent='Превышено время ожидания — нажми «Войти через Google» заново.';return;}
+    try{
+      const j=await authCall({mode:'gPoll',state:st});
+      if(j&&j.ok&&j.token){
+        clearInterval(iv);
+        try{localStorage.removeItem('fiGState');}catch(e){}
+        setToken(j.token);
+        closeModal();
+        toast('Google вход выполнен','✅','green');
+        if(j.needsNick)gAskNick(j.email&&j.email.split('@')[0]||'');
+        else afterAuth(j);
+        return;
+      }
+      if(!j||!j.pending){/* сервер не понял стейт — Google не настроен? */}
+    }catch(e){}
+  },3000);
+}
+function gAskNick(prefill){
+  modal(`<h3>🪪 Придумай ник</h3>
+  <div style="font-size:12.5px;line-height:1.5">Google-аккаунт подключён! Осталось выбрать имя в игре.</div>
+  <input class="dinp" id="gNick" maxlength="24" autocapitalize="off" placeholder="Ник (2–24 символа)" value="${esc(String(prefill||'').slice(0,24)).replace(/"/g,'')}" style="margin-top:8px">
+  <button class="btn btn-em" id="gNickGo" style="width:100%;margin-top:10px">✅ Готово</button>
+  <div id="gNickErr" style="font-size:10.5px;color:#ff8a8a;min-height:14px;margin-top:6px"></div>`);
+  $('gNickGo').onclick=async()=>{
+    const nick=($('gNick').value||'').trim();
+    if(nick.length<2){$('gNickErr').textContent='Минимум 2 символа';return;}
+    $('gNickGo').disabled=true;
+    try{
+      const j=await authCall({mode:'gNick',token:getToken(),nick});
+      if(j.ok){closeModal();toast('Ник сохранён: '+nick,'🪪','green');afterAuth({ok:true});}
+      else{$('gNickErr').textContent=(j.msg||'Не сохранилось').replace('❌ ','');$('gNickGo').disabled=false;}
+    }catch(e){$('gNickErr').textContent='Сервер недоступен';$('gNickGo').disabled=false;}
+  };
+}
+function bindAuthUi(){
+  const gb=$('gBtn');if(gb)gb.onclick=googleStart;
+  const lt=$('legacyToggle');if(lt)lt.onclick=()=>{const la=$('legacyAuth');if(la){const vis=la.style.display!=='none';la.style.display=vis?'none':'block';lt.textContent=vis?'Вход по нику и паролю ▾':'Свернуть ▴';}};
+  const g1=$('authGo');if(g1)g1.onclick=()=>authGo(false);
+  const g2=$('authReg');if(g2)g2.onclick=()=>authGo(true);
 }
 function openLinkProfiles(){
   openTgBind();
@@ -1996,7 +2070,8 @@ $('menuDrop').onclick=async e=>{
 
 /* ---------- старт ---------- */
 $('introCoin').innerHTML=coinSVG();
-/* intro = экран входа (ник+пароль); автоскрытие по флагу убрано — пользователь видит форму, пока не войдёт */
+bindAuthUi();
+/* intro = экран входа (Google / ник+пароль); автоскрытие по флагу убрано — пользователь видит форму, пока не войдёт */
 
 (async()=>{
   document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
@@ -2017,7 +2092,25 @@ $('introCoin').innerHTML=coinSVG();
     if(S&&S.me&&S.me.banned)$('banned').classList.add('show');
     return;
   }
-  if(!getToken()){showAuth('');renderOffline({auth:true});return;}
+  if(!getToken()){
+    /* возврат из Google, пока приложение было свёрнуто: забираем токен, если relay уже есть */
+    try{
+      const pst=String(localStorage.getItem('fiGState')||'');
+      if(/^g[0-9a-f]{32}$/.test(pst)){
+        const j=await authCall({mode:'gPoll',state:pst});
+        if(j&&j.ok&&j.token){
+          try{localStorage.removeItem('fiGState');}catch(e){}
+          setToken(j.token);
+          toast('Google вход выполнен','✅','green');
+          if(j.needsNick)gAskNick(String(j.email||'').split('@')[0]);
+          else await afterAuth(j);
+          await refresh();
+          if(S){hideAuth();if(S.me&&S.me.via==='app'&&!S.me.linked)openTgInvite();return;}
+        }
+      }
+    }catch(e){}
+    showAuth('');renderOffline({auth:true});return;
+  }
   await refresh();
   if(!S){showAuth('Войди, чтобы играть');renderOffline({auth:true});return;}
   if(S.me&&S.me.banned){$('banned').classList.add('show');$('banReason').textContent='Причина: '+(S.me.banReason||'не указана');return;}
