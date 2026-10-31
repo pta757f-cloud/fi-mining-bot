@@ -826,20 +826,25 @@ function roleChipHTML(rl){
 
 /* ---------- сеть ---------- */
 async function findApi(){
-  /* порядок: адрес из api.json (живой/мертвый проверяем) → запасные адреса */
-  const urls=[];const seen=u=>!urls.includes(u);
+  /* порядок: прошлый удачный адрес (кэш) → адрес из api.json → alt из api.json → запасные из localStorage → жёсткие константы.
+     По каждому адресу пробуем /health с таймаутом; первый живой становится apiBase. */
+  const urls=[];
+  const seen=u=>!urls.includes(u);
+  const add=u=>{
+    u=String(u||'').replace(/\/+$/,'');
+    if(/^https:\/\//.test(u)&&!urls.includes(u))urls.push(u);
+  };
+  add(localStorage.getItem('fiApiLast')||'');
   try{const r=await fetch('api.json?ts='+Date.now(),{cache:'no-store'});
-    if(r.ok){const j=await r.json();if(j&&j.api&&seen(String(j.api).replace(/\/+$/,'')))urls.push(String(j.api).replace(/\/+$/,''));}
+    if(r.ok){const j=await r.json();add(j&&j.api);(j&&j.alt||[]).forEach(add);}
   }catch(e){}
   const extra=JSON.parse((localStorage.getItem('fiApiExtra')||'[]'));
-  for(const u of extra){const c=String(u).replace(/\/+$/,'');if(seen(c))urls.push(c);}
-  if(!urls.length){
-    const last=String(localStorage.getItem('fiApiLast')||'').replace(/\/+$/,'');
-    if(last&&seen(last))urls.push(last);
-  }
+  (Array.isArray(extra)?extra:[]).forEach(add);
+  /* жёсткие фолбеки: pages.dev-прокси (для сетей, где workers.dev режется) и прямой воркер */
+  ['https://fi-coin-app-2.pages.dev','https://fi-coin-bot.pta757f.workers.dev'].forEach(add);
   for(const u of urls){
     try{
-      const r=await fetch(u+'/health',{cache:'no-store',signal:AbortSignal.timeout(6000)});
+      const r=await fetch(u+'/health',{cache:'no-store',signal:AbortSignal.timeout(7000)});
       if(r.ok){localStorage.setItem('fiApiLast',u);return u;}
     }catch(e){}
   }
@@ -885,10 +890,36 @@ async function refresh(light){
     if(!S)renderOffline(e);
   }
 }
+let offRetryT=null;
 function renderOffline(e){
   $('screen').innerHTML=`<div class="offlineBox"><div class="ico">${e&&e.auth?'🔒':'🛰'}</div>
   <h3>${e&&e.auth?'Открой через Telegram':'Нет связи с сервером'}</h3>
-  <p>${e&&e.auth?'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram расскажет серверу, кто ты.':'Сервера заняты. Подожди минуту и открой игру заново.'}</p></div>`;
+  <p>${e&&e.auth?'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram расскажет серверу, кто ты.':'Телефон не достучался до сервера. Пробуем резервные маршруты и повторяем сами каждые 20 секунд.'}</p>
+  ${e&&e.auth?'':'<button class="btn btn-em" id="retryNet">🔁 Повторить попытку</button>'}</div>`;
+  const rb=document.getElementById('retryNet');
+  if(rb)rb.onclick=retryConn;
+  scheduleAutoRetry(e);
+}
+async function retryConn(){
+  const rb=document.getElementById('retryNet');
+  if(rb){rb.disabled=true;rb.textContent='⏳ Проверяю связь…';}
+  const base=await findApi();
+  if(rb){rb.disabled=false;rb.textContent='🔁 Повторить попытку';}
+  if(!base){toast('Связи нет. Подождём и попробуем сами','📡','red');return;}
+  apiBase=base;setNet(true);
+  await refresh();
+}
+function scheduleAutoRetry(e){
+  if(e&&e.auth)return;
+  if(offRetryT)clearInterval(offRetryT);
+  offRetryT=setInterval(async()=>{
+    if(S||!IS_TG){clearInterval(offRetryT);offRetryT=null;return;}
+    const base=await findApi();
+    if(!base)return;
+    apiBase=base;setNet(true);
+    clearInterval(offRetryT);offRetryT=null;
+    await refresh();
+  },20000);
 }
 
 /* ---------- HUD ---------- */
