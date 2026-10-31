@@ -753,7 +753,8 @@ async function loadStateFromGitHub() {
 /* Публикуем адрес облачного API в репозиторий, чтобы Pages-мини-приложение всегда знало, куда стучаться */
 async function pushApiJson() {
     const url = (ENV('PUBLIC_URL') || CFG.publicUrl || '').replace(/\/+$/, '');
-    if (!url || !GH.token) return;
+    const prox = 'https://fi-coin-app-2.pages.dev';
+    if (!prox || !GH.token) return;
     try {
         for (let i = 0; i < 2; i++) {
             const j = await ghApi('GET', '/contents/api.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
@@ -761,17 +762,17 @@ async function pushApiJson() {
             if (j && j.content) {
                 try {
                     const curApi = (JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')).api || '').replace(/\/+$/, '');
-                    if (curApi === url) { console.log('📡 api.json уже указывает на ' + url); return; }
+                    if (curApi === prox) { console.log('ok api.json already -> ' + prox); return; }
                 } catch (_) { }
             }
             const body = {
                 message: 'chore: api url',
-                content: Buffer.from(JSON.stringify({ api: url, t: Date.now() })).toString('base64'),
+                content: Buffer.from(JSON.stringify({ api: prox, alt: url ? [url] : [], t: Date.now() })).toString('base64'),
                 branch: GH.branch
             };
             if (j && j.sha) body.sha = j.sha;
             const r = await ghApi('PUT', '/contents/api.json', body);
-            if (r) { console.log('📡 api.json обновлён в GitHub → ' + url); return; }
+            if (r) { console.log('📡 api.json обновлён в GitHub → ' + prox); return; }
             if (i === 0) await new Promise(s => setTimeout(s, 700)); /* 409 — гонка изолятов: перечитываем свежий sha */
             else console.error('[gh] api.json: PUT не прошёл (SHA-гонка изолятов, не критично)');
         }
