@@ -1954,7 +1954,7 @@ $('botAvatar').innerHTML=coinSVG();
   showDevCard();
   bindDevCard();
   if(!apiBase)setNet(false);
-}).catch(()=>renderOffline(null));
+})().catch(()=>renderOffline(null));
 
 
 /* 🔴 живая цена FI: каждые 3 секунды — лёгкий /health тянет свежую цену и «дышит» HUD (+ живая биржа) */
