@@ -124,8 +124,7 @@ function loadState() {
     if (!Array.isArray(state.friendReqs)) state.friendReqs = [];
     if (!state.deviceVault || typeof state.deviceVault !== 'object' || Array.isArray(state.deviceVault)) state.deviceVault = {};
     if (!Array.isArray(state.linkCodes)) state.linkCodes = [];
-    if (!Array.isArray(state.loginSessions)) state.loginSessions = [];
-    if (!state.loginSpam || typeof state.loginSpam !== 'object') state.loginSpam = {};
+        if (!state.loginSpam || typeof state.loginSpam !== 'object') state.loginSpam = {};
     if (!state.dialogs || typeof state.dialogs !== 'object') state.dialogs = {};
     if (!Number.isFinite(state.savedAt)) state.savedAt = 0;
     if (!Number.isFinite(state.lastTick)) state.lastTick = 0;
@@ -789,7 +788,7 @@ function saveStateToGitHub(force) {
         try {
             /* приватное в публичное зеркало не уезжает: коды привязки (кража с GitHub = захват игры
                по связке) и контексты кнопок (чат-ID). В памяти бота они остаются включая использование */
-            const remote = Object.assign({}, state, { linkCodes: [], dialogs: {}, loginSessions: [], loginSpam: {} });
+            const remote = Object.assign({}, state, { linkCodes: [], dialogs: {} });
             const body = {
                 message: 'chore: bot state sync',
                 content: Buffer.from(JSON.stringify(remote)).toString('base64'),
@@ -942,27 +941,12 @@ function deviceVerify(body) {
     } catch (_) { return null; }
 }
 function authPlayer(body) {
-    /* ① приложение: долгосрочная сессия по токену (вход через юзернейм + подтверждение в ТГ) */
-    if (body && body.token) {
-        ensureAppIndex();
-        const sess = state.sessions[String(body.token)];
-        if (sess && state.players[sess.pid] && Date.now() - (sess.at || 0) < 90 * 864e5) {
-            sess.at = Date.now();
-            return { p: state.players[sess.pid], tg: state.players[sess.pid] };
-        }
-    }
     const u = verifyInitData(body.init || '');
     if (u) return { p: ensurePlayer(u), tg: u };
     const p = deviceVerify(body);
     if (p) return { p, tg: p };
     return null;
 }
-
-/* ------------------------- СЕССИИ ПРИЛОЖЕНИЯ ------------------------- */
-function ensureAppIndex() { state.sessions = state.sessions || {}; }
-function sessionNew(pid) { ensureAppIndex(); const t = crypto.randomBytes(24).toString('hex'); state.sessions[t] = { pid: String(pid), at: Date.now() }; return t; }
-function sessionKill(pid) { ensureAppIndex(); let n = 0; for (const t of Object.keys(state.sessions)) if (String(state.sessions[t].pid) === String(pid)) { delete state.sessions[t]; n++; } return n; }
-function sessionKillOne(t) { ensureAppIndex(); if (state.sessions[t]) { delete state.sessions[t]; return true; } return false; }
 
 /* ------------------------- СОЦИАЛКА: друзья и онлайн ------------------------- */
 const ONLINE_MS = 120000;              /* 🟢 = заходил в игру последние 2 минуты */
@@ -1659,77 +1643,6 @@ async function apiRunStaff(user, role, act) {
    «🔑 хочу войти» → на месте рождается 30-значный код, живёт 45 СЕКУНД, потом
    стирается и забывается (сессия мертва). Ввод кода в APK вместе с st = двойной
    фактор: у кого нет чата, тот не увидит код; у кого видит — нет st. */
-const LOGIN_CODE_DIGITS = 30;
-const LOGIN_CODE_TTL = 120000; /* 2 минуты: 30 цифр надо успеть вбить/вставить */
-function loginSessions() {
-    if (!Array.isArray(state.loginSessions)) state.loginSessions = [];
-    return state.loginSessions;
-}
-function loginCleanup() {
-    const S = loginSessions();
-    const keep = S.filter(x => {
-        const ttl = x.phase === 'code' ? LOGIN_CODE_TTL : 5 * 60000;
-        return Date.now() - (x.codeAt || x.at) < ttl;
-    });
-    if (keep.length !== S.length) state.loginSessions = keep;
-    return state.loginSessions;
-}
-
-/* ═══ CLOUD: 2FA-сессии между изолятами — data/logins.json в зеркале GitHub ═══
-   В Workers соседний запрос может обслужить ДРУГОЙ изолят с пустой памятью
-   («Сессия не найдена» при нажатии ✅). Файл — источник правды для логинов,
-   память — кэш. На ПК (CLOUD=0) всё работает по-старому, в памяти. */
-function loginLive(x) {
-    return !x.code && x.phase !== 'done' && x.phase !== 'denied';
-}
-const LOGIN_PHASE_RANK = { check: 0, ask: 1, code: 2, expired: 3, denied: 3, done: 4 };
-function loginsMerge(obj) {
-    if (!obj) return;
-    const mem = loginSessions();
-    for (const rs of (Array.isArray(obj.sessions) ? obj.sessions : [])) {
-        if (!rs || !rs.st) continue;
-        const m = mem.find(x => String(x.st) === String(rs.st));
-        if (!m) { mem.push(rs); continue; }
-        /* фаза чужой копии свежее — значит сосед-изолят уже продвинул шаг: перенимаем */
-        if ((LOGIN_PHASE_RANK[String(rs.phase || 'check')] || 0) > (LOGIN_PHASE_RANK[String(m.phase || 'check')] || 0)) {
-            m.phase = rs.phase; m.code = rs.code; m.codeAt = rs.codeAt; m.tries = rs.tries; m.msgDel = rs.msgDel;
-        }
-    }
-    state.loginSpam = state.loginSpam || {};
-    for (const k of Object.keys(obj.spam || {})) state.loginSpam[k] = Math.max(state.loginSpam[k] || 0, Number(obj.spam[k]) || 0);
-    loginCleanup();
-}
-async function loginsPull() {
-    if (!CLOUD || !GH.token) return;
-    try {
-        const j = await ghApi('GET', '/contents/data/logins.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
-        if (!j || !j.content) return;
-        let obj = null;
-        try { obj = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')); } catch (_) { return; }
-        loginsMerge(obj);
-    } catch (_) { /* сеть дрогнула — работаем на памяти */ }
-}
-async function loginsPush() {
-    if (!CLOUD || !GH.token) return;
-    try {
-        for (let i = 0; i < 3; i++) {
-            const j = await ghApi('GET', '/contents/data/logins.json?ref=' + GH.branch + '&r=' + Math.random().toString(36).slice(2));
-            if (j && j.content) {
-                try { loginsMerge(JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'))); } catch (_) { }
-            }
-            const body = {
-                message: 'chore: logins',
-                content: Buffer.from(JSON.stringify({ sessions: loginSessions(), spam: state.loginSpam || {}, t: Date.now() })).toString('base64'),
-                branch: GH.branch
-            };
-            if (j && j.sha) body.sha = j.sha;
-            const r = await ghApi('PUT', '/contents/data/logins.json', body);
-            if (r) return true;
-            await new Promise(s => setTimeout(s, 600)); /* SHA-гонка изолятов — перечитали sha и снова */
-        }
-        console.error('[logins] push не прошёл (SHA-гонка), не критично');
-    } catch (e) { console.error('[logins]', e && e.message); }
-}
 function randDigits(n) {
     let s = '';
     for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10);
@@ -1798,10 +1711,6 @@ async function apiRoute(pathname, method, bodyRaw) {
     /* Устройства: регистрация телефона, коды связки с Telegram */
     if (pathname === '/api/device') {
         try {
-            if (CLOUD && GH.token && Date.now() - statePulledAt > 5000) {
-                await loadStateFromGitHub();
-                statePulledAt = Date.now();
-            }
             const mode = String(body.mode || '');
             /* мини-игра (Telegram) делает код привязки */
             if (mode === 'linkcode') {
@@ -1857,95 +1766,6 @@ async function apiRoute(pathname, method, bodyRaw) {
                 try { send(p.id, `🔐 <b>Вход в FI Coin подтверждён</b>\nУстройство <code>…${uid.slice(-4)}</code> теперь играет твоим профилем.\nЕсли это был не ты — дай знать владельцу.`); } catch (_) { }
                 return { ok: true, msg: '✅ Готово! Открой FI Coin на телефоне — войдёшь как ты.' };
             }
-            /* 2FA-вход, шаг 1: приложение просит сессию по юзернейму Telegram */
-            if (mode === 'loginStart') {
-                if (CLOUD && GH.token) await loadStateFromGitHub(); /* игрок мог регистрироваться на другом изоляте */
-                const uname = String(body.username || '').replace(/^@/, '').trim().toLowerCase();
-                if (!/^[a-z0-9_]{4,32}$/.test(uname)) return { ok: false, msg: '❌ Юзернейм: латиница/цифры/_, 4–32 символа' };
-                if (CLOUD) await loginsPull(); /* чужие сессии/спам-штампы должны быть видны */
-                loginCleanup();
-                state.loginSpam = state.loginSpam || {};
-                if (Date.now() - (state.loginSpam[uname] || 0) < 60000) return { ok: false, msg: '⏳ Только что высылали — проверь чат @FI_CoinBot в Telegram' };
-                const tp = Object.values(state.players).find(x => (x.username || '').toLowerCase() === uname);
-                if (!tp) return { ok: false, msg: `❌ @${uname} не регался в мини-игре. Открой @FI_CoinBot в Telegram и жми «Играть 🪙»` };
-                if (tp.banned) return { ok: false, msg: '🚫 Профиль заблокирован' };
-                if (!tp.username) return { ok: false, msg: '❌ У профиля нет @username — задай его в настройках Telegram' };
-                const live = loginSessions().find(x => String(x.to) === String(tp.id) && loginLive(x));
-                if (live) return { ok: false, msg: '⏳ Подтверждение уже выслано — открой чат @FI_CoinBot' };
-                const st = crypto.randomBytes(12).toString('hex');
-                const msg = await send(tp.id,
-                    `🔐 <b>Вход в приложение FI Coin</b>\nКто-то на телефоне просит войти как <b>${fname(tp)}</b> (${uname}).\n\n<b>Это ты?</b>`,
-                    [[{ text: '✅ Да, это я', callback_data: 'lgok:' + st }, { text: '❌ Это не я', callback_data: 'lgno:' + st }]]);
-                if (!msg) return { ok: false, msg: '❌ Telegram недоступен — попробуй через минуту' };
-                state.loginSpam[uname] = Date.now();
-                loginSessions().push({ st, to: String(tp.id), chatId: tp.id, msgId: msg.message_id, at: Date.now(), phase: 'check' });
-                saveState();
-                adminSay(`📱 ${fname(tp)} (@${uname}) запросил 2FA-вход в приложение`);
-                if (CLOUD) await loginsPush(); /* сессия переживёт и соседний изолят */
-                return { ok: true, st };
-            }
-            /* 2FA-вход, шаг 2: приложение поллит — после «Да, это я» в боте выдаёт токен сессии */
-            if (mode === 'authPoll') {
-                loginCleanup();
-                let sess = loginSessions().find(x => x.st === String(body.st || ''));
-                if (!sess && CLOUD) { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')); }
-                if (!sess) return { ok: true, phase: 'gone' };
-                if (CLOUD && sess.phase === 'check') { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')) || sess; }
-                if (sess.phase === 'denied' || sess.phase === 'expired') return { ok: false, msg: '❌ Сессия отменена или истекла — начни вход заново' };
-                if (sess.phase === 'done' && sess.token) return { ok: true, phase: 'done', token: sess.token };
-                return { ok: true, phase: sess.phase };
-            }
-            /* 2FA-вход, шаг 2 (старый): APK поллит состояние сессии */
-            if (mode === 'loginPoll') {
-                loginCleanup();
-                let sess = loginSessions().find(x => x.st === String(body.st || ''));
-                if (!sess && CLOUD) { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')); }
-                if (!sess) return { ok: true, phase: 'gone' };
-                /* переходные фазы (check/ask) сосед мог уже продвинуть — сверяемся с файлом, иначе APK повиснет */
-                if (CLOUD && (sess.phase === 'check' || sess.phase === 'ask')) {
-                    await loginsPull();
-                    sess = loginSessions().find(x => x.st === String(body.st || '')) || sess;
-                }
-                let phase = sess.phase;
-                if (phase === 'code' && Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) {
-                    sess.code = null; sess.phase = 'expired'; phase = 'expired';
-                    /* код протух — удаляем сообщение из чата (облако может пересоздаться,
-                       setTimeout не гарантирован: чистим лениво при первом же опросе) */
-                    if (!sess.msgDel) {
-                        sess.msgDel = 1;
-                        try { tg('deleteMessage', { chat_id: sess.chatId, message_id: sess.msgId }).catch(() => { }); } catch (_) { }
-                    }
-                    if (CLOUD) await loginsPush();
-                }
-                return { ok: true, phase, left: phase === 'code' ? Math.max(0, Math.ceil((sess.codeAt + LOGIN_CODE_TTL - Date.now()) / 1000)) : 0 };
-            }
-            /* 2FA-вход, шаг 3: APK вводит 30-значный код (двойной фактор) */
-            if (mode === 'loginRedeem') {
-                let sess = loginSessions().find(x => x.st === String(body.st || ''));
-                if (!sess && CLOUD) { await loginsPull(); sess = loginSessions().find(x => x.st === String(body.st || '')); }
-                if (!sess) return { ok: false, msg: '❌ Сессия истекла — начни вход заново' };
-                if (sess.phase !== 'code' || !sess.code) return { ok: false, msg: '❌ Кода нет — нажми «🔑 Да, я хочу зайти» в чате заново' };
-                if (Date.now() - (sess.codeAt || 0) > LOGIN_CODE_TTL) { sess.code = null; sess.phase = 'expired'; saveState(); if (CLOUD) await loginsPush(); return { ok: false, msg: '⏰ Код прожил свои 2 минуты — начни заново' }; }
-                sess.tries = (sess.tries || 0) + 1;
-                const code = String(body.code || '').replace(/\D/g, '');
-                if (code !== sess.code) {
-                    if (sess.tries >= 5) { sess.code = null; sess.phase = 'expired'; saveState(); if (CLOUD) await loginsPush(); return { ok: false, msg: '🚫 5 неверных кодов — сессия закрыта, начни заново' }; }
-                    saveState();
-                    if (CLOUD) await loginsPush();
-                    return { ok: false, msg: `❌ Код не подошёл (осталось попыток: ${5 - sess.tries})` };
-                }
-                const tp = state.players[sess.to];
-                if (!tp) return { ok: false, msg: '❌ Профиль не найден' };
-                const uid = String(body.uid || ''), secret = String(body.secret || '');
-                if (!/^W\d{13}$/.test(uid) || !/^[0-9a-f]{64}$/.test(secret)) return { ok: false, msg: '❌ Данные устройства некорректны' };
-                linkDeviceToPlayer(uid, secret, tp);
-                sess.phase = 'done'; sess.code = null;
-                try { send(tp.id, `✅ <b>Вход выполнен</b>\nОткрывай приложение FI Coin — играешь своим профилем (${fname(tp)}).`); } catch (_) { }
-                adminSay(`🔑 ${fname(tp)} вошёл в приложение по 2FA-коду (…${uid.slice(-4)})`);
-                saveState();
-                if (CLOUD) await loginsPush();
-                return { ok: true };
-            }
             /* телефон: отдельный профиль (нужен ник) */
             if (mode === 'register') {
                 const uid = String(body.uid || ''), secret = String(body.secret || ''), nick = String(body.nick || '').trim();
@@ -1987,19 +1807,11 @@ async function apiRoute(pathname, method, bodyRaw) {
                 try { send(tp.id, `📱 <b>Телефон привязан!</b>\nОткрой приложение на телефоне — тот же баланс и та же ферма, что и здесь.`); } catch (_) { }
                 return { ok: true, msg: '✅ Связано! Открывай игру на телефоне' };
             }
-            /* выход из приложения — отозвать токен сессии */
-            if (mode === 'logout') {
-                const t = String(body.token || '');
-                if (t && sessionKillOne(t)) { saveState(); if (CLOUD) await loginsPush(); adminSay('🚪 приложение: выход'); }
-                return { ok: true };
-            }
-            return { ok: false, msg: '❌ Неизвестный режим' };
+            
         } catch (e) { return { ok: false, msg: '❌ Ошибка: ' + e.message }; }
     }
 
     if (pathname === '/api/sync') {
-        if (CLOUD && GH.token) await loadStateFromGitHub(); /* перед каждым действием — свежее состояние из зеркала, иначе баланс откатывается к старому сохранению */
-        statePulledAt = Date.now();
         const au = authPlayer(body);
         if (!au) return { ok: false, err: 'auth' };
         const p = au.p;
@@ -2453,59 +2265,6 @@ async function onCallback(q) {
             }
         }
 
-        /* 🔐 кик сессий приложений своего профиля (кнопки из /info) */
-        if (a === 'kick' || a === 'kickall') {
-            if (CLOUD) await loginsPull();
-            ensureAppIndex();
-            const uid = String(user.id);
-            if (a === 'kickall') {
-                const n = sessionKill(uid);
-                saveState();
-                if (CLOUD) await loginsPush();
-                await answer(q, 'Сессий приложений отключено: ' + n);
-                return;
-            }
-            const t = String(b || '');
-            const sess = state.sessions[t];
-            if (!sess || String(sess.pid) !== uid) { await answer(q, '❗ Сессия не найдена или не твоя'); return; }
-            sessionKillOne(t);
-            saveState();
-            if (CLOUD) await loginsPush();
-            await answer(q, 'Сессия …' + String(t).slice(-6) + ' кикнута');
-            return;
-        }
-
-        /* ---- вход из приложения: подтверждение строго в чате владельца ---- */
-        if (a === 'lgok' || a === 'lgno') {
-            if (CLOUD) await loginsPull(); /* кнопка могла прилететь в чужой изолят */
-            const sess = loginCleanup().find(x => x.st === String(b || ''));
-            if (!sess || String(sess.chatId) !== String(chat)) { await answer(q, '❗ Сессия истекла — начни вход в приложении заново'); return; }
-            if (sess.phase === 'done' || sess.phase === 'denied') { await answer(q, 'Уже обработано'); return; }
-            if (a === 'lgno') {
-                sess.phase = 'denied';
-                saveState();
-                if (CLOUD) await loginsPush();
-                try { await edit(chat, mid, '🚫 Вход отменён — это не ты.'); } catch (_) { }
-                return answer(q, 'Записал: это не ты');
-            }
-            if (a === 'lgok') {
-                if (sess.phase !== 'check') return answer(q, 'Уже обработано');
-                sess.phase = 'done';
-                sess.token = sessionNew(sess.to); /* токен сессии — приложение подхватит его по authPoll */
-                saveState();
-                if (CLOUD) await loginsPush();
-                await answer(q, 'Ок, это ты! Открывай приложение.');
-                try {
-                    await edit(chat, mid,
-                        '✅ <b>Вход в приложение FI Coin подтверждён</b>\nОткрывай приложение на телефоне — твой прогресс уже на сервере.');
-                } catch (_) { }
-                const tp = state.players[sess.to];
-                try { send(tp.id, `✅ <b>Вход выполнен</b>\nИграй своим профилем (${fname(tp)}).`); } catch (_) { }
-                return;
-            }
-        }
-
-        await answer(q);
     } catch (e) {
         console.error('[cb]', q.data, e.message);
         try { await answer(q, '⚠️ Ошибка'); } catch (_) { }
@@ -2584,23 +2343,14 @@ async function onMessage(msg) {
             return send(chat, `🛡 Сброшено привязок: ${n}.\nСтарое устройство больше не считается входом — при следующем запуске APK попросит 2FA.`);
         }
         case 'info': {
-            /* 🔐 инфо профиля + сессии приложений (если случайно нажал «да» чужому логину — кикни отсюда) */
             const p = ensurePlayer(user);
             if (p.banned) return send(chat, '🚫 Забанен — информация недоступна');
-            ensureAppIndex();
-            const mine = Object.keys(state.sessions || {}).filter(t => String(state.sessions[t].pid) === String(p.id));
-            const kb = [];
-            if (mine.length) kb.push([{ text: '👢 Кикнуть все сессии приложений', callback_data: 'kickall' }]);
-            for (const t of mine.slice(0, 6)) kb.push([{ text: '👢 Сессия …' + String(t).slice(-6), callback_data: 'kick:' + t }]);
             return send(chat,
                 `👤 <b>${esc(fname(p))}</b>\n` +
                 `🆔 <code>${esc(String(p.id))}</code>\n` +
                 `💵 $${fmt(p.usd)}   ${fmt(p.fi)} FI\n` +
                 `⛏ Ригов: ${Object.keys(p.miners || {}).length}\n` +
-                `📅 В игре с ${new Date(p.joined).toLocaleDateString('ru-RU')}\n` +
-                `🔐 Активных сессий приложений: ${mine.length}\n` +
-                (mine.length ? '\nЕсли не ты входил — нажми «Кикнуть все сессии».' : ''),
-                mine.length ? { inline_keyboard: kb } : undefined);
+                `📅 В игре с ${new Date(p.joined).toLocaleDateString('ru-RU')}`);
         }
         case 'profile': case 'bal': { const p = ensurePlayer(user); const s = screenProfile(p); return send(chat, s.text, s.kb); }
         case 'market': { const p = ensurePlayer(user); const s = screenMarket(p); return send(chat, s.text, s.kb); }
