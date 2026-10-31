@@ -4,9 +4,24 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import vm from 'node:vm';
+import { spawnSync } from 'child_process';
 
 const CFG = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url), 'utf8'));
 const API = 'https://fi-coin-bot.pta757f.workers.dev';
+
+/* Прокладка через PowerShell: системный сетевой стек ходит, где node-undici падает по таймауту */
+const CACHE = new URL('./_cache/', import.meta.url);
+fs.mkdirSync(CACHE, { recursive: true });
+const localPath = u => decodeURIComponent(new URL(u, CACHE).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+function psToFile(url, file, opts = {}) {
+    const f = localPath(file);
+    const ps = opts.method === 'POST'
+        ? `Invoke-WebRequest -Uri '${url}' -Method Post -ContentType 'application/json' -InFile '${localPath(opts.inFile)}' -OutFile '${f}' -TimeoutSec 90 -UseBasicParsing`
+        : `Invoke-WebRequest -Uri '${url}' -OutFile '${f}' -TimeoutSec 90 -UseBasicParsing`;
+    const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '$ProgressPreference="SilentlyContinue"; ' + ps + '; if($?){Write-Output OK}else{Write-Output FAIL}'], { encoding: 'utf8', timeout: 120000 });
+    if (!fs.existsSync(f) || !(r.stdout || '').includes('OK')) throw new Error('PS-fetch не удался: ' + (r.stderr || r.stdout || ''));
+    return f;
+}
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
@@ -22,7 +37,7 @@ function initData(user) {
     return pairs.map(([k, v]) => `${k}=${v}`).join('&') + '&hash=' + hash;
 }
 function devKey() { return crypto.createHash('sha256').update(String(CFG.token) + '|fi-device-vault', 'utf8').digest(); }
-const mint = await (await fetch('https://raw.githubusercontent.com/pta757f-cloud/fi-mining-bot/main/data/state.json')).json();
+const mint = JSON.parse(fs.readFileSync(psToFile('https://raw.githubusercontent.com/pta757f-cloud/fi-mining-bot/main/data/state.json', 'mint.json'), 'utf8'));
 
 const snaps = [{ label: 'OWNER(init)', body: { init: initData({ id: 6195813087, first_name: 'Тимофей', username: 'timofey_u' }), actions: [] } }];
 for (const [uid, blob] of Object.entries(mint.deviceVault || {})) {
@@ -36,9 +51,21 @@ for (const [uid, blob] of Object.entries(mint.deviceVault || {})) {
         snaps.push({ label: 'DEVICE ' + uid + '(p=' + rec.p + ')', body: { device: { uid, ts, sig }, actions: [] } });
     } catch (e) { console.log('vault fail', uid, e.message); }
 }
-for (const sn of snaps) {
-    sn.snap = await (await fetch(API + '/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sn.body) })).json();
+for (let _i = 0; _i < snaps.length; _i++) {
+    const sn = snaps[_i];
+    fs.writeFileSync(localPath('body-' + _i + '.json'), JSON.stringify(sn.body));
+    sn.snap = JSON.parse(fs.readFileSync(psToFile(API + '/api/sync', 'out-' + _i + '.json', { method: 'POST', inFile: 'body-' + _i + '.json' }), 'utf8'));
     if (!sn.snap || !sn.snap.me) { console.log(sn.label, '→ СНАПШОТ НЕ ПРИШЁЛ'); process.exit(1); }
+}
+
+/* SYNTH: app-аккаунт без привязанного TG — баннер 2FA обязан отрисоваться */
+{
+    const base = snaps.find(x => x.snap) || snaps[0];
+    if (base && base.snap) {
+        const synth = JSON.parse(JSON.stringify(base.snap));
+        synth.me = Object.assign({}, synth.me, { via: 'app', linked: false, id: 'GTEST000', name: 'Тест-Аккаунт' });
+        snaps.push({ label: 'SYNTH APP(app+!linked)', snap: synth, synth: true });
+    }
 }
 
 const ctx = vm.createContext({
@@ -67,7 +94,7 @@ for (const sn of snaps) {
   tab='shop';
   const shErr=tryR(function(){renderShop();});
   const missing=ids1.filter(function(id){if(!id||['screen','goShop','lkBannerBtn'].indexOf(id)>=0)return false;return htmlFarm.indexOf('id="'+id+'"')<0;});
-  const bannerOK=htmlFarm.indexOf('lkBannerBtn')>=0;
+  const bannerOK=htmlFarm.indexOf('openTgBind()')>=0;
   const badT=(htmlFarm.match(/undefined|NaN|Infinity/g)||[]).length;
   const flash=tryR(function(){
     S.market.price=(S.market.price||3)+0;globalThis.__mPrev=undefined;updateMarketLive();
@@ -83,10 +110,11 @@ for (const sn of snaps) {
 })()
 `, ctx, { timeout: 5000 });
     console.log(sn.label, '→', out);
-    const isDev=/DEVICE/.test(sn.label);
-    const okFarm=/farm=OK/.test(out);
-    const okBanner=isDev ? /bannerOK=true/.test(out) : true;
-    const okRest=/mk=OK/.test(out) && /sh=OK/.test(out) && /flash=OK/.test(out) && /missing=\[\]/.test(out);
+    const me = sn.snap.me || {};
+    const expBanner = me.via === 'app' && !me.linked; /* app-аккаунт без TG обязан увидеть баннер 2FA */
+    const okFarm = /farm=OK/.test(out);
+    const okBanner = expBanner ? /bannerOK=true/.test(out) : true;
+    const okRest = /mk=OK/.test(out) && /sh=OK/.test(out) && /flash=OK/.test(out) && /missing=\[\]/.test(out);
     if (!okFarm || !okBanner || !okRest) allOk = false;
 }
 console.log(allOk ? 'ALL OK' : 'HAS ISSUES');
