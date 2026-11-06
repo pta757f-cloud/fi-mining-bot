@@ -2726,6 +2726,16 @@ module.exports.subTick = subTick;
                 allowed_updates: ['message', 'callback_query'], drop_pending_updates: false
             });
             console.log(ok ? `🔗 Webhook → ${PUBLISH}/tg/webhook` : '⚠️ setWebhook не удался (проверь PUBLIC_URL)');
+            /* 🎮 Кнопка «Играть»: строго тип web_app — мини-игра открывается СРАЗУ,
+               без диалога «скачать telegram»/ссылки и без «/start-вылетов».
+               Метка ?v= гарантирует свежий HTML (а не кэш Telegram) после выкатки нового клиента. */
+            try {
+                const MENUBTN_VER = '8';
+                const mb = await tg('setChatMenuButton', {
+                    menu_button: { type: 'web_app', text: '🎮 Играть 🪙', web_app: { url: PAGES_URL + '?v=' + MENUBTN_VER } }
+                });
+                console.log(mb ? `🎮 Кнопка «Играть» = web_app → ${PAGES_URL}?v=${MENUBTN_VER}` : '⚠️ setChatMenuButton не прошёл (проверь домен в BotFather)');
+            } catch (e) { console.error('[menu-button]', e.message); }
         } else {
             console.log('⚠️ PUBLIC_URL не задан — Telegram-вебхук не включён (кнопки бота не сработают).');
         }
