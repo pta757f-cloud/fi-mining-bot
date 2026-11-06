@@ -649,9 +649,15 @@ function closeModal(){$('modalWrap').classList.remove('open');}
 $('modalWrap').onclick=e=>{if(e.target.id==='modalWrap')closeModal();};
 
 /* ---------- состояние ---------- */
-let TG_INIT='';
-try{const t=window.Telegram&&window.Telegram.WebApp;TG_INIT=t?(t.initData||''):'';}catch(e){TG_INIT='';}
-const IS_TG=TG_INIT.length>0;
+let TG_INIT='',IS_TG_ENV=false,IS_TG=false;
+try{
+  const t=window.Telegram&&window.Telegram.WebApp;
+  TG_INIT=t?(t.initData||''):'';
+  /* платформа надёжно говорит «мы внутри Telegram» даже если initData не доехал (после перезагрузки мост может сброситься) */
+  const pf=t&&t.platform?String(t.platform):'';
+  IS_TG_ENV=!!t&&pf&&pf!=='unknown';
+}catch(e){TG_INIT='';IS_TG_ENV=false;}
+IS_TG=TG_INIT.length>0||IS_TG_ENV;
 let DEV=null;
 try{DEV=JSON.parse(localStorage.getItem('fiDev')||'null');}catch(e){DEV=null;}
 if(DEV&&(!DEV.uid||!/^W\d{13}$/.test(String(DEV.uid))))DEV=null;
@@ -924,6 +930,7 @@ function renderOffline(e){
   <p>${e&&e.auth?'Запусти игру кнопкой «Играть 🪙» в чате @FI_CoinBot — Telegram расскажет серверу, кто ты.':'Телефон не достучался до сервера. Пробуем резервные маршруты и повторяем сами каждые 20 секунд.'}</p>
   ${e&&e.auth?'':'<button class="btn btn-em btn-sm" id="retryNet">🔁 Повторить попытку</button>'}
   ${e&&e.auth?'':'<button class="btn btn-ghost btn-sm" id="netCheck" style="margin-top:8px">🧪 Открыть проверку связи</button>'}
+  ${e&&e.auth?'<button class="btn btn-ghost btn-sm" id="closeWA" style="margin-top:8px">Закрыть и открыть заново</button>':''}
   ${e&&e.auth?'':(rep?'<div class="netReport" id="netReport">'+esc(rep)+'</div>':'')}</div>`;
   const rb=document.getElementById('retryNet');
   if(rb)rb.onclick=retryConn;
@@ -933,6 +940,8 @@ function renderOffline(e){
     const url='https://fi-coin-app-2.pages.dev/health';
     if(T&&T.openLink)T.openLink(url);else window.open(url,'_blank');
   };
+  const cb=document.getElementById('closeWA');
+  if(cb)cb.onclick=()=>{try{window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.close&&window.Telegram.WebApp.close();}catch(_){}};
   scheduleAutoRetry(e);
 }
 async function retryConn(){
@@ -2034,7 +2043,9 @@ const CLIENT_VER='v8';
 let VER_RELOADING=false;
 try{
   const q=new URL(location.href).searchParams.get('v');
-  if(localStorage.getItem('fiVer')!==CLIENT_VER&&q!==CLIENT_VER&&!(window.sessionStorage&&sessionStorage.getItem('fiVR'))){
+  /* перезагрузку с меткой делаем ТОЛЬКО вне Telegram: перезагрузка внутри
+     Telegram может сбросить мост и обнулить initData — лучше без неё */
+  if(!IS_TG_ENV&&localStorage.getItem('fiVer')!==CLIENT_VER&&q!==CLIENT_VER&&!(window.sessionStorage&&sessionStorage.getItem('fiVR'))){
     sessionStorage.setItem('fiVR','1');
     localStorage.setItem('fiVer',CLIENT_VER);
     VER_RELOADING=true;
@@ -2043,7 +2054,11 @@ try{
 }catch(_){}
 $('introCoin').innerHTML=coinSVG();
 $('botAvatar').innerHTML=coinSVG();
-$('startBtn').onclick=()=>{try{location.href='https://t.me/FI_CoinBot?start=goplay';}catch(_){}};
+$('startBtn').onclick=()=>{
+  /* Внутри Telegram НИКОГДА не ведём на t.me-ссылку — она выбивает из мини-игры. */
+  if(IS_TG){try{window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.close&&window.Telegram.WebApp.close();}catch(_){}return;}
+  try{location.href='https://t.me/FI_CoinBot?start=goplay';}catch(_){}
+};
 
 (async()=>{
   if(VER_RELOADING)return;
@@ -2052,6 +2067,9 @@ $('startBtn').onclick=()=>{try{location.href='https://t.me/FI_CoinBot?start=gopl
   $('menuLink').textContent=IS_TG?'🪺 Привязать телефон':'🔐 Войти в аккаунт';
   if(!apiBase){setNet(false);renderOffline(null);return;}
   if(IS_TG){
+    /* интро прячем СРАЗУ (до сетевых вызовов): ошибка сети должна показывать
+       аварийный экран, а не интро с кнопкой-ссылкой, которая выбивает из игры */
+    $('intro').classList.add('hide');
     try{
       const sp=(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe)||{};
       const pm=String(sp.start_param||'').match(/^pair-([A-Z0-9]{4}-[A-Z0-9]{4})$/);
@@ -2062,7 +2080,6 @@ $('startBtn').onclick=()=>{try{location.href='https://t.me/FI_CoinBot?start=gopl
     const j0=await apiStaff({a:'who'}).catch(()=>null);if(j0&&j0.ok&&j0.role)setRole(j0.role);
     await refresh();
     if(S&&S.me&&S.me.banned)$('banned').classList.add('show');
-    $('intro').classList.add('hide');
     return;
   }
   /* не-TG: интро — и есть экран входа; игра открывается из бота, без 2FA/логинов */
