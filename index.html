@@ -396,9 +396,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
 .offlineBox h3{margin:10px 0 6px;font-size:18px}
 .offlineBox p{font-size:12.5px;color:var(--tg-sub);line-height:1.55;white-space:pre-line}
 .netReport{font-size:9px;color:var(--tg-sub);opacity:.72;max-width:300px;margin:10px auto 0;line-height:1.6;word-break:break-all;text-align:center}
-#offStrip{display:none;align-items:center;justify-content:center;gap:10px;margin:7px 12px 0;padding:7px 12px;border-radius:11px;font-size:11px;font-weight:800;color:#f7b32b;background:linear-gradient(135deg,rgba(247,179,43,.16),rgba(247,179,43,.05));border:1px solid rgba(247,179,43,.38)}
-#offStrip .osr{border:none;background:rgba(247,179,43,.18);color:#f7b32b;font-weight:900;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:12px}
-#offStrip .osr:active{transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -441,8 +438,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;opacity:.35;ba
       <div class="chg up num" id="hChg">+0.0%</div>
     </div>
   </div>
-
-  <div id="offStrip"><span id="offStripT">📡 офлайн-просмотр</span><button class="osr" id="offRetryBtn" title="Проверить связь">🔁</button></div>
 
   <div id="screen"><div class="offlineBox"><div class="ico">🛰</div><h3>Подключаюсь…</h3><p>Ищу игровой сервер.</p></div></div>
   <div id="toasts"></div>
@@ -813,7 +808,7 @@ async function lkGo(){
 function setNet(on){
   $('dotOnline').style.display=on?'block':'none';
   $('dotOffline').style.display=on?'none':'block';
-  $('statusText').textContent=on?'бот · онлайн':((S&&S.offline)?'бот · офлайн-просмотр':'нет связи с сервером');
+  $('statusText').textContent=on?'бот · онлайн':'нет связи с сервером';
 }
 function paintBadge(rl){
   const b=$('roleBadge');
@@ -890,19 +885,10 @@ async function apiStaff(action){
 }
 async function doAction(act){
   if(busy)return null;busy=true;
-  try{
-    if(S&&S.offline)return offlineAct(act);
-    const j=await sync([act]);S=j;setNet(true);updateHUD();
+  try{const j=await sync([act]);S=j;setNet(true);updateHUD();
     if(j.msg)toast(j.msg,j.ok?'✅':'❌',j.ok?'green':'red');
     return j;
-  }catch(e){
-    if(e&&e.auth){toast('Открой игру через Telegram','🔒','red');return null;}
-    /* связь пропала (в т.ч. посреди игры): переходим в офлайн-просмотр и запоминаем заказ */
-    setNet(false);
-    if(S&&!S.offline){S.offline=true;paintOffStrip();scheduleAutoRetry(null);}
-    if(S&&S.offline){const r=offlineAct(act);return r;}
-    toast('Сервер не отвечает','📡','red');return null;
-  }
+  }catch(e){toast('Сервер не отвечает','📡','red');return null;}
   finally{busy=false;}
 }
 async function refresh(light){
@@ -916,10 +902,7 @@ async function refresh(light){
     setNet(false);
     /* сессия сброшена сервером (паника «это не я», /logout, сброс изолятом) — экран входа */
     
-    if(!S){
-      if(IS_TG&&await offlineBoot()){$('intro').classList.add('hide');toast('📡 Не дотянулись до сервера: показываю последнее сохранённое состояние','🛰');scheduleAutoRetry(null);}
-      else renderOffline(e);
-    }else if(!S.offline&&!e.auth){S.offline=true;paintOffStrip();scheduleAutoRetry(null);}
+    if(!S)renderOffline(e);
   }
 }
 let offRetryT=null;
@@ -961,133 +944,21 @@ async function retryConn(){
   if(!base){toast('Связи нет. Подождём и попробуем сами','📡','red');return null;}
   apiBase=base;setNet(true);
   await refresh();
-  if(!S||(S&&S.offline)){noteNetProblem('sync ('+base.replace(/^https:\/\//,'')+')');}
-  else{await flushQueue();}
+  if(!S)noteNetProblem('sync ('+base.replace(/^https:\/\//,'')+')');
   return base;
 }
 function scheduleAutoRetry(e){
   if(e&&e.auth)return;
   if(offRetryT)clearInterval(offRetryT);
   offRetryT=setInterval(async()=>{
-    if((S&&!S.offline)||!IS_TG){clearInterval(offRetryT);offRetryT=null;return;}
+    if(S||!IS_TG){clearInterval(offRetryT);offRetryT=null;return;}
     const base=await findApi();
     paintNetReport();
     if(!base)return;
     apiBase=base;setNet(true);
-    await refresh();
-    if(!S||(S&&S.offline)){noteNetProblem('sync ('+base.replace(/^https:\/\//,'')+')');return;} /* связь нашлась, но данные не собрались — цикл продолжается */
     clearInterval(offRetryT);offRetryT=null;
-    await flushQueue();
+    await refresh();
   },20000);
-}
-
-/* ---------- офлайн-режим: игра живёт на github-зеркале (dth state.json), заказы копятся в очереди ---------- */
-/* каталог майнеров (копия config.json — для офлайн-вида; сервер пришлёт актуальный при связи) */
-const OFF_MINERS=[
-  {id:'usb',name:'⛏ FI Mini USB',hash:0.5,price:120},
-  {id:'s9',name:'⛏ FI Rig S9',hash:14,price:850},
-  {id:'m50',name:'⛏ FI Miner M50',hash:114,price:4200},
-  {id:'avx',name:'⛏ FI Avalon X',hash:250,price:11500},
-  {id:'hyd',name:'⛏ FI Hydro H1',hash:600,price:29000},
-  {id:'imm',name:'⛏ FI Immersion DC',hash:1500,price:75000}
-];
-const OFF_GROWTH=1.18;
-let offQueue=[];
-function loadOffQueue(){try{offQueue=JSON.parse(localStorage.getItem('fiActQueue')||'[]')||[];}catch(_){offQueue=[];}if(!Array.isArray(offQueue))offQueue=[];}
-function saveOffQueue(){try{localStorage.setItem('fiActQueue',JSON.stringify(offQueue.slice(0,20)));}catch(_){}}
-/* офлайн доступно только это: покупки/продажи FI (исполняются сервером, когда появится связь) */
-const OFF_SAFE={buy:1,sell:1};
-function offlineAct(act){
-  if(act&&OFF_SAFE[act.a]){offQueue.unshift(Object.assign({},act));saveOffQueue();toast('Сохранено офлайн — отправлю на биржу, как появится связь','⏳','amber');return null;}
-  toast('В офлайне недоступно — включу связь и сработает само','📡','red');return null;
-}
-async function flushQueue(){
-  loadOffQueue();
-  if(!offQueue.length)return;
-  try{
-    while(offQueue.length){
-      const chunk=offQueue.slice(0,10);
-      const j=await sync(chunk);
-      if(j&&j.err==='auth'){const e=new Error('auth');e.auth=true;throw e;}
-      S=j;offQueue=offQueue.slice(chunk.length);saveOffQueue();updateHUD();
-    }
-    toast('✅ Офлайн-заказы доехали до сервера','📬','green');
-    render();
-  }catch(_){ saveOffQueue(); }
-}
-/* строит «снимок» игры из зеркала state.json (тот же вид, что присылает сервер) */
-async function offlineBoot(){
-  loadOffQueue();
-  try{
-    const r=await fetch('data/state.json?ts='+Date.now(),{cache:'no-store'});
-    if(!r.ok)return false;
-    const st=await r.json();
-    let uid='';try{const sp=(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe)||{};uid=String((sp.user||{}).id||'');}catch(_){}
-    const p=st.players&&st.players[uid];
-    if(!p)return false;
-    const settings=st.settings||{};
-    const nf=(x,def)=>(typeof x==='number'?x:def);
-    const sPrice=nf((st.market||{}).price,1);
-    const h=(st.market||{}).hist||[];
-    const old=h.length>48?h[h.length-48].p:(h[0]?h[0].p:sPrice);
-    const d24=old?((sPrice-old)/old)*100:0;
-    const players=st.players||{},ids=Object.keys(players);
-    const xlink=(str)=>{const x=players[String(str)];return x?{id:String(x.id),name:(x.first_name||'')+(x.username?' @'+x.username:''),usd:x.usd||0,online:false}:null;};
-    const myFriends=[];Object.keys(p.friends||{}).forEach(k=>{const r=xlink(k);if(r)myFriends.push(r);});
-    const reqIn=[];(st.friendReqs||[]).forEach(q=>{if(String(q.t)===String(p.id)){const r=xlink(q.f);if(r)reqIn.push(r);}});
-    const reqOut=[];(st.friendReqs||[]).forEach(q=>{if(String(q.f)===String(p.id))reqOut.push(String(q.t));});
-    const allp=[];ids.forEach(k=>{const x=players[k];if(String(x.id)!==String(p.id)&&!x.banned){allp.push({id:String(x.id),name:(x.first_name||'')+(x.username?' @'+x.username:''),usd:x.usd||0,online:false});}});
-    allp.sort((a,b)=>(b.usd||0)-(a.usd||0));
-    const now=Date.now();
-    const od=p.miners||{};let hash=0;
-    const lb=p.lab||{};
-    /* апгрейд-множители офлайн лишь примерно — точные числа сервер пришлёт при связи */
-    const hashMul=1+((lb.chips1||0)+(lb.chips2||0))*0.1+(lb.algo||0)*0.05+(p.upg&&p.upg.oc||0)*0.1;
-    OFF_MINERS.forEach(m=>{hash+=(od[m.id]||0)*m.hash;});hash*=hashMul;
-    const perHour=hash*nf(settings.fiPerThHour,1.26);
-    const minersL=OFF_MINERS.map(m=>({id:m.id,name:m.name,desc:'',hash:m.hash,cost:Math.ceil(m.price*Math.pow(OFF_GROWTH,od[m.id]||0))}));
-    const top=ids.map(k=>players[k]).filter(x=>!x.banned).sort((a,b)=>(b.fi*sPrice+(b.usd||0))-(a.fi*sPrice+(a.usd||0))).slice(0,10).map(x=>({n:(x.first_name||'')+(x.username?' @'+x.username:''),fi:x.fi||0,usd:x.usd||0,h:0,role:null}));
-    let supply=0;ids.forEach(k=>{supply+=players[k].fi||0;});
-    let inD=[],outD=[];(st.duels||[]).forEach(d=>{
-      if(String(d.toId)===String(p.id))inD.push({id:d.id,from:d.fromName||'',amount:d.amount||0,leftMin:0});
-      if(String(d.fromId)===String(p.id))outD.push({id:d.id,to:d.toName||'',amount:d.amount||0,leftMin:0});
-    });
-    const dayToday=p.day&&p.day.date===new Date().toDateString()?p.day:{sell:0,buy:0,mine:0};
-    S={
-      t:now,offline:true,
-      skin:{title:settings.title||'FI Mining Bot',coin:settings.coinName||'FI',emoji:settings.coinEmoji||'🪙',welcome:settings.welcome||''},
-      me:{
-        id:String(p.id),name:(p.first_name||'')+(p.username?' @'+p.username:''),
-        usd:p.usd||0,fi:p.fi||0,hash,perHour,
-        totalMined:p.totalMined||0,bought:p.bought||0,sold:p.sold||0,joined:p.joined||now,
-        banned:!!p.banned,banReason:p.banReason||'',
-        bonusReady:(p.bonusDay||'')!==new Date().toDateString(),
-        workReady:now>=(p.workAt||0)+nf(settings.workIntervalMin,40)*60000,
-        workLeftMin:Math.max(0,Math.ceil(((p.workAt||0)+nf(settings.workIntervalMin,40)*60000-now)/60000)),
-        owned:od,lab:Object.assign({},lb),upg:Object.assign({},p.upg||{}),
-        fee:lb.broker?0.5:1,cap:(p.usd||0)+(p.fi||0)*sPrice,
-        quests:[],via:p.via==='phone'?'phone':'tg',linked:!!p.uid,
-        players:allp.slice(0,300),friends:myFriends,reqIn,reqOut,
-        stats:{transfersSent:p.transfersSent||0,duelWins:p.duelWins||0,spins:p.spinDone||0,spinBest:p.spinBest||0,questsDone:p.questsDone||0},
-        duels:{incoming:inD,outgoing:outD},role:null
-      },
-      market:{price:sPrice,d24,frozen:!!(st.market||{}).frozen,
-        buy:sPrice*(1+nf(settings.buySpreadPct,2)/100),sell:sPrice*(1-nf(settings.sellSpreadPct,2)/100),
-        hist:h.slice(-48).map(x=>[x.t,Math.round(x.p*10000)/10000])},
-      miners:minersL,cfg:settings,
-      top,supply,playersN:ids.length
-    };
-    updateHUD();
-    const lt=(st.lastTick&&typeof st.lastTick==='number')?st.lastTick:now;
-    const os=$('offStrip');if(os){const age=Math.round((now-lt)/60000);os.dataset.age=(age<1?'только что':(age+' мин назад'));paintOffStrip();}
-    render();
-    return true;
-  }catch(e){return false;}
-}
-function paintOffStrip(){
-  const os=$('offStrip');if(!os)return;
-  const q=offQueue.length;
-  os.firstElementChild&&(os.firstElementChild.textContent=q?('📡 офлайн-просмотр · ⏳ заказов отложено: '+q+(os.dataset.age?' · данные от '+os.dataset.age:'')):('📡 офлайн-просмотр'+(os.dataset.age?' · данные от '+os.dataset.age:'')));
 }
 
 /* ---------- HUD ---------- */
@@ -1105,9 +976,6 @@ function updateHUD(){
   chg.className='chg '+(M.d24>=0?'up':'dn')+' num';
   if(me){$('hUsd').textContent=fmtUSD(me.usd);$('hFi').textContent=fmtFI(me.fi)+' FI';}
   const fp=$('dvFootPrice');if(fp)fp.textContent='$'+M.price.toFixed(2);
-  const os=$('offStrip');
-  if(os)os.style.display=(S.offline?'flex':'none');
-  if(S.offline)paintOffStrip();
 }
 
 /* =================================================== ФЕРМА =================================================== */
@@ -2161,24 +2029,28 @@ $('menuDrop').onclick=async e=>{
 };
 
 /* ---------- старт ---------- */
+/* 🆙 одна перезагрузка с меткой версии: Telegram-кэш иногда держит старый клиент (напр., со старым дизайном майнеров) */
+const CLIENT_VER='v8';
+let VER_RELOADING=false;
+try{
+  const q=new URL(location.href).searchParams.get('v');
+  if(localStorage.getItem('fiVer')!==CLIENT_VER&&q!==CLIENT_VER&&!(window.sessionStorage&&sessionStorage.getItem('fiVR'))){
+    sessionStorage.setItem('fiVR','1');
+    localStorage.setItem('fiVer',CLIENT_VER);
+    VER_RELOADING=true;
+    setTimeout(()=>{try{location.replace(location.pathname+'?v='+CLIENT_VER+location.hash);}catch(_){location.reload();}},10);
+  }
+}catch(_){}
 $('introCoin').innerHTML=coinSVG();
 $('botAvatar').innerHTML=coinSVG();
 $('startBtn').onclick=()=>{try{location.href='https://t.me/FI_CoinBot?start=goplay';}catch(_){}};
-(function(){const orb=$('offRetryBtn');if(!orb)return;orb.onclick=async()=>{const b=await retryConn();if(!document.getElementById('retryNet')&&b)paintOffStrip();};})();
 
 (async()=>{
+  if(VER_RELOADING)return;
   document.querySelectorAll('.tabBtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   apiBase=await findApi();
   $('menuLink').textContent=IS_TG?'🪺 Привязать телефон':'🔐 Войти в аккаунт';
-  if(!apiBase){
-    setNet(false);
-    if(IS_TG&&await offlineBoot()){
-      $('intro').classList.add('hide');
-      toast('📡 Нет связи с сервером: игра в режиме офлайн-просмотра. Покупки запомним и отправим, когда связь появится','🛰');
-      scheduleAutoRetry(null);return;
-    }
-    renderOffline(null);return;
-  }
+  if(!apiBase){setNet(false);renderOffline(null);return;}
   if(IS_TG){
     try{
       const sp=(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initDataUnsafe)||{};
